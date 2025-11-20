@@ -407,6 +407,7 @@
       const total = w + a;
       if (elems.total) elems.total.textContent = String(total);
     });
+    updateFlagsAuto();
   }
 
   // 鑑賞点の排他（どちらか片方だけ）
@@ -488,7 +489,8 @@
   let isSubmitting = false;
   let prevBtnLabel = '';
 
-  let currentEpoch = null;
+  let currentMatchId = null; // ★ 追加：現在の試合 ID
+  let currentEpoch   = null;
   let hasLoadedSubmission = false;
 
   function setInputsEditable(editable){
@@ -518,8 +520,8 @@
     submitBtn.textContent = prevBtnLabel || '送信';
   }
 
-  // epoch 切り替え時に UI を初期状態に戻す
-  function resetForNewEpoch(){
+  // 試合 or epoch 切り替え時に UI を初期状態に戻す
+  function resetForNewContext(){
     $$('.ipt').forEach(el => {
       el.disabled = false;
       if (el.tagName === 'SELECT' || el.tagName === 'INPUT') {
@@ -532,8 +534,9 @@
     document.body.classList.remove('inputs-locked');
 
     initialSent = false;
-    inEdit = true;
-    editCount = 0;
+    inEdit      = true;
+    editCount   = 0;
+    hasLoadedSubmission = false; // ★ 新しい試合/epoch では再読み込みを許可
     if (submitBtn) submitBtn.textContent = '送信';
 
     if (result){
@@ -590,6 +593,8 @@
     const token = getToken();
     const labelEl = document.getElementById('match-label');
     const judgeEl = document.querySelector('.judge');
+    const midLabelEl = document.getElementById('grid-match-title');
+    const boutLabelEl = document.getElementById('match-header');
     if (!labelEl) return;
 
     if (!token){
@@ -625,11 +630,24 @@
       const judgeName  = data.judge_name || null;
       const submission = data.submission || null;
 
+      const newMatchId = match.id || null;
+
+      // ★ 試合が変わった場合 → 完全リセット
+      if (newMatchId && currentMatchId !== null && currentMatchId !== newMatchId){
+        currentMatchId = newMatchId;
+        currentEpoch   = (typeof epoch === 'number') ? epoch : null;
+        resetForNewContext();
+      } else if (currentMatchId === null && newMatchId){
+        // 初回
+        currentMatchId = newMatchId;
+        currentEpoch   = (typeof epoch === 'number') ? epoch : null;
+      }
+
+      // ★ 同じ試合内で epoch が変わった場合 → リセット
       if (typeof epoch === 'number') {
         if (currentEpoch !== null && currentEpoch !== epoch) {
           currentEpoch = epoch;
-          hasLoadedSubmission = false;
-          resetForNewEpoch();
+          resetForNewContext();
         } else if (currentEpoch === null) {
           currentEpoch = epoch;
         }
@@ -664,6 +682,33 @@
 
       labelEl.textContent = parts.join(' ／ ');
 
+      // 真ん中の小さな見出しにも対戦情報を反映（任意）
+      if (midLabelEl){
+        if (bout && bout.label){
+          midLabelEl.textContent = bout.label;
+        } else if (typeof epoch === 'number'){
+          midLabelEl.textContent = `第${epoch}対戦`;
+        } else {
+          midLabelEl.textContent = '対戦情報';
+        }
+      }
+
+      // 上の薄い帯にも詳細表示（任意）
+      if (boutLabelEl){
+        const segs = [];
+        if (match.code){
+          segs.push(`試合コード: ${match.code}`);
+        }
+        if (typeof epoch === 'number'){
+          segs.push(`第${epoch}対戦`);
+        }
+        if (bout && bout.label){
+          segs.push(`ポジション: ${bout.label}`);
+        }
+        boutLabelEl.textContent = segs.join(' ／ ');
+      }
+
+      // 提出済みデータがあれば、新しい試合/epoch で一度だけ適用
       if (submission && !hasLoadedSubmission){
         applySubmissionFromServer(submission);
         hasLoadedSubmission = true;
@@ -805,8 +850,8 @@
     }
 
     updateTotals();
-    updateFlagsAuto();
-
+    // 合計更新時に自動で旗も更新
+    // updateFlagsAuto() は updateTotals 内で呼んでいる
     if (initialSent && !inEdit){
       inEdit = true;
       setInputsEditable(true);
@@ -830,7 +875,7 @@
   // 画面表示時に対戦情報を読み込む
   loadMatchInfo();
 
-  // 数秒おきに対戦情報を自動更新
+  // 数秒おきに対戦情報を自動更新（試合/epoch変更の検知にも使う）
   setInterval(() => {
     if (document.visibilityState === 'visible') {
       loadMatchInfo();
@@ -839,6 +884,7 @@
 
 })();
 </script>
+
 
 
 </body>
