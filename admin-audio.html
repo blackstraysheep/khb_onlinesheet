@@ -1204,9 +1204,7 @@
     }
   }
 
-  // 審査員マスタに追加
-    // 審査員マスタに追加 ＋ 審査員用アクセストークン発行
-    // 審査員マスタに追加 ＋ 審査員用アクセストークン発行
+  // 審査員マスタに追加 ＋ 審査員用アクセストークン発行（match_id/epoch なし版＋エラー表示強化）
   async function addJudgeFromUI(){
     const name = (newJudgeNameInput && newJudgeNameInput.value || '').trim();
     if (!name){
@@ -1229,70 +1227,38 @@
         body: JSON.stringify({ name }),
       });
 
+      const judgeText = await res.text();
       if (!res.ok){
-        const txt = await res.text();
-        console.error('add judge failed', res.status, txt);
-        setMsg(`審査員の追加に失敗しました: ${res.status}`, 'err');
+        console.error('add judge failed', res.status, judgeText);
+        setMsg(`審査員の追加に失敗しました: ${res.status} ${judgeText}`, 'err');
         return;
       }
 
-      const rows = await res.json();
-      const j = rows && rows[0];
+      let j;
+      try {
+        const rows = JSON.parse(judgeText);
+        j = rows && rows[0];
+      } catch(e) {
+        console.error('parse judge response error', e, judgeText);
+        setMsg('審査員追加レスポンスの解析に失敗しました。', 'err');
+        return;
+      }
+
       if (!j || !j.id){
         setMsg('審査員の追加に失敗しました（IDが取得できません）。', 'err');
         return;
       }
       const judgeId = j.id;
 
-      // 2. access_tokens にトークンを INSERT するため、match_id / epoch を決める
-      let matchId  = null;
-      let epochVal = 1;
-
-      // まず state.current_match_id を優先的に使う
-      if (lastState && lastState.current_match_id){
-        matchId = lastState.current_match_id;
-        if (typeof lastState.epoch === 'number'){
-          epochVal = lastState.epoch;
-        } else if (epochInput){
-          epochVal = Number(epochInput.value || '1') || 1;
-        }
-      } else {
-        // state から取れない場合は、画面上の対戦コードから matches を引く
-        const curCode = (matchCodeInput && matchCodeInput.value || '').trim();
-        if (!curCode){
-          setMsg('アクセストークンを発行するには、先に対戦コードを入力して「読み込み」を行ってください。', 'err');
-          return;
-        }
-        const matches = await fetchJson('matches', {
-          select: 'id,code',
-          code: 'eq.' + curCode,
-        });
-        if (!matches.length){
-          setMsg(`対戦コード "${curCode}" の試合が見つかりません。`, 'err');
-          return;
-        }
-        matchId = matches[0].id;
-        if (epochInput){
-          epochVal = Number(epochInput.value || '1') || 1;
-        }
-      }
-
-      if (!matchId){
-        setMsg('アクセストークンを発行するための match_id を取得できませんでした。', 'err');
-        return;
-      }
-
-      // 3. access_tokens にトークンを INSERT
+      // 2. access_tokens にトークンを INSERT（match_id/epoch は既に削除済み前提）
       const token = generateToken();
-      const tokenUrl = buildRestUrl('access_tokens', { select: 'token,judge_id' });
+      const tokenUrl = buildRestUrl('access_tokens', { select: 'token,judge_id,role,created_at' });
 
       const tokenPayload = {
         token,
         judge_id: judgeId,
-        match_id: matchId,
-        epoch: epochVal,
         role: 'judge',
-        // max_uses / used_count / expires_at / created_at はテーブルの DEFAULT に任せる
+        // created_at は DEFAULT に任せる
       };
 
       const resTok = await fetch(tokenUrl, {
@@ -1304,12 +1270,11 @@
         body: JSON.stringify(tokenPayload),
       });
 
+      const tokenText = await resTok.text();
       if (!resTok.ok){
-        const txt = await resTok.text();
-        console.error('create access_token failed', resTok.status, txt);
-        // 審査員は追加できているので、その旨だけ通知
+        console.error('create access_token failed', resTok.status, tokenText);
         setMsg(
-          `審査員「${j.name}」は追加されましたが、アクセストークンの作成に失敗しました: ${resTok.status}`,
+          `審査員「${j.name}」は追加されましたが、アクセストークンの作成に失敗しました: ${resTok.status} ${tokenText}`,
           'err'
         );
         return;
@@ -1318,8 +1283,8 @@
       // ここまで来れば、審査員 + トークン作成完了
       if (newJudgeNameInput) newJudgeNameInput.value = '';
 
-      // 管理者がコピーしやすいようにトークンと URL を表示
-      // ※ 審査員画面の実際のパスに合わせて変更してください
+      // 審査員画面の実際のパスに合わせて変更してください
+      // 例: const baseJudgeUrl = location.origin + '/khb2026_eval_system_2.html';
       const baseJudgeUrl = location.origin + '/judge.html';
       const judgeUrl = `${baseJudgeUrl}?token=${encodeURIComponent(token)}`;
 
@@ -1340,6 +1305,7 @@
       setControlsDisabled(false);
     }
   }
+
 
   async function createMatchWithExpectedJudges(){
     if (!pendingNextMatch){
