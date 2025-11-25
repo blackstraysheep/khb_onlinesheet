@@ -124,7 +124,7 @@
     border:2px solid #aaa;
     box-shadow:0 4px 10px rgba(0,0,0,0.1);
     background-color:#fff;
-    width:480px;
+    width:720px;
     max-width:100%;
     table-layout:fixed;
   }
@@ -170,7 +170,7 @@
     white-space:pre-line;
     font-size:14px;
     background:#fff;
-    width:52px;
+    width:50px;
     padding:6px 4px;
   }
 
@@ -205,7 +205,7 @@
     white-space:nowrap;
     letter-spacing:0.1em;
     padding:6px 8px;
-    width:52px;
+    width:50px;
   }
 
   @font-face{
@@ -521,6 +521,25 @@
         td.rowSpan = def.rowSpan;
       }
       tr.appendChild(td);
+    });
+  }
+
+  function setMsg(text, type){
+    if (!topMsg) return;
+    topMsg.textContent = text || '';
+    topMsg.className = 'msg';
+    if (type === 'ok')  topMsg.classList.add('ok');
+    if (type === 'err') topMsg.classList.add('err');
+  }
+
+  function setControlsDisabled(disabled){
+    [
+      loadBtn, openBtn, closeBtn, nextEpochBtn, resetE3Btn,
+      nextMatchSetupBtn, judgeSelectConfirmBtn, judgeSelectCancelBtn,
+      judgeSelectAllBtn, judgeSelectClearBtn, addJudgeBtn,
+      btnAudioPlayAll, btnAudioStop
+    ].forEach(btn => {
+      if (btn) btn.disabled = disabled;
     });
   }
 
