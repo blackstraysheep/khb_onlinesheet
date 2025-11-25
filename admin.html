@@ -124,7 +124,7 @@
     border:2px solid #aaa;
     box-shadow:0 4px 10px rgba(0,0,0,0.1);
     background-color:#fff;
-    width:800px;
+    width:480px;
     max-width:100%;
     table-layout:fixed;
   }
@@ -162,6 +162,42 @@
     font-size:20px;
   }
 
+  .scoreboard .outer-col{
+    writing-mode:vertical-rl;
+    text-orientation:upright;
+    letter-spacing:0.12em;
+    font-weight:700;
+    white-space:pre-line;
+    font-size:14px;
+    background:#fff;
+    width:52px;
+    padding:6px 4px;
+  }
+
+  .scoreboard .outer-col.side-col{
+    font-size:18px;
+    background:#fde4ee;
+  }
+
+  .scoreboard .outer-col.side-white{
+    background:#eef2f7;
+  }
+
+  .scoreboard .outer-col.team-col{
+    font-size:20px;
+  }
+
+  .scoreboard .outer-col.bout-label{
+    font-size:13px;
+    letter-spacing:0.08em;
+    background:transparent;
+  }
+
+  .scoreboard .outer-col.match-label{
+    font-size:12px;
+    background:transparent;
+  }
+
   .scoreboard .vertical{
     font-weight:bold;
     writing-mode:vertical-rl;
@@ -169,6 +205,7 @@
     white-space:nowrap;
     letter-spacing:0.1em;
     padding:6px 8px;
+    width:52px;
   }
 
   @font-face{
@@ -201,7 +238,7 @@
   }
 
   .scoreboard .score{
-    font-size:18px;
+    font-size:20px;
     font-family:'CMU Serif Local Bold','CMU Serif',serif;
     font-weight:700;
     color:#222;
@@ -523,11 +560,53 @@
       return td;
     };
 
-    const judgeCount = expectedIds.length;
+    const outerColumnPlan = {
+      left: [
+        [
+          { start: 0, rowSpan: 4, text: '紅', className: 'outer-col side-col side-red' },
+          { start: 4, rowSpan: 1, text: '試合名', className: 'outer-col match-label' },
+          { start: 5, rowSpan: 4, text: '白', className: 'outer-col side-col side-white' },
+        ],
+        [
+          { start: 0, rowSpan: 4, text: '長田', className: 'outer-col team-col team-red' },
+          { start: 4, rowSpan: 1, text: '対戦名', className: 'outer-col bout-label' },
+          { start: 5, rowSpan: 4, text: '灘 A', className: 'outer-col team-col team-white' },
+        ],
+      ],
+      right: [
+        [
+          { start: 0, rowSpan: 4, text: '長田', className: 'outer-col team-col team-red' },
+          { start: 4, rowSpan: 1, text: '対戦名', className: 'outer-col bout-label' },
+          { start: 5, rowSpan: 4, text: '灘 A', className: 'outer-col team-col team-white' },
+        ],
+        [
+          { start: 0, rowSpan: 4, text: '紅', className: 'outer-col side-col side-red' },
+          { start: 4, rowSpan: 1, text: '試合名', className: 'outer-col match-label' },
+          { start: 5, rowSpan: 4, text: '白', className: 'outer-col side-col side-white' },
+        ],
+      ],
+    };
+
+    const addOuterCells = (tr, rowIndex, side) => {
+      const cols = outerColumnPlan[side];
+      if (!cols) return;
+      cols.forEach(col => {
+        const def = col.find(item => item.start === rowIndex);
+        if (!def) return;
+        const td = createCell(def.text, def.className);
+        if (def.rowSpan && def.rowSpan > 1){
+          td.rowSpan = def.rowSpan;
+        }
+        tr.appendChild(td);
+      });
+    };
+
+    let rowIndex = 0;
 
     // 上側：紅側
     // 1行目：紅 旗
     let tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('旗', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -538,10 +617,13 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('旗', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 2行目：紅 合計
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('合計', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -552,10 +634,13 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('合計', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 3行目：紅 鑑賞点
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('鑑賞点', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -566,10 +651,13 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('鑑賞点', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 4行目：紅 作品点
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('作品点', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -580,10 +668,13 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('作品点', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 中央：審査員名
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
     expectedIds.forEach(id => {
       const name = judgesMap[id] || id.slice(0, 8);
@@ -591,11 +682,14 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 下側：白側
     // 作品点
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('作品点', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -606,10 +700,13 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('作品点', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 鑑賞点
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('鑑賞点', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -620,10 +717,13 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('鑑賞点', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 合計
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('合計', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -634,10 +734,13 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('合計', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+    rowIndex++;
 
     // 旗
     tr = document.createElement('tr');
+    addOuterCells(tr, rowIndex, 'left');
     tr.appendChild(createCell('旗', 'label vertical'));
     expectedIds.forEach(id => {
       const s = subMap[id];
@@ -648,7 +751,10 @@
       tr.appendChild(td);
     });
     tr.appendChild(createCell('旗', 'label vertical'));
+    addOuterCells(tr, rowIndex, 'right');
     tbody.appendChild(tr);
+
+    rowIndex++;
 
     scoreboardContainer.appendChild(table);
   }
