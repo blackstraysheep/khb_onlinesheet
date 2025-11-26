@@ -941,7 +941,7 @@
   }
 
   // khb_score 風スコアボード構築
-function buildScoreboard(expectedIds, judgesMap, subMap, meta){
+  function buildScoreboard(expectedIds, judgesMap, subMap, meta){
   if (!scoreboardContainer) return;
   scoreboardContainer.innerHTML = '';
 
@@ -1164,6 +1164,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta){
 
   scoreboardContainer.appendChild(table);
 }
+
 
   // 「次の試合」ボタンを押したとき：審査員選択UIを開く
   async function openJudgeSelectionForNextMatch(){
