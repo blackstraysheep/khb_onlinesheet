@@ -732,7 +732,7 @@
   // 鑑賞点（c）が（紅／白）です。
   // （red合計）対（white合計）で（紅／白）。*
   //   *同点なら「（red合計）対（white合計）の同点ですが、作品点の高い（紅／白）。」
-  function buildZundaSegments(match, epoch, boutLabel, expectedIds, judgesMap, subMap){
+  function buildZundaSegments(match, epoch, boutLabelFull, expectedIds, judgesMap, subMap){
     zundaJudgeSegments = {};
     if (!expectedIds || !expectedIds.length) return;
 
@@ -814,7 +814,7 @@
 
   // 現在の zundaJudgeSegments から再生キューを構築
   // 「開始」→ 各審査員の内容 →「終了」
-  function rebuildZundaQueue(match, epoch, boutLabel){
+  function rebuildZundaQueue(match, epoch, boutLabelFull){
     const queue = [];
 
     // 冒頭アナウンス
@@ -833,9 +833,9 @@
     setAudioStatus(`再生キューを準備しました（${queue.length}クリップ）。`);
   }
 
-  function buildZundaAudioSuite({ match, epoch, boutLabel, expectedIds, judgesMap, subMap }){
-    buildZundaSegments(match, epoch, boutLabel, expectedIds, judgesMap, subMap);
-    rebuildZundaQueue(match, epoch, boutLabel);
+  function buildZundaAudioSuite({ match, epoch, boutLabelFull, expectedIds, judgesMap, subMap }){
+    buildZundaSegments(match, epoch, boutLabelFull, expectedIds, judgesMap, subMap);
+    rebuildZundaQueue(match, epoch, boutLabelFull);
   }
 
   function scheduleZundaAudioRefresh(data){
@@ -951,7 +951,7 @@
 
   meta = meta || {};
   const matchLabel = meta.matchLabel || '試合名';
-  const boutLabel  = meta.boutLabel  || '対戦名';
+  const boutLabelFull  = meta.boutLabelFull  || '対戦名';
   const redTeam    = meta.redTeamName   || '長田';
   const whiteTeam  = meta.whiteTeamName || '灘 A';
 
@@ -976,14 +976,14 @@
       ],
       [
         { start: 0, rowSpan: 4, text: redTeam,   className: 'outer-col team-col team-red' },
-        { start: 4, rowSpan: 1, text: boutLabel, className: 'outer-col bout-label' },
+        { start: 4, rowSpan: 1, text: boutLabelFull, className: 'outer-col bout-label' },
         { start: 5, rowSpan: 4, text: whiteTeam, className: 'outer-col team-col team-white' },
       ],
     ],
     right: [
       [
         { start: 0, rowSpan: 4, text: redTeam,   className: 'outer-col team-col team-red' },
-        { start: 4, rowSpan: 1, text: boutLabel, className: 'outer-col bout-label' },
+        { start: 4, rowSpan: 1, text: boutLabelFull, className: 'outer-col bout-label' },
         { start: 5, rowSpan: 4, text: whiteTeam, className: 'outer-col team-col team-white' },
       ],
       [
@@ -1164,7 +1164,6 @@
 
   scoreboardContainer.appendChild(table);
 }
-
 
   // 「次の試合」ボタンを押したとき：審査員選択UIを開く
   async function openJudgeSelectionForNextMatch(){
@@ -1511,6 +1510,26 @@
     }
   }
 
+    // epoch と num_bouts から対戦名（先鋒戦など）を決め打ち
+  function getBoutLabel(epoch, numBouts) {
+    epoch = Number(epoch || 0);
+
+    if (numBouts === 5) {
+      const labels5 = ['先鋒', '次鋒', '中堅', '副将', '大将'];
+      const base = labels5[epoch - 1];
+      return base ? `${base}戦` : `第${epoch}対戦`;
+    }
+
+    if (numBouts === 3) {
+      const labels3 = ['先鋒', '中堅', '大将'];
+      const base = labels3[epoch - 1];
+      return base ? `${base}戦` : `第${epoch}対戦`;
+    }
+
+    // num_bouts が未設定などのときのフォールバック
+    return `第${epoch}対戦`;
+  }
+
   // データ読み込み
   async function loadData(isAuto = false){
     if (isAuto && autoLoading) return;
@@ -1539,10 +1558,10 @@
     }
 
     try{
-      // 1. 対戦を取得
+      // 1. matches
       const matches = await fetchJson('matches', {
-        select: 'id,code,name,red_team_name,white_team_name',
-        code: 'eq.' + matchCode,
+      select: 'id,code,name,red_team_name,white_team_name,num_bouts',
+      code: 'eq.' + matchCode,
       });
 
       if (!matches.length){
@@ -1564,20 +1583,10 @@
       const st = stateRows[0] || null;
       lastState = st;
 
-      // 2.5 この試合・この epoch の対戦名（先鋒/中堅/大将など）
-      let boutLabel = null;
-      try {
-        const bouts = await fetchJson('match_bouts', {
-          select: 'slot,label',
-          match_id: 'eq.' + matchId,
-          epoch: 'eq.' + epoch,
-        });
-        if (bouts && bouts.length){
-          boutLabel = bouts[0].label;
-        }
-      } catch (e) {
-        console.error('load match_bouts error', e);
-      }
+      // ★ ここで対戦名を num_bouts から決定
+      const numBouts = Number(match.num_bouts || 0);
+      const boutLabelFull = getBoutLabel(epoch, numBouts); // 例: 「先鋒戦」「中堅戦」
+
 
       // 3. expected_judges（席順ソート）
       const expected = await fetchJson('expected_judges', {
@@ -1617,7 +1626,7 @@
 
       // 試合名（なければ code）、対戦名ラベル（先鋒戦など）、チーム名をまとめて渡す
       const matchLabel = match.name || match.code;
-      let boutLabelForBoard = boutLabel || '対戦名';
+      let boutLabelForBoard = boutLabelFull || '対戦名';
       if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦')) {
         boutLabelForBoard = boutLabelForBoard + '戦';
       }
@@ -1628,7 +1637,7 @@
         subMap,
         {
           matchLabel: matchLabel,
-          boutLabel: boutLabelForBoard,
+          boutLabelFull: boutLabelForBoard,
           redTeamName: match.red_team_name || '紅',
           whiteTeamName: match.white_team_name || '白',
         }
@@ -1638,7 +1647,7 @@
       scheduleZundaAudioRefresh({
         match,
         epoch,
-        boutLabel,
+        boutLabelFull,
         expectedIds,
         judgesMap,
         subMap,
@@ -1652,8 +1661,8 @@
       const parts = [];
       parts.push(`<span>試合: <strong>${match.code}</strong> (${match.name || ''})</span>`);
 
-      if (boutLabel){
-        parts.push(`<span>第${epoch}対戦（${boutLabel}）</span>`);
+      if (boutLabelFull){
+        parts.push(`<span>第${epoch}対戦（${boutLabelFull}）</span>`);
       } else {
         parts.push(`<span>第${epoch}対戦</span>`);
       }
@@ -1684,7 +1693,7 @@
 
       stateSummary.innerHTML = parts.join(' / ');
 
-      const boutPrefix = boutLabel ? `【${boutLabel}】` : '';
+      const boutPrefix = boutLabelFull ? `【${boutLabelFull}】` : '';
 
       if (expectedCount && submittedCount < expectedCount){
         judgeCaption.textContent =
@@ -1694,8 +1703,8 @@
           `${boutPrefix}期待審査員は全員提出済みです。（E3 が出ているかは state.e3_reached を参照）`;
       } else if (!expectedCount) {
         judgeCaption.textContent =
-          boutLabel
-            ? `【${boutLabel}】期待審査員が設定されていません。`
+          boutLabelFull
+            ? `【${boutLabelFull}】期待審査員が設定されていません。`
             : '期待審査員が設定されていません。';
       }
 
