@@ -65,7 +65,6 @@
     padding:18px 16px 16px;
   }
 
-  /* 新レイアウト：表形式の3カラムグリッド */
   .score-grid{
     display:grid;
     grid-template-columns: 1fr 180px 1fr;
@@ -180,8 +179,14 @@
     background-repeat:no-repeat;
   }
   select.ipt:disabled{
-    background-color:#f3f3f3;
-    color:#999;
+    background-color:#fbfbfb;
+    color:#222;
+    font-weight:700;
+    text-align:center;
+    font-size:1.1rem;
+    letter-spacing:.02em;
+    border-color:#c5c5c5;
+    cursor:not-allowed;
   }
 
   .bigval{
@@ -682,15 +687,45 @@
 
       labelEl.textContent = parts.join(' ／ ');
 
-      // 真ん中の小さな見出しにも対戦情報を反映（任意）
+       // ★ 1行目中央：試合名（例: Aブロック 第1試合）
+      const matchTitle =
+        (match.name && match.name.trim() !== '')
+          ? match.name
+          : (match.code || '試合');
+
       if (midLabelEl){
+        midLabelEl.textContent = matchTitle;
+      }
+
+      // ★ 2行目中央：対戦名（先鋒戦など）
+      const boutTitleCell = document.querySelector('#teams .cell.mid.label');
+      if (boutTitleCell){
         if (bout && bout.label){
-          midLabelEl.textContent = bout.label;
+          // judge-submit-with-token 側で「先鋒戦」などになっている想定
+          boutTitleCell.textContent = bout.label;
         } else if (typeof epoch === 'number'){
-          midLabelEl.textContent = `第${epoch}対戦`;
+          boutTitleCell.textContent = `第${epoch}対戦`;
         } else {
-          midLabelEl.textContent = '対戦情報';
+          boutTitleCell.textContent = '対戦名';
         }
+      }
+
+      // ★ 左右：チーム名
+      const redTeamEl   = document.getElementById('team-red-name');
+      const whiteTeamEl = document.getElementById('team-white-name');
+
+      if (redTeamEl){
+        redTeamEl.textContent =
+          (match.red_team_name && match.red_team_name.trim() !== '')
+            ? match.red_team_name
+            : '紅チーム';
+      }
+
+      if (whiteTeamEl){
+        whiteTeamEl.textContent =
+          (match.white_team_name && match.white_team_name.trim() !== '')
+            ? match.white_team_name
+            : '白チーム';
       }
 
       // 上の薄い帯にも詳細表示（任意）
