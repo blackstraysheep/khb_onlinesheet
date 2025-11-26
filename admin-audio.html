@@ -940,6 +940,63 @@
     }
   }
 
+    function showJudgeSelectSection(show){
+    if (!judgeSelectSection) return;
+    judgeSelectSection.style.display = show ? 'block' : 'none';
+    if (!show && judgeSelectList){
+      judgeSelectList.innerHTML = '';
+    }
+  }
+
+  // ★ 審査員選択リスト内の要素を上下に移動させる
+  function moveJudgeItem(item, delta){
+    const parent = item.parentElement;
+    if (!parent) return;
+    const items = Array.from(parent.querySelectorAll('.judge-select-item'));
+    const index = items.indexOf(item);
+    if (index === -1) return;
+
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= items.length) return;
+
+    const ref = items[newIndex];
+    if (delta < 0){
+      // 上へ
+      parent.insertBefore(item, ref);
+    } else {
+      // 下へ（ref の次に挿入）
+      parent.insertBefore(item, ref.nextSibling);
+    }
+  }
+
+    // 結果パネル表示用に、席順配列を「中心から外側へ」並び替える
+  // 例: 7人 → 元の並び [1,2,3,4,5,6,7] を [6,4,2,1,3,5,7] に変換
+  function reorderIdsForScoreboard(ids){
+    const n = ids.length;
+    if (n <= 2) return ids.slice();
+
+    const oddIdx = [];   // 元配列の「奇数インデックス」（1,3,5,...) → 右寄りグループ
+    const evenIdx = [];  // 元配列の「偶数インデックス」（0,2,4,...) → 左寄りグループ
+
+    for (let i = 0; i < n; i++){
+      if (i % 2 === 1) oddIdx.push(i);
+      else evenIdx.push(i);
+    }
+
+    // 奇数インデックスを逆順にして先頭へ、その後に偶数インデックスを昇順で並べる
+    oddIdx.reverse();
+    const orderIdx = oddIdx.concat(evenIdx);
+
+    const result = [];
+    orderIdx.forEach(idx => {
+      if (idx >= 0 && idx < n){
+        result.push(ids[idx]);
+      }
+    });
+    return result;
+  }
+
+
   // khb_score 風スコアボード構築
   function buildScoreboard(expectedIds, judgesMap, subMap, meta){
   if (!scoreboardContainer) return;
@@ -1227,20 +1284,43 @@
         judgeSelectInfo.textContent = baseInfo + ' ／ ' + judgeInfo;
       }
 
-      if (judgeSelectList){
+        if (judgeSelectList){
         judgeSelectList.innerHTML = '';
-        judges.forEach(j => {
+
+        judges.forEach((j) => {
           const div = document.createElement('div');
           div.className = 'judge-select-item';
+          div.dataset.judgeId = j.id;
+
           const id = 'judgeChk_' + j.id;
           const checked = defaultSet.has(j.id) ? 'checked' : '';
+
           div.innerHTML =
+            `<button type="button" class="judge-move judge-move-up">▲</button>` +
+            `<button type="button" class="judge-move judge-move-down">▼</button>` +
             `<label><input type="checkbox" class="judge-select-checkbox" ` +
             `data-judge-id="${j.id}" id="${id}" ${checked}> ` +
             `${j.name || '(名前未設定)'}</label>`;
+
           judgeSelectList.appendChild(div);
         });
+
+        // ▲▼ボタンで上下入れ替え
+        const items = Array.from(
+          judgeSelectList.querySelectorAll('.judge-select-item')
+        );
+        items.forEach(item => {
+          const upBtn = item.querySelector('.judge-move-up');
+          const downBtn = item.querySelector('.judge-move-down');
+          if (upBtn){
+            upBtn.addEventListener('click', () => moveJudgeItem(item, -1));
+          }
+          if (downBtn){
+            downBtn.addEventListener('click', () => moveJudgeItem(item, 1));
+          }
+        });
       }
+
 
       showJudgeSelectSection(true);
       setMsg('次の試合の期待審査員を選択してください。', '');
@@ -1462,12 +1542,15 @@
         return;
       }
 
-      // 3. 選択された審査員で expected_judges を一括作成（席順 sort_order 付き）
-      const ejUrl = buildRestUrl('expected_judges', { select: 'match_id,judge_id,sort_order' });
-      const payload = selectedIds.map((jid, idx) => ({
+      // 3. 選択された審査員で expected_judges を一括作成（席順つき）
+      const ejUrl = buildRestUrl('expected_judges', {
+        select: 'match_id,judge_id,sort_order'
+      });
+
+      const payload = selectedIds.map((jid, index) => ({
         match_id: newMatchId,
         judge_id: jid,
-        sort_order: idx + 1,
+        sort_order: index + 1,   // 上から順に 1,2,3,... を付与
       }));
 
       const resEj = await fetch(ejUrl, {
@@ -1630,9 +1713,10 @@
       if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦')) {
         boutLabelForBoard = boutLabelForBoard + '戦';
       }
-
+      // ★ 表示用に「中心から外側へ」並び替えた配列を使う
+      const displayIds = reorderIdsForScoreboard(expectedIds);
       buildScoreboard(
-        expectedIds,
+        displayIds,
         judgesMap,
         subMap,
         {
