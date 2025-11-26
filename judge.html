@@ -24,7 +24,7 @@
   html,body{
     margin:0;
     padding:0;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","ヒラギノ角ゴ ProN","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"メイリオ",Meiryo,sans-serif;
+    font-family:"ヒラギノ角ゴ ProN","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"メイリオ",Meiryo,sans-serif;
     background:var(--bg);
     color:var(--ink);
   }
@@ -379,13 +379,16 @@
     </section>
   </div>
 
+<script src="config.js"></script>
 <script>
 (function(){
   const $ = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-  const FUNCTION_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/judge-submit-with-token';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHdrZHB1cndhbWlsenpzcmZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjAwMTcsImV4cCI6MjA3NzkzNjAxN30.YvZgEi4x0YPuxYswMQjDQdBMVOPY6wkCVfY2hJ0_dL8';
+  const CONFIG = window.JUDGE_APP_CONFIG || {};
+  const FUNCTION_URL = CONFIG.FUNCTION_URL;
+  const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
+  const CONFIG_ERROR = '設定ファイル(config.js)の読み込みに失敗しました。';
   const FLAG_SYMBOL = '◆';
 
   function parseOrZero(s){
@@ -602,6 +605,11 @@
     const boutLabelEl = document.getElementById('match-header');
     if (!labelEl) return;
 
+    if (!FUNCTION_URL || !SUPABASE_ANON_KEY){
+      labelEl.textContent = CONFIG_ERROR;
+      return;
+    }
+
     if (!token){
       labelEl.textContent = 'URL に token パラメータがありません。';
       return;
@@ -758,6 +766,10 @@
   // Supabase Edge Function へ送信
   async function sendToServer(isEdit){
     const token = getToken();
+    if (!FUNCTION_URL || !SUPABASE_ANON_KEY){
+      setResult(CONFIG_ERROR, false);
+      return false;
+    }
     if (!token){
       setResult('URL に token パラメータがありません', false);
       return false;
