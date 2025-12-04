@@ -289,6 +289,10 @@
   .judge-select-item{
     margin-bottom:4px;
     font-size:0.92rem;
+    cursor:move;           /* ★ ドラッグっぽいカーソル */
+  }
+  .judge-select-item.dragging{
+    opacity:0.6;           /* ★ ドラッグ中は半透明に */
   }
   .judge-select-item label{
     cursor:pointer;
@@ -996,6 +1000,21 @@
     return result;
   }
 
+  // ドラッグ中の要素の直下に来ている要素を取得
+    function getDragAfterElement(container, y){
+    const items = [...container.querySelectorAll('.judge-select-item:not(.dragging)')];
+    let closest = { offset: Number.POSITIVE_INFINITY, element: null };
+
+    items.forEach(item => {
+      const box = item.getBoundingClientRect();
+      const offset = y - (box.top + box.height / 2);
+      if (offset < 0 && Math.abs(offset) < closest.offset){
+        closest = { offset: Math.abs(offset), element: item };
+      }
+    });
+
+    return closest.element;
+  }
 
   // khb_score 風スコアボード構築
   function buildScoreboard(expectedIds, judgesMap, subMap, meta){
@@ -1250,17 +1269,17 @@
       // 全審査員一覧
       const judges = await fetchJson('judges', {
         select: 'id,name',
-        order: 'name',
       });
 
       // 前回試合の期待審査員
       let prevExpectedIds = [];
       if (prevMatchId){
         const expected = await fetchJson('expected_judges', {
-          select: 'judge_id',
+          select: 'judge_id,sort_order',
           match_id: 'eq.' + prevMatchId,
+          order: 'sort_order.asc',
         });
-        prevExpectedIds = (expected || []).map(r => r.judge_id);
+        prevExpectedIds = (expected || []).map(r => String(r.judge_id));
       }
 
       // 既定選択：前回期待審査員があればそれ、なければ全員
@@ -1268,12 +1287,44 @@
         prevExpectedIds.length ? prevExpectedIds : judges.map(j => j.id)
       );
 
+      // ★ 並び順：前回の expected_judges の順番 → 残りを名前順
+      if (prevExpectedIds.length){
+        const orderIndex = new Map();
+        prevExpectedIds.forEach((id, idx) => {
+          orderIndex.set(String(id), idx);
+        });
+
+        judges.sort((a, b) => {
+          const ida = String(a.id);
+          const idb = String(b.id);
+
+          const ia = orderIndex.has(ida) ? orderIndex.get(ida) : Number.MAX_SAFE_INTEGER;
+          const ib = orderIndex.has(idb) ? orderIndex.get(idb) : Number.MAX_SAFE_INTEGER;
+
+          if (ia !== ib){
+            return ia - ib;
+          }
+
+          const na = a.name || '';
+          const nb = b.name || '';
+          return na.localeCompare(nb, 'ja');
+        });
+      } else {
+        // 前回情報がないときだけ、名前順にしておく
+        judges.sort((a, b) => {
+          const na = a.name || '';
+          const nb = b.name || '';
+          return na.localeCompare(nb, 'ja');
+        });
+      }
+
       pendingNextMatch = {
         prevCode: curCode,
         nextCode,
         prevMatchId,
         prevMatchName: prevMatch ? prevMatch.name : '',
       };
+
 
       if (judgeSelectInfo){
         const baseInfo = `次の試合コード: ${nextCode}`;
@@ -1284,41 +1335,54 @@
         judgeSelectInfo.textContent = baseInfo + ' ／ ' + judgeInfo;
       }
 
-        if (judgeSelectList){
+
+      if (judgeSelectList){
         judgeSelectList.innerHTML = '';
 
         judges.forEach((j) => {
           const div = document.createElement('div');
           div.className = 'judge-select-item';
           div.dataset.judgeId = j.id;
+          div.draggable = true;  // ★ ドラッグ可能に
 
           const id = 'judgeChk_' + j.id;
           const checked = defaultSet.has(j.id) ? 'checked' : '';
 
           div.innerHTML =
-            `<button type="button" class="judge-move judge-move-up">▲</button>` +
-            `<button type="button" class="judge-move judge-move-down">▼</button>` +
             `<label><input type="checkbox" class="judge-select-checkbox" ` +
             `data-judge-id="${j.id}" id="${id}" ${checked}> ` +
             `${j.name || '(名前未設定)'}</label>`;
 
+          // ドラッグ開始/終了でクラスを付け替え
+          div.addEventListener('dragstart', (e) => {
+            div.classList.add('dragging');
+            if (e.dataTransfer){
+              e.dataTransfer.effectAllowed = 'move';
+            }
+          });
+          div.addEventListener('dragend', () => {
+            div.classList.remove('dragging');
+          });
+
           judgeSelectList.appendChild(div);
         });
 
-        // ▲▼ボタンで上下入れ替え
-        const items = Array.from(
-          judgeSelectList.querySelectorAll('.judge-select-item')
-        );
-        items.forEach(item => {
-          const upBtn = item.querySelector('.judge-move-up');
-          const downBtn = item.querySelector('.judge-move-down');
-          if (upBtn){
-            upBtn.addEventListener('click', () => moveJudgeItem(item, -1));
-          }
-          if (downBtn){
-            downBtn.addEventListener('click', () => moveJudgeItem(item, 1));
-          }
-        });
+        // リスト全体に dragover を1回だけ登録
+        if (!judgeSelectList._dndInitialized){
+          judgeSelectList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const dragging = judgeSelectList.querySelector('.judge-select-item.dragging');
+            if (!dragging) return;
+
+            const afterElement = getDragAfterElement(judgeSelectList, e.clientY);
+            if (afterElement == null){
+              judgeSelectList.appendChild(dragging);
+            } else {
+              judgeSelectList.insertBefore(dragging, afterElement);
+            }
+          });
+          judgeSelectList._dndInitialized = true;
+        }
       }
 
 
