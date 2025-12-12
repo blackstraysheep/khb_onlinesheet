@@ -1,0 +1,343 @@
+:root {
+  --bg: #f4f5fb;
+  --card: #ffffff;
+  --border: #ddd;
+  --muted: #666;
+  --accent: #3f51b5;
+  --ok: #1b5e20;
+  --warn: #ef6c00;
+  --danger: #b71c1c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg);
+  color: #111;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+label {
+  font-size: .8rem;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+input {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: .9rem;
+  min-width: 120px;
+}
+
+button {
+  border-radius: 999px;
+  border: none;
+  padding: 7px 14px;
+  font-size: .9rem;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button.small-btn {
+  padding: 5px 10px;
+  font-size: .8rem;
+}
+
+button:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.small {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.state-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: .9rem;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .75rem;
+  border: 1px solid var(--border);
+}
+
+.tag.ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.tag.warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.tag.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.msg {
+  font-size: .85rem;
+  min-height: 1em;
+}
+
+.msg.ok {
+  color: var(--ok);
+}
+
+.msg.err {
+  color: var(--danger);
+}
+
+.control-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* =========================
+ khb_score.html 風スコアボード用スタイル
+ ========================= */
+.scoreboard-wrapper {
+  overflow: auto;
+  margin-top: 6px;
+}
+
+.scoreboard table {
+  border-collapse: collapse;
+  border: 2px solid #aaa;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  width: 720px;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+.scoreboard th,
+.scoreboard td {
+  border: 1px solid #bbb;
+  padding: 10px 12px;
+  text-align: center;
+  vertical-align: middle;
+  min-height: 40px;
+  font-size: 14px;
+  word-wrap: break-word;
+}
+
+.scoreboard .judge-name {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.scoreboard .v-text,
+.scoreboard .v-text-team {
+  writing-mode: vertical-rl;
+  letter-spacing: 2px;
+  font-weight: 800;
+  width: auto;
+  vertical-align: middle;
+}
+
+.scoreboard .v-text {
+  font-size: 15px;
+}
+
+.scoreboard .v-text-team {
+  font-size: 20px;
+}
+
+.scoreboard .outer-col {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  white-space: pre-line;
+  font-size: 14px;
+  background: #fff;
+  width: 50px;
+  padding: 6px 4px;
+}
+
+.scoreboard .outer-col.side-col {
+  font-size: 18px;
+  background: #fde4ee;
+}
+
+.scoreboard .outer-col.side-white {
+  background: #eef2f7;
+}
+
+.scoreboard .outer-col.team-col {
+  font-size: 20px;
+}
+
+.scoreboard .outer-col.bout-label {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  background: transparent;
+}
+
+.scoreboard .outer-col.match-label {
+  font-size: 12px;
+  background: transparent;
+}
+
+.scoreboard .vertical {
+  font-weight: bold;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  white-space: nowrap;
+  letter-spacing: 0.1em;
+  padding: 6px 8px;
+  width: 50px;
+}
+
+@font-face {
+  font-family: 'CMU Serif Local Bold';
+  src: local('CMU Serif Bold'), local('CMUSerif-Bold');
+  font-weight: 700;
+  font-style: normal;
+  unicode-range: U+0000-00FF, U+3000-30FF, U+4E00-9FFF;
+}
+
+.scoreboard .bg-red {
+  background-color: #fdecf5;
+}
+
+.scoreboard .bg-white {
+  background-color: #f0f0f0;
+}
+
+.scoreboard .center-block-cell {
+  font-weight: bold;
+}
+
+.scoreboard .red-star {
+  color: #d90000;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.scoreboard .star {
+  font-size: 1.2em;
+}
+
+.scoreboard .score {
+  font-size: 20px;
+  font-family: 'CMU Serif Local Bold', 'CMU Serif', serif;
+  font-weight: 700;
+  color: #222;
+  -webkit-font-smoothing: antialiased;
+}
+
+.scoreboard .score-big {
+  font-size: 24px;
+  font-family: 'CMU Serif Local Bold', 'CMU Serif', serif;
+  font-weight: 700;
+  color: #222;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================
+ レイアウト（2カラム）
+ ========================= */
+.layout-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layout-left {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.layout-right {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: min-content;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.layout-left .card,
+.layout-right .card {
+  margin-bottom: 0;
+  /* カラム内はgapで余白管理 */
+}
+
+@media (max-width: 900px) {
+  .layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+ 期待審査員選択UI
+ ========================= */
+.judge-select-list {
+  border: 1px solid #ddd;
+  padding: 8px;
+  max-height: 220px;
+  overflow: auto;
+  background: #fafafa;
+}
+
+.judge-select-item {
+  margin-bottom: 4px;
+  font-size: 0.92rem;
+  cursor: move;
+  /* ★ ドラッグっぽいカーソル */
+}
+
+.judge-select-item.dragging {
+  opacity: 0.6;
+  /* ★ ドラッグ中は半透明に */
+}
+
+.judge-select-item label {
+  cursor: pointer;
+}

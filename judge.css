@@ -1,0 +1,321 @@
+:root {
+    --bg: #f7f7fb;
+    --card: #ffffff;
+    --ink: #111;
+    --muted: #666;
+    --accent-red: #e53935;
+    --accent-white: #607d8b;
+    /* グレー寄りで視認性UP */
+    --ok: #1b5e20;
+    --ng: #b71c1c;
+    --border: #ddd;
+    --shadow: 0 6px 18px rgba(0, 0, 0, .08);
+    --radius-lg: 18px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "ヒラギノ角ゴ ProN", "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, "メイリオ", Meiryo, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wrap {
+    width: 100%;
+    max-width: 960px;
+    padding: 24px 12px 32px;
+}
+
+header {
+    margin-bottom: 16px;
+}
+
+header h1 {
+    margin: 0 0 4px;
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+header h2 {
+    margin: 4px 0 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+header .judge {
+    margin: 0;
+    font-size: .9rem;
+    color: var(--muted);
+}
+
+.card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 18px 16px 16px;
+}
+
+.score-grid {
+    display: grid;
+    grid-template-columns: 1fr 180px 1fr;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.score-grid .cell {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    min-height: 48px;
+}
+
+.score-grid .cell:nth-child(3n) {
+    border-right: none;
+}
+
+.score-grid .cell.side {
+    font-weight: 700;
+}
+
+.score-grid .cell.side-red {
+    background: rgba(229, 57, 53, .15);
+}
+
+.score-grid .cell.side-white {
+    background: rgba(96, 125, 139, .12);
+}
+
+.score-grid .cell.head {
+    background: #f3f4ff;
+    font-weight: 600;
+}
+
+.score-grid .cell.label {
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.score-grid .team-name .name {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.score-grid select.ipt {
+    width: 100%;
+}
+
+@media (max-width:720px) {
+    .score-grid {
+        grid-template-columns: 1fr 120px 1fr;
+    }
+}
+
+/* 旧 .teams レイアウトは未使用だが互換のため残置 */
+
+.team {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    padding: 12px 10px;
+}
+
+.team .color {
+    display: flex;
+    align-items: center;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.team .color .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    margin-right: 6px;
+}
+
+.dot.red {
+    background: var(--accent-red);
+}
+
+.dot.white {
+    background: var(--accent-white);
+}
+
+.team .name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+}
+
+.row .label {
+    flex: 0 0 70px;
+    font-size: .85rem;
+    color: var(--muted);
+}
+
+.row .input-wrap {
+    flex: 1;
+}
+
+select.ipt {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: .95rem;
+    background-color: #fff;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #999 50%), linear-gradient(135deg, #999 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+}
+
+select.ipt:disabled {
+    background-color: #fbfbfb;
+    color: #222;
+    font-weight: 700;
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: .02em;
+    border-color: #c5c5c5;
+    cursor: not-allowed;
+}
+
+.bigval {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.bigval.total {
+    text-align: right;
+}
+
+.flag {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: right;
+    min-height: 1.8rem;
+}
+
+.flag.red {
+    color: var(--accent-red);
+}
+
+.flag.white {
+    color: var(--accent-white);
+}
+
+
+
+.submit-area {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.primary {
+    border: none;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #3f51b5, #5c6bc0);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(63, 81, 181, .4);
+}
+
+.primary.is-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.primary.is-loading::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, .6);
+    border-top-color: #fff;
+    animation: spin 1s linear infinite;
+}
+
+.primary:disabled {
+    opacity: .6;
+    cursor: default;
+    box-shadow: none;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.result {
+    min-height: 1.1em;
+    font-size: .9rem;
+}
+
+.result.ok {
+    color: var(--ok);
+}
+
+.result.ng {
+    color: var(--ng);
+}
+
+.notes {
+    font-size: .78rem;
+    color: var(--muted);
+}
+
+body.inputs-locked .team {
+    opacity: .85;
+}
+
+body.inputs-locked select.ipt {
+    cursor: default;
+}

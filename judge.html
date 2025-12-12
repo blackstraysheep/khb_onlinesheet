@@ -1,284 +1,18 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>関西俳句バトル2026　評価入力システム</title>
-<style>
-  :root{
-    --bg:#f7f7fb;
-    --card:#ffffff;
-    --ink:#111;
-    --muted:#666;
-    --accent-red:#e53935;
-    --accent-white:#607d8b; /* グレー寄りで視認性UP */
-    --ok:#1b5e20;
-    --ng:#b71c1c;
-    --border:#ddd;
-    --shadow:0 6px 18px rgba(0,0,0,.08);
-    --radius-lg:18px;
-    --radius-md:10px;
-    --radius-sm:6px;
-  }
-  *,*::before,*::after{box-sizing:border-box;}
-  html,body{
-    margin:0;
-    padding:0;
-    font-family:"ヒラギノ角ゴ ProN","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"メイリオ",Meiryo,sans-serif;
-    background:var(--bg);
-    color:var(--ink);
-  }
-  body{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .wrap{
-    width:100%;
-    max-width:960px;
-    padding:24px 12px 32px;
-  }
-  header{
-    margin-bottom:16px;
-  }
-  header h1{
-    margin:0 0 4px;
-    font-size:1.4rem;
-    font-weight:700;
-  }
-  header h2{
-    margin:4px 0 0;
-    font-size:1.1rem;
-    font-weight:600;
-  }
-  header .judge{
-    margin:0;
-    font-size:.9rem;
-    color:var(--muted);
-  }
-
-  .card{
-    background:var(--card);
-    border-radius:var(--radius-lg);
-    box-shadow:var(--shadow);
-    padding:18px 16px 16px;
-  }
-
-  .score-grid{
-    display:grid;
-    grid-template-columns: 1fr 180px 1fr;
-    border:1px solid var(--border);
-    border-radius:var(--radius-md);
-    overflow:hidden;
-  }
-  .score-grid .cell{
-    border-right:1px solid var(--border);
-    border-bottom:1px solid var(--border);
-    padding:10px 12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:#fff;
-    min-height:48px;
-  }
-  .score-grid .cell:nth-child(3n){
-    border-right:none;
-  }
-  .score-grid .cell.side{
-    font-weight:700;
-  }
-  .score-grid .cell.side-red{
-    background: rgba(229,57,53,.15);
-  }
-  .score-grid .cell.side-white{
-    background: rgba(96,125,139,.12);
-  }
-  .score-grid .cell.head{
-    background:#f3f4ff;
-    font-weight:600;
-  }
-  .score-grid .cell.label{
-    font-weight:600;
-    color:var(--muted);
-  }
-  .score-grid .team-name .name{
-    font-size:1rem;
-    font-weight:600;
-  }
-  .score-grid select.ipt{
-    width:100%;
-  }
-  @media (max-width:720px){
-    .score-grid{
-      grid-template-columns: 1fr 120px 1fr;
-    }
-  }
-
-  /* 旧 .teams レイアウトは未使用だが互換のため残置 */
-
-  .team{
-    border-radius:var(--radius-md);
-    border:1px solid var(--border);
-    padding:12px 10px;
-  }
-  .team .color{
-    display:flex;
-    align-items:center;
-    font-size:.85rem;
-    font-weight:600;
-    color:var(--muted);
-    margin-bottom:4px;
-  }
-  .team .color .dot{
-    width:10px;
-    height:10px;
-    border-radius:999px;
-    margin-right:6px;
-  }
-  .dot.red{ background:var(--accent-red); }
-  .dot.white{ background:var(--accent-white); }
-
-  .team .name{
-    font-size:1.05rem;
-    font-weight:600;
-    margin-bottom:10px;
-  }
-
-  .fields{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-  }
-  .row{
-    display:flex;
-    align-items:center;
-  }
-  .row .label{
-    flex:0 0 70px;
-    font-size:.85rem;
-    color:var(--muted);
-  }
-  .row .input-wrap{
-    flex:1;
-  }
-
-  select.ipt{
-    width:100%;
-    padding:6px 8px;
-    border-radius:var(--radius-sm);
-    border:1px solid var(--border);
-    font-size:.95rem;
-    background-color:#fff;
-    -webkit-appearance:none;
-    -moz-appearance:none;
-    appearance:none;
-    background-image:linear-gradient(45deg, transparent 50%, #999 50%),linear-gradient(135deg, #999 50%, transparent 50%);
-    background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%;
-    background-size:6px 6px,6px 6px;
-    background-repeat:no-repeat;
-  }
-  select.ipt:disabled{
-    background-color:#fbfbfb;
-    color:#222;
-    font-weight:700;
-    text-align:center;
-    font-size:1.1rem;
-    letter-spacing:.02em;
-    border-color:#c5c5c5;
-    cursor:not-allowed;
-  }
-
-  .bigval{
-    font-size:1.8rem;
-    font-weight:700;
-  }
-  .bigval.total{
-    text-align:right;
-  }
-
-  .flag{
-    font-size:1.8rem;
-    font-weight:700;
-    text-align:right;
-    min-height:1.8rem;
-  }
-  .flag.red{ color:var(--accent-red); }
-  .flag.white{ color:var(--accent-white); }
-
-  
-
-  .submit-area{
-    margin-top:18px;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-  }
-  .primary{
-    border:none;
-    border-radius:999px;
-    font-size:1rem;
-    font-weight:600;
-    padding:10px 14px;
-    background:linear-gradient(135deg,#3f51b5,#5c6bc0);
-    color:#fff;
-    cursor:pointer;
-    box-shadow:0 3px 10px rgba(63,81,181,.4);
-  }
-  .primary.is-loading{
-    position:relative;
-    pointer-events:none;
-  }
-  .primary.is-loading::after{
-    content:"";
-    position:absolute;
-    right:12px;
-    top:50%;
-    width:16px;
-    height:16px;
-    margin-top:-8px;
-    border-radius:50%;
-    border:2px solid rgba(255,255,255,.6);
-    border-top-color:#fff;
-    animation:spin 1s linear infinite;
-  }
-  .primary:disabled{
-    opacity:.6;
-    cursor:default;
-    box-shadow:none;
-  }
-  @keyframes spin{
-    to{ transform:rotate(360deg); }
-  }
-
-  .result{
-    min-height:1.1em;
-    font-size:.9rem;
-  }
-  .result.ok{
-    color:var(--ok);
-  }
-  .result.ng{
-    color:var(--ng);
-  }
-  .notes{
-    font-size:.78rem;
-    color:var(--muted);
-  }
-
-  body.inputs-locked .team{
-    opacity:.85;
-  }
-  body.inputs-locked select.ipt{
-    cursor:default;
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>関西俳句バトル2026　評価入力システム</title>
+  <link rel="stylesheet" href="judge.css">
 </head>
+
 <body>
   <div class="wrap">
     <header>
-    <h1>関西俳句バトル2026　評価入力システム</h1>
-    <h3>Developed by KLEA</h3>
+      <h1>関西俳句バトル2026　評価入力システム</h1>
+      <h3>Developed by KLEA</h3>
       <p class="judge">審査員名：読み込み中…</p>
       <h2><span id="match-label">対戦情報を取得中…</span></h2>
       <div id="match-header" style="
@@ -288,8 +22,8 @@
   background: #f3f4ff;
   font-size: 0.9rem;
 ">
-  
-</div>
+
+      </div>
 
     </header>
 
@@ -302,9 +36,13 @@
         <div class="cell side side-white" aria-hidden="true">白</div>
 
         <!-- 2行目：チーム名 -->
-        <div class="cell team-name"><div class="name" id="team-red-name">紅チーム</div></div>
+        <div class="cell team-name">
+          <div class="name" id="team-red-name">紅チーム</div>
+        </div>
         <div class="cell mid label">先鋒戦</div>
-        <div class="cell team-name"><div class="name" id="team-white-name">白チーム</div></div>
+        <div class="cell team-name">
+          <div class="name" id="team-white-name">白チーム</div>
+        </div>
 
         <!-- 3行目：作品点 -->
         <div class="cell team-field">
@@ -361,14 +99,22 @@
         </div>
 
         <!-- 5行目：合計点 -->
-        <div class="cell team-field"><div class="bigval total" aria-live="polite" data-side="red">0</div></div>
+        <div class="cell team-field">
+          <div class="bigval total" aria-live="polite" data-side="red">0</div>
+        </div>
         <div class="cell mid label">合計点</div>
-        <div class="cell team-field"><div class="bigval total" aria-live="polite" data-side="white">0</div></div>
+        <div class="cell team-field">
+          <div class="bigval total" aria-live="polite" data-side="white">0</div>
+        </div>
 
         <!-- 6行目：旗 -->
-        <div class="cell team-field"><div class="flag red" aria-live="polite" data-flag="red" data-side="red"></div></div>
+        <div class="cell team-field">
+          <div class="flag red" aria-live="polite" data-flag="red" data-side="red"></div>
+        </div>
         <div class="cell mid label">旗</div>
-        <div class="cell team-field"><div class="flag white" aria-live="polite" data-flag="white" data-side="white"></div></div>
+        <div class="cell team-field">
+          <div class="flag white" aria-live="polite" data-flag="white" data-side="white"></div>
+        </div>
       </div>
 
       <div class="submit-area">
@@ -379,560 +125,561 @@
     </section>
   </div>
 
-<script src="config.js"></script>
-<script>
-(function(){
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  <script src="config.js"></script>
+  <script>
+    (function () {
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  const CONFIG = window.JUDGE_APP_CONFIG || {};
-  const FUNCTION_URL = CONFIG.FUNCTION_URL;
-  const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
-  const CONFIG_ERROR = '設定ファイル(config.js)の読み込みに失敗しました。';
-  const FLAG_SYMBOL = '◆';
+      const CONFIG = window.JUDGE_APP_CONFIG || {};
+      const FUNCTION_URL = CONFIG.FUNCTION_URL;
+      const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
+      const CONFIG_ERROR = '設定ファイル(config.js)の読み込みに失敗しました。';
+      const FLAG_SYMBOL = '◆';
 
-  function parseOrZero(s){
-    if (!s) return 0;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function getSideElems(side){
-    return {
-      works: $(`.works[data-side="${side}"]`),
-      app:   $(`.app[data-side="${side}"]`),
-      total: $(`.total[data-side="${side}"]`),
-      flag:  $(`.flag[data-side="${side}"]`),
-    };
-  }
-
-  // 合計点を更新
-  function updateTotals(){
-    ['red','white'].forEach(side => {
-      const elems = getSideElems(side);
-      const w = parseOrZero(elems.works && elems.works.value);
-      const a = parseOrZero(elems.app && elems.app.value);
-      const total = w + a;
-      if (elems.total) elems.total.textContent = String(total);
-    });
-    updateFlagsAuto();
-  }
-
-  // 鑑賞点の排他（どちらか片方だけ）
-  function enforceAppExclusion(changedSide){
-    const r = getSideElems('red');
-    const w = getSideElems('white');
-
-    const hasPoint = (el) => el && (el.value === '1' || el.value === '2');
-    const lockOther = (other) => {
-      if (!other) return;
-      other.value = '0';
-      other.disabled = true;
-    };
-    const unlock = (el) => {
-      if (!el) return;
-      el.disabled = false;
-    };
-
-    const redHas = hasPoint(r.app);
-    const whiteHas = hasPoint(w.app);
-
-    const prefer = changedSide || (redHas ? 'red' : (whiteHas ? 'white' : null));
-
-    if (prefer === 'red'){
-      if (redHas){
-        lockOther(w.app);
-        unlock(r.app);
-      } else {
-        unlock(w.app);
-      }
-    } else if (prefer === 'white'){
-      if (whiteHas){
-        lockOther(r.app);
-        unlock(w.app);
-      } else {
-        unlock(r.app);
-      }
-    } else {
-      unlock(r.app);
-      unlock(w.app);
-    }
-  }
-
-  // 旗は自動で決定する（合計点が高い方、同点なら作品点が高い方）
-  function updateFlagsAuto(){
-    const r = getSideElems('red');
-    const w = getSideElems('white');
-
-    const rTotal = parseOrZero(r.total && r.total.textContent);
-    const wTotal = parseOrZero(w.total && w.total.textContent);
-
-    if (r.flag) r.flag.textContent = '';
-    if (w.flag) w.flag.textContent = '';
-
-    if (rTotal > wTotal){
-      if (r.flag) r.flag.textContent = FLAG_SYMBOL;
-    } else if (wTotal > rTotal){
-      if (w.flag) w.flag.textContent = FLAG_SYMBOL;
-    } else {
-      // 合計同点 → 作品点で判定
-      const rWork = parseOrZero(r.works && r.works.value);
-      const wWork = parseOrZero(w.works && w.works.value);
-      if (rWork > wWork){
-        if (r.flag) r.flag.textContent = FLAG_SYMBOL;
-      } else if (wWork > rWork){
-        if (w.flag) w.flag.textContent = FLAG_SYMBOL;
-      } else {
-        // それでも同点なら旗なし
-      }
-    }
-  }
-
-  const submitBtn = $('#submitBtn');
-  const result    = $('#result');
-
-  let initialSent = false; // 初回送信済みかどうか
-  let inEdit      = true;  // 現在編集中かどうか
-  let editCount   = 0;     // 修正送信回数
-  let isSubmitting = false;
-  let prevBtnLabel = '';
-
-  let currentMatchId = null; // ★ 追加：現在の試合 ID
-  let currentEpoch   = null;
-  let hasLoadedSubmission = false;
-
-  function setInputsEditable(editable){
-    $$('.ipt').forEach(i => { i.disabled = !editable; });
-    document.body.classList.toggle('inputs-locked', !editable);
-  }
-
-  function setResult(msg, ok){
-    if (!result) return;
-    result.textContent = msg;
-    result.classList.toggle('ok', !!ok);
-    result.classList.toggle('ng', ok === false);
-  }
-
-  function beginLoading(label){
-    if (!submitBtn) return;
-    prevBtnLabel = submitBtn.textContent;
-    submitBtn.textContent = label || '送信中…';
-    submitBtn.disabled = true;
-    submitBtn.setAttribute('aria-busy', 'true');
-  }
-
-  function endLoading(){
-    if (!submitBtn) return;
-    submitBtn.disabled = false;
-    submitBtn.removeAttribute('aria-busy');
-    submitBtn.textContent = prevBtnLabel || '送信';
-  }
-
-  // 試合 or epoch 切り替え時に UI を初期状態に戻す
-  function resetForNewContext(){
-    $$('.ipt').forEach(el => {
-      el.disabled = false;
-      if (el.tagName === 'SELECT' || el.tagName === 'INPUT') {
-        el.value = '';
-      }
-    });
-
-    $$('.total').forEach(el => { el.textContent = '0'; });
-    $$('.flag').forEach(el => { el.textContent = ''; });
-    document.body.classList.remove('inputs-locked');
-
-    initialSent = false;
-    inEdit      = true;
-    editCount   = 0;
-    hasLoadedSubmission = false; // ★ 新しい試合/epoch では再読み込みを許可
-    if (submitBtn) submitBtn.textContent = '送信';
-
-    if (result){
-      result.textContent = '';
-      result.classList.remove('ok','ng');
-    }
-
-    enforceAppExclusion();
-    updateTotals();
-    updateFlagsAuto();
-  }
-
-  // サーバから取得した提出済みデータを画面に反映する
-  function applySubmissionFromServer(submission){
-    if (!submission || !submission.red || !submission.white) return;
-
-    const red   = getSideElems('red');
-    const white = getSideElems('white');
-
-    const toInputValue = (n) =>
-      (typeof n === 'number' && Number.isFinite(n)) ? String(n) : '';
-
-    if (red.works)   red.works.value   = toInputValue(submission.red.work);
-    if (red.app)     red.app.value     = toInputValue(submission.red.app);
-    if (white.works) white.works.value = toInputValue(submission.white.work);
-    if (white.app)   white.app.value   = toInputValue(submission.white.app);
-
-    enforceAppExclusion();
-    updateTotals();
-    updateFlagsAuto();
-
-    initialSent = true;
-    inEdit = false;
-    editCount = Math.max(0, (submission.revision || 1) - 1);
-
-    setInputsEditable(false);
-    if (submitBtn) submitBtn.textContent = '修正する';
-
-    const revMessage =
-      editCount > 0
-        ? `（サーバ上では修正送信が ${editCount} 回行われています）`
-        : '';
-
-    setResult(`前回送信済みの内容を読み込みました${revMessage}`, true);
-  }
-
-  function getToken(){
-    const params = new URLSearchParams(location.search);
-    return params.get('token') || '';
-  }
-
-  // 対戦情報を取得
-  async function loadMatchInfo(){
-    const token = getToken();
-    const labelEl = document.getElementById('match-label');
-    const judgeEl = document.querySelector('.judge');
-    const midLabelEl = document.getElementById('grid-match-title');
-    const boutLabelEl = document.getElementById('match-header');
-    if (!labelEl) return;
-
-    if (!FUNCTION_URL || !SUPABASE_ANON_KEY){
-      labelEl.textContent = CONFIG_ERROR;
-      return;
-    }
-
-    if (!token){
-      labelEl.textContent = 'URL に token パラメータがありません。';
-      return;
-    }
-
-    try{
-      const res = await fetch(FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ token, mode: 'info' }),
-      });
-
-      const text = await res.text();
-      let data = {};
-      try { data = JSON.parse(text); } catch(_){}
-
-      if (!res.ok || !data.ok){
-        const msg = data.error || data.message || res.status;
-        labelEl.textContent = '対戦情報取得失敗: ' + msg;
-        return;
+      function parseOrZero(s) {
+        if (!s) return 0;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : 0;
       }
 
-      const match      = data.match || {};
-      const epoch      = data.epoch;
-      const accepting  = data.accepting;
-      const bout       = data.bout || null;
-      const judgeName  = data.judge_name || null;
-      const submission = data.submission || null;
-
-      const newMatchId = match.id || null;
-
-      // ★ 試合が変わった場合 → 完全リセット
-      if (newMatchId && currentMatchId !== null && currentMatchId !== newMatchId){
-        currentMatchId = newMatchId;
-        currentEpoch   = (typeof epoch === 'number') ? epoch : null;
-        resetForNewContext();
-      } else if (currentMatchId === null && newMatchId){
-        // 初回
-        currentMatchId = newMatchId;
-        currentEpoch   = (typeof epoch === 'number') ? epoch : null;
+      function getSideElems(side) {
+        return {
+          works: $(`.works[data-side="${side}"]`),
+          app: $(`.app[data-side="${side}"]`),
+          total: $(`.total[data-side="${side}"]`),
+          flag: $(`.flag[data-side="${side}"]`),
+        };
       }
 
-      // ★ 同じ試合内で epoch が変わった場合 → リセット
-      if (typeof epoch === 'number') {
-        if (currentEpoch !== null && currentEpoch !== epoch) {
-          currentEpoch = epoch;
-          resetForNewContext();
-        } else if (currentEpoch === null) {
-          currentEpoch = epoch;
-        }
+      // 合計点を更新
+      function updateTotals() {
+        ['red', 'white'].forEach(side => {
+          const elems = getSideElems(side);
+          const w = parseOrZero(elems.works && elems.works.value);
+          const a = parseOrZero(elems.app && elems.app.value);
+          const total = w + a;
+          if (elems.total) elems.total.textContent = String(total);
+        });
+        updateFlagsAuto();
       }
 
-      const parts = [];
+      // 鑑賞点の排他（どちらか片方だけ）
+      function enforceAppExclusion(changedSide) {
+        const r = getSideElems('red');
+        const w = getSideElems('white');
 
-      if (match.code || match.name){
-        parts.push(
-          `試合: ${match.code || ''}${match.name ? '（' + match.name + '）' : ''}`
-        );
-      }
+        const hasPoint = (el) => el && (el.value === '1' || el.value === '2');
+        const lockOther = (other) => {
+          if (!other) return;
+          other.value = '0';
+          other.disabled = true;
+        };
+        const unlock = (el) => {
+          if (!el) return;
+          el.disabled = false;
+        };
 
-      if (typeof epoch === 'number'){
-        if (bout && bout.label){
-          parts.push(`第${epoch}対戦（${bout.label}）`);
+        const redHas = hasPoint(r.app);
+        const whiteHas = hasPoint(w.app);
+
+        const prefer = changedSide || (redHas ? 'red' : (whiteHas ? 'white' : null));
+
+        if (prefer === 'red') {
+          if (redHas) {
+            lockOther(w.app);
+            unlock(r.app);
+          } else {
+            unlock(w.app);
+          }
+        } else if (prefer === 'white') {
+          if (whiteHas) {
+            lockOther(r.app);
+            unlock(w.app);
+          } else {
+            unlock(r.app);
+          }
         } else {
-          parts.push(`第${epoch}対戦`);
+          unlock(r.app);
+          unlock(w.app);
         }
       }
 
-      if (judgeName){
-        parts.push(`審査員: ${judgeName}`);
-        if (judgeEl){
-          judgeEl.textContent = `審査員名：${judgeName}`;
-        }
-      }
+      // 旗は自動で決定する（合計点が高い方、同点なら作品点が高い方）
+      function updateFlagsAuto() {
+        const r = getSideElems('red');
+        const w = getSideElems('white');
 
-      if (accepting === false){
-        parts.push('現在は受付停止中です');
-      }
+        const rTotal = parseOrZero(r.total && r.total.textContent);
+        const wTotal = parseOrZero(w.total && w.total.textContent);
 
-      labelEl.textContent = parts.join(' ／ ');
+        if (r.flag) r.flag.textContent = '';
+        if (w.flag) w.flag.textContent = '';
 
-       // ★ 1行目中央：試合名（例: Aブロック 第1試合）
-      const matchTitle =
-        (match.name && match.name.trim() !== '')
-          ? match.name
-          : (match.code || '試合');
-
-      if (midLabelEl){
-        midLabelEl.textContent = matchTitle;
-      }
-
-      // ★ 2行目中央：対戦名（先鋒戦など）
-      const boutTitleCell = document.querySelector('#teams .cell.mid.label');
-      if (boutTitleCell){
-        if (bout && bout.label){
-          // judge-submit-with-token 側で「先鋒戦」などになっている想定
-          boutTitleCell.textContent = bout.label;
-        } else if (typeof epoch === 'number'){
-          boutTitleCell.textContent = `第${epoch}対戦`;
+        if (rTotal > wTotal) {
+          if (r.flag) r.flag.textContent = FLAG_SYMBOL;
+        } else if (wTotal > rTotal) {
+          if (w.flag) w.flag.textContent = FLAG_SYMBOL;
         } else {
-          boutTitleCell.textContent = '対戦名';
+          // 合計同点 → 作品点で判定
+          const rWork = parseOrZero(r.works && r.works.value);
+          const wWork = parseOrZero(w.works && w.works.value);
+          if (rWork > wWork) {
+            if (r.flag) r.flag.textContent = FLAG_SYMBOL;
+          } else if (wWork > rWork) {
+            if (w.flag) w.flag.textContent = FLAG_SYMBOL;
+          } else {
+            // それでも同点なら旗なし
+          }
         }
       }
 
-      // ★ 左右：チーム名
-      const redTeamEl   = document.getElementById('team-red-name');
-      const whiteTeamEl = document.getElementById('team-white-name');
+      const submitBtn = $('#submitBtn');
+      const result = $('#result');
 
-      if (redTeamEl){
-        redTeamEl.textContent =
-          (match.red_team_name && match.red_team_name.trim() !== '')
-            ? match.red_team_name
-            : '紅チーム';
+      let initialSent = false; // 初回送信済みかどうか
+      let inEdit = true;  // 現在編集中かどうか
+      let editCount = 0;     // 修正送信回数
+      let isSubmitting = false;
+      let prevBtnLabel = '';
+
+      let currentMatchId = null; // ★ 追加：現在の試合 ID
+      let currentEpoch = null;
+      let hasLoadedSubmission = false;
+
+      function setInputsEditable(editable) {
+        $$('.ipt').forEach(i => { i.disabled = !editable; });
+        document.body.classList.toggle('inputs-locked', !editable);
       }
 
-      if (whiteTeamEl){
-        whiteTeamEl.textContent =
-          (match.white_team_name && match.white_team_name.trim() !== '')
-            ? match.white_team_name
-            : '白チーム';
+      function setResult(msg, ok) {
+        if (!result) return;
+        result.textContent = msg;
+        result.classList.toggle('ok', !!ok);
+        result.classList.toggle('ng', ok === false);
       }
 
-      // 上の薄い帯にも詳細表示（任意）
-      if (boutLabelEl){
-        const segs = [];
-        if (match.code){
-          segs.push(`試合コード: ${match.code}`);
+      function beginLoading(label) {
+        if (!submitBtn) return;
+        prevBtnLabel = submitBtn.textContent;
+        submitBtn.textContent = label || '送信中…';
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+      }
+
+      function endLoading() {
+        if (!submitBtn) return;
+        submitBtn.disabled = false;
+        submitBtn.removeAttribute('aria-busy');
+        submitBtn.textContent = prevBtnLabel || '送信';
+      }
+
+      // 試合 or epoch 切り替え時に UI を初期状態に戻す
+      function resetForNewContext() {
+        $$('.ipt').forEach(el => {
+          el.disabled = false;
+          if (el.tagName === 'SELECT' || el.tagName === 'INPUT') {
+            el.value = '';
+          }
+        });
+
+        $$('.total').forEach(el => { el.textContent = '0'; });
+        $$('.flag').forEach(el => { el.textContent = ''; });
+        document.body.classList.remove('inputs-locked');
+
+        initialSent = false;
+        inEdit = true;
+        editCount = 0;
+        hasLoadedSubmission = false; // ★ 新しい試合/epoch では再読み込みを許可
+        if (submitBtn) submitBtn.textContent = '送信';
+
+        if (result) {
+          result.textContent = '';
+          result.classList.remove('ok', 'ng');
         }
-        if (typeof epoch === 'number'){
-          segs.push(`第${epoch}対戦`);
-        }
-        if (bout && bout.label){
-          segs.push(`ポジション: ${bout.label}`);
-        }
-        boutLabelEl.textContent = segs.join(' ／ ');
+
+        enforceAppExclusion();
+        updateTotals();
+        updateFlagsAuto();
       }
 
-      // 提出済みデータがあれば、新しい試合/epoch で一度だけ適用
-      if (submission && !hasLoadedSubmission){
-        applySubmissionFromServer(submission);
-        hasLoadedSubmission = true;
-      }
+      // サーバから取得した提出済みデータを画面に反映する
+      function applySubmissionFromServer(submission) {
+        if (!submission || !submission.red || !submission.white) return;
 
-    }catch(err){
-      console.error('loadMatchInfo error', err);
-      labelEl.textContent = '対戦情報の取得中にエラーが発生しました。';
-    }
-  }
+        const red = getSideElems('red');
+        const white = getSideElems('white');
 
-  // Supabase Edge Function へ送信
-  async function sendToServer(isEdit){
-    const token = getToken();
-    if (!FUNCTION_URL || !SUPABASE_ANON_KEY){
-      setResult(CONFIG_ERROR, false);
-      return false;
-    }
-    if (!token){
-      setResult('URL に token パラメータがありません', false);
-      return false;
-    }
+        const toInputValue = (n) =>
+          (typeof n === 'number' && Number.isFinite(n)) ? String(n) : '';
 
-    const red = getSideElems('red');
-    const white = getSideElems('white');
+        if (red.works) red.works.value = toInputValue(submission.red.work);
+        if (red.app) red.app.value = toInputValue(submission.red.app);
+        if (white.works) white.works.value = toInputValue(submission.white.work);
+        if (white.app) white.app.value = toInputValue(submission.white.app);
 
-    const payload = {
-      red: {
-        work:  parseOrZero(red.works && red.works.value),
-        app:   parseOrZero(red.app && red.app.value),
-        total: parseOrZero(red.total && red.total.textContent),
-        flag:  !!(red.flag && red.flag.textContent === FLAG_SYMBOL),
-      },
-      white: {
-        work:  parseOrZero(white.works && white.works.value),
-        app:   parseOrZero(white.app && white.app.value),
-        total: parseOrZero(white.total && white.total.textContent),
-        flag:  !!(white.flag && white.flag.textContent === FLAG_SYMBOL),
-      },
-      isEdit: !!isEdit,
-    };
-
-    if (payload.red.work < 0 || payload.white.work < 0){
-      setResult('作品点は 0 以上で入力してください。', false);
-      return false;
-    }
-    if (payload.red.app < 0 || payload.white.app < 0){
-      setResult('鑑賞点は 0 以上で入力してください。', false);
-      return false;
-    }
-    if (payload.red.app === 0 && payload.white.app === 0){
-      setResult('鑑賞点はいずれかのチームに1点または2点を入れてください。', false);
-      return false;
-    }
-
-    try{
-      const res = await fetch(FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ token, payload }),
-      });
-
-      const text = await res.text();
-      console.log('edge function status =', res.status, 'body =', text);
-
-      let data = {};
-      try { data = JSON.parse(text); } catch(_){}
-
-      if (!res.ok || !data.ok){
-        const msg = data.error || data.message || res.status;
-        setResult(`送信失敗: ${msg}`, false);
-        return false;
-      }
-
-      return true;
-    }catch(err){
-      console.error('sendToServer error', err);
-      setResult('送信中にエラーが発生しました。', false);
-      return false;
-    }
-  }
-
-  // ボタンクリックで送信／修正モード切り替え
-  if (submitBtn){
-    submitBtn.addEventListener('click', async () => {
-      if (isSubmitting) return;
-
-      // まだ一度も送信していない → 初回送信
-      if (!initialSent){
-        isSubmitting = true;
-        beginLoading('送信中…');
-        const ok = await sendToServer(false);
-        endLoading();
-        isSubmitting = false;
-        if (!ok) return;
+        enforceAppExclusion();
+        updateTotals();
+        updateFlagsAuto();
 
         initialSent = true;
         inEdit = false;
-        editCount = 0;
+        editCount = Math.max(0, (submission.revision || 1) - 1);
+
         setInputsEditable(false);
-        submitBtn.textContent = '修正する';
-        setResult('送信成功', true);
-        return;
+        if (submitBtn) submitBtn.textContent = '修正する';
+
+        const revMessage =
+          editCount > 0
+            ? `（サーバ上では修正送信が ${editCount} 回行われています）`
+            : '';
+
+        setResult(`前回送信済みの内容を読み込みました${revMessage}`, true);
       }
 
-      // 送信済みで、今は閲覧モード → 修正モードへ入る
-      if (!inEdit){
-        inEdit = true;
-        setInputsEditable(true);
-        submitBtn.textContent = '修正を送信する';
-        setResult('点数を修正して「修正を送信する」を押してください。', null);
-        return;
+      function getToken() {
+        const params = new URLSearchParams(location.search);
+        return params.get('token') || '';
       }
 
-      // 修正モード中 → 修正送信
-      isSubmitting = true;
-      beginLoading('修正送信中…');
-      const ok = await sendToServer(true);
-      endLoading();
-      isSubmitting = false;
-      if (!ok) return;
+      // 対戦情報を取得
+      async function loadMatchInfo() {
+        const token = getToken();
+        const labelEl = document.getElementById('match-label');
+        const judgeEl = document.querySelector('.judge');
+        const midLabelEl = document.getElementById('grid-match-title');
+        const boutLabelEl = document.getElementById('match-header');
+        if (!labelEl) return;
 
-      inEdit = false;
-      editCount++;
-      setInputsEditable(false);
-      submitBtn.textContent = '修正する';
-      setResult(`修正送信しました（修正回数: ${editCount}回）`, true);
-    });
-  }
+        if (!FUNCTION_URL || !SUPABASE_ANON_KEY) {
+          labelEl.textContent = CONFIG_ERROR;
+          return;
+        }
 
-  // 入力イベントを監視
-  function onValueChange(e){
-    const t = e.target;
-    if (!t.classList.contains('ipt')) return;
+        if (!token) {
+          labelEl.textContent = 'URL に token パラメータがありません。';
+          return;
+        }
 
-    const side = t.getAttribute('data-side');
-    if (t.classList.contains('app')){
-      enforceAppExclusion(side);
-    }
+        try {
+          const res = await fetch(FUNCTION_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ token, mode: 'info' }),
+          });
 
-    updateTotals();
-    // 合計更新時に自動で旗も更新
-    // updateFlagsAuto() は updateTotals 内で呼んでいる
-    if (initialSent && !inEdit){
-      inEdit = true;
-      setInputsEditable(true);
-      if (submitBtn) submitBtn.textContent = '修正を送信する';
-      setResult('点数を修正して「修正を送信する」を押してください。', null);
-    }
-  }
+          const text = await res.text();
+          let data = {};
+          try { data = JSON.parse(text); } catch (_) { }
 
-  $$('.ipt').forEach(el => {
-    el.addEventListener('input', onValueChange);
-    if (el.tagName === 'SELECT'){
-      el.addEventListener('change', onValueChange);
-    }
-  });
+          if (!res.ok || !data.ok) {
+            const msg = data.error || data.message || res.status;
+            labelEl.textContent = '対戦情報取得失敗: ' + msg;
+            return;
+          }
 
-  // 初期状態
-  enforceAppExclusion();
-  updateTotals();
-  updateFlagsAuto();
+          const match = data.match || {};
+          const epoch = data.epoch;
+          const accepting = data.accepting;
+          const bout = data.bout || null;
+          const judgeName = data.judge_name || null;
+          const submission = data.submission || null;
 
-  // 画面表示時に対戦情報を読み込む
-  loadMatchInfo();
+          const newMatchId = match.id || null;
 
-  // 数秒おきに対戦情報を自動更新（試合/epoch変更の検知にも使う）
-  setInterval(() => {
-    if (document.visibilityState === 'visible') {
+          // ★ 試合が変わった場合 → 完全リセット
+          if (newMatchId && currentMatchId !== null && currentMatchId !== newMatchId) {
+            currentMatchId = newMatchId;
+            currentEpoch = (typeof epoch === 'number') ? epoch : null;
+            resetForNewContext();
+          } else if (currentMatchId === null && newMatchId) {
+            // 初回
+            currentMatchId = newMatchId;
+            currentEpoch = (typeof epoch === 'number') ? epoch : null;
+          }
+
+          // ★ 同じ試合内で epoch が変わった場合 → リセット
+          if (typeof epoch === 'number') {
+            if (currentEpoch !== null && currentEpoch !== epoch) {
+              currentEpoch = epoch;
+              resetForNewContext();
+            } else if (currentEpoch === null) {
+              currentEpoch = epoch;
+            }
+          }
+
+          const parts = [];
+
+          if (match.code || match.name) {
+            parts.push(
+              `試合: ${match.code || ''}${match.name ? '（' + match.name + '）' : ''}`
+            );
+          }
+
+          if (typeof epoch === 'number') {
+            if (bout && bout.label) {
+              parts.push(`第${epoch}対戦（${bout.label}）`);
+            } else {
+              parts.push(`第${epoch}対戦`);
+            }
+          }
+
+          if (judgeName) {
+            parts.push(`審査員: ${judgeName}`);
+            if (judgeEl) {
+              judgeEl.textContent = `審査員名：${judgeName}`;
+            }
+          }
+
+          if (accepting === false) {
+            parts.push('現在は受付停止中です');
+          }
+
+          labelEl.textContent = parts.join(' ／ ');
+
+          // ★ 1行目中央：試合名（例: Aブロック 第1試合）
+          const matchTitle =
+            (match.name && match.name.trim() !== '')
+              ? match.name
+              : (match.code || '試合');
+
+          if (midLabelEl) {
+            midLabelEl.textContent = matchTitle;
+          }
+
+          // ★ 2行目中央：対戦名（先鋒戦など）
+          const boutTitleCell = document.querySelector('#teams .cell.mid.label');
+          if (boutTitleCell) {
+            if (bout && bout.label) {
+              // judge-submit-with-token 側で「先鋒戦」などになっている想定
+              boutTitleCell.textContent = bout.label;
+            } else if (typeof epoch === 'number') {
+              boutTitleCell.textContent = `第${epoch}対戦`;
+            } else {
+              boutTitleCell.textContent = '対戦名';
+            }
+          }
+
+          // ★ 左右：チーム名
+          const redTeamEl = document.getElementById('team-red-name');
+          const whiteTeamEl = document.getElementById('team-white-name');
+
+          if (redTeamEl) {
+            redTeamEl.textContent =
+              (match.red_team_name && match.red_team_name.trim() !== '')
+                ? match.red_team_name
+                : '紅チーム';
+          }
+
+          if (whiteTeamEl) {
+            whiteTeamEl.textContent =
+              (match.white_team_name && match.white_team_name.trim() !== '')
+                ? match.white_team_name
+                : '白チーム';
+          }
+
+          // 上の薄い帯にも詳細表示（任意）
+          if (boutLabelEl) {
+            const segs = [];
+            if (match.code) {
+              segs.push(`試合コード: ${match.code}`);
+            }
+            if (typeof epoch === 'number') {
+              segs.push(`第${epoch}対戦`);
+            }
+            if (bout && bout.label) {
+              segs.push(`ポジション: ${bout.label}`);
+            }
+            boutLabelEl.textContent = segs.join(' ／ ');
+          }
+
+          // 提出済みデータがあれば、新しい試合/epoch で一度だけ適用
+          if (submission && !hasLoadedSubmission) {
+            applySubmissionFromServer(submission);
+            hasLoadedSubmission = true;
+          }
+
+        } catch (err) {
+          console.error('loadMatchInfo error', err);
+          labelEl.textContent = '対戦情報の取得中にエラーが発生しました。';
+        }
+      }
+
+      // Supabase Edge Function へ送信
+      async function sendToServer(isEdit) {
+        const token = getToken();
+        if (!FUNCTION_URL || !SUPABASE_ANON_KEY) {
+          setResult(CONFIG_ERROR, false);
+          return false;
+        }
+        if (!token) {
+          setResult('URL に token パラメータがありません', false);
+          return false;
+        }
+
+        const red = getSideElems('red');
+        const white = getSideElems('white');
+
+        const payload = {
+          red: {
+            work: parseOrZero(red.works && red.works.value),
+            app: parseOrZero(red.app && red.app.value),
+            total: parseOrZero(red.total && red.total.textContent),
+            flag: !!(red.flag && red.flag.textContent === FLAG_SYMBOL),
+          },
+          white: {
+            work: parseOrZero(white.works && white.works.value),
+            app: parseOrZero(white.app && white.app.value),
+            total: parseOrZero(white.total && white.total.textContent),
+            flag: !!(white.flag && white.flag.textContent === FLAG_SYMBOL),
+          },
+          isEdit: !!isEdit,
+        };
+
+        if (payload.red.work < 0 || payload.white.work < 0) {
+          setResult('作品点は 0 以上で入力してください。', false);
+          return false;
+        }
+        if (payload.red.app < 0 || payload.white.app < 0) {
+          setResult('鑑賞点は 0 以上で入力してください。', false);
+          return false;
+        }
+        if (payload.red.app === 0 && payload.white.app === 0) {
+          setResult('鑑賞点はいずれかのチームに1点または2点を入れてください。', false);
+          return false;
+        }
+
+        try {
+          const res = await fetch(FUNCTION_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ token, payload }),
+          });
+
+          const text = await res.text();
+          console.log('edge function status =', res.status, 'body =', text);
+
+          let data = {};
+          try { data = JSON.parse(text); } catch (_) { }
+
+          if (!res.ok || !data.ok) {
+            const msg = data.error || data.message || res.status;
+            setResult(`送信失敗: ${msg}`, false);
+            return false;
+          }
+
+          return true;
+        } catch (err) {
+          console.error('sendToServer error', err);
+          setResult('送信中にエラーが発生しました。', false);
+          return false;
+        }
+      }
+
+      // ボタンクリックで送信／修正モード切り替え
+      if (submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+          if (isSubmitting) return;
+
+          // まだ一度も送信していない → 初回送信
+          if (!initialSent) {
+            isSubmitting = true;
+            beginLoading('送信中…');
+            const ok = await sendToServer(false);
+            endLoading();
+            isSubmitting = false;
+            if (!ok) return;
+
+            initialSent = true;
+            inEdit = false;
+            editCount = 0;
+            setInputsEditable(false);
+            submitBtn.textContent = '修正する';
+            setResult('送信成功', true);
+            return;
+          }
+
+          // 送信済みで、今は閲覧モード → 修正モードへ入る
+          if (!inEdit) {
+            inEdit = true;
+            setInputsEditable(true);
+            submitBtn.textContent = '修正を送信する';
+            setResult('点数を修正して「修正を送信する」を押してください。', null);
+            return;
+          }
+
+          // 修正モード中 → 修正送信
+          isSubmitting = true;
+          beginLoading('修正送信中…');
+          const ok = await sendToServer(true);
+          endLoading();
+          isSubmitting = false;
+          if (!ok) return;
+
+          inEdit = false;
+          editCount++;
+          setInputsEditable(false);
+          submitBtn.textContent = '修正する';
+          setResult(`修正送信しました（修正回数: ${editCount}回）`, true);
+        });
+      }
+
+      // 入力イベントを監視
+      function onValueChange(e) {
+        const t = e.target;
+        if (!t.classList.contains('ipt')) return;
+
+        const side = t.getAttribute('data-side');
+        if (t.classList.contains('app')) {
+          enforceAppExclusion(side);
+        }
+
+        updateTotals();
+        // 合計更新時に自動で旗も更新
+        // updateFlagsAuto() は updateTotals 内で呼んでいる
+        if (initialSent && !inEdit) {
+          inEdit = true;
+          setInputsEditable(true);
+          if (submitBtn) submitBtn.textContent = '修正を送信する';
+          setResult('点数を修正して「修正を送信する」を押してください。', null);
+        }
+      }
+
+      $$('.ipt').forEach(el => {
+        el.addEventListener('input', onValueChange);
+        if (el.tagName === 'SELECT') {
+          el.addEventListener('change', onValueChange);
+        }
+      });
+
+      // 初期状態
+      enforceAppExclusion();
+      updateTotals();
+      updateFlagsAuto();
+
+      // 画面表示時に対戦情報を読み込む
       loadMatchInfo();
-    }
-  }, 5000);
 
-})();
-</script>
+      // 数秒おきに対戦情報を自動更新（試合/epoch変更の検知にも使う）
+      setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          loadMatchInfo();
+        }
+      }, 5000);
+
+    })();
+  </script>
 
 
 
 </body>
+
 </html>
