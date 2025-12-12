@@ -65,6 +65,14 @@ header .judge {
     color: var(--muted);
 }
 
+#match-header {
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #f3f4ff;
+    font-size: 0.9rem;
+}
+
 .card {
     background: var(--card);
     border-radius: var(--radius-lg);
