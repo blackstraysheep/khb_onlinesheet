@@ -61,16 +61,26 @@ header h2 {
 
 header .judge {
     margin: 0;
-    font-size: .9rem;
-    color: var(--muted);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.text-ink {
+    color: var(--ink) !important;
 }
 
 #match-header {
+    margin-top: 16px;
+    margin-bottom: 0;
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+#match-status {
     margin-bottom: 8px;
-    padding: 6px 8px;
-    border-radius: 6px;
-    background: #f3f4ff;
-    font-size: 0.9rem;
+    color: var(--ng);
+    font-weight: 700;
 }
 
 .card {
@@ -95,6 +105,7 @@ header .judge {
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
     background: #fff;
     min-height: 48px;
 }
@@ -128,6 +139,7 @@ header .judge {
 .score-grid .team-name .name {
     font-size: 1rem;
     font-weight: 600;
+    text-align: center;
 }
 
 .score-grid select.ipt {
@@ -201,10 +213,11 @@ header .judge {
 
 select.ipt {
     width: 100%;
-    padding: 6px 8px;
+    padding: 8px 8px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
-    font-size: .95rem;
+    font-size: 1.3rem;
+    font-weight: 700;
     background-color: #fff;
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -216,18 +229,20 @@ select.ipt {
 }
 
 select.ipt:disabled {
-    background-color: #fbfbfb;
-    color: #222;
+    background-color: #e2e8f0;
+    background-image: none;
+    color: #1e293b;
     font-weight: 700;
     text-align: center;
-    font-size: 1.1rem;
+    font-size: 1.5rem;
     letter-spacing: .02em;
-    border-color: #c5c5c5;
+    border-color: #cbd5e1;
     cursor: not-allowed;
+    opacity: 1;
 }
 
 .bigval {
-    font-size: 1.8rem;
+    font-size: 2.2rem;
     font-weight: 700;
 }
 

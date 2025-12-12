@@ -15,9 +15,7 @@
       <h3>Developed by KLEA</h3>
       <p class="judge">審査員名：読み込み中…</p>
       <h2><span id="match-label">対戦情報を取得中…</span></h2>
-      <div id="match-header">
-
-      </div>
+      <div id="match-status" class="status-message"></div>
 
     </header>
 
@@ -33,7 +31,7 @@
         <div class="cell team-name">
           <div class="name" id="team-red-name">紅チーム</div>
         </div>
-        <div class="cell mid label">先鋒戦</div>
+        <div class="cell mid label text-ink">先鋒戦</div>
         <div class="cell team-name">
           <div class="name" id="team-white-name">白チーム</div>
         </div>
@@ -111,12 +109,18 @@
         </div>
       </div>
 
+
+
       <div class="submit-area">
         <button class="primary" id="submitBtn">送信</button>
         <div class="result" id="result" aria-live="polite"></div>
         <div class="notes">※ この画面から送信された結果はシステムに保存されます。</div>
       </div>
     </section>
+
+    <div id="match-header" class="technical-info">
+      <!-- 技術情報 -->
+    </div>
   </div>
 
   <script src="config.js"></script>
@@ -408,34 +412,33 @@
 
           const parts = [];
 
-          if (match.code || match.name) {
-            parts.push(
-              `試合: ${match.code || ''}${match.name ? '（' + match.name + '）' : ''}`
-            );
+          if (match.name) {
+            parts.push(match.name);
           }
 
-          if (typeof epoch === 'number') {
-            if (bout && bout.label) {
-              parts.push(`第${epoch}対戦（${bout.label}）`);
-            } else {
-              parts.push(`第${epoch}対戦`);
-            }
+          if (bout && bout.label) {
+            parts.push(bout.label);
+          } else if (typeof epoch === 'number') {
+            parts.push(`第${epoch}対戦`);
           }
 
-          if (judgeName) {
-            parts.push(`審査員: ${judgeName}`);
-            if (judgeEl) {
-              judgeEl.textContent = `審査員名：${judgeName}`;
-            }
+          // 審査員名はここには表示しない (parts.pushしない)
+          if (judgeName && judgeEl) {
+            judgeEl.textContent = `審査員名：${judgeName}`;
           }
 
-          if (accepting === false) {
-            parts.push('現在は受付停止中です');
+          // 受付停止情報はメイン見出しではなく専用エリアへ
+          const statusEl = document.getElementById('match-status');
+          if (statusEl) {
+            statusEl.textContent = (accepting === false) ? '現在は受付停止中です' : '';
           }
 
           labelEl.textContent = parts.join(' ／ ');
 
           // ★ 1行目中央：試合名（例: Aブロック 第1試合）
+          // ... (keep midLabelEl logic or update if needed? User didn't specify table header changes other than black color for bout name)
+          // Actually user said "表中の対戦（「次鋒戦」と表示されているところ）を他と同様に黒く" - Done via CSS/HTML.
+
           const matchTitle =
             (match.name && match.name.trim() !== '')
               ? match.name
@@ -449,8 +452,8 @@
           const boutTitleCell = document.querySelector('#teams .cell.mid.label');
           if (boutTitleCell) {
             if (bout && bout.label) {
-              // judge-submit-with-token 側で「先鋒戦」などになっている想定
               boutTitleCell.textContent = bout.label;
+              boutTitleCell.classList.add('text-ink'); // Ensure class is present
             } else if (typeof epoch === 'number') {
               boutTitleCell.textContent = `第${epoch}対戦`;
             } else {
@@ -476,7 +479,7 @@
                 : '白チーム';
           }
 
-          // 上の薄い帯にも詳細表示（任意）
+          // 技術情報（表の下）
           if (boutLabelEl) {
             const segs = [];
             if (match.code) {
@@ -485,10 +488,13 @@
             if (typeof epoch === 'number') {
               segs.push(`第${epoch}対戦`);
             }
-            if (bout && bout.label) {
-              segs.push(`ポジション: ${bout.label}`);
+            // ポジションはここには表示しない
+
+            if (segs.length > 0) {
+              boutLabelEl.textContent = '［技術情報］' + segs.join(' ／ ');
+            } else {
+              boutLabelEl.textContent = '';
             }
-            boutLabelEl.textContent = segs.join(' ／ ');
           }
 
           // 提出済みデータがあれば、新しい試合/epoch で一度だけ適用
