@@ -125,10 +125,10 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     cols.forEach(col => {
       const def = col.find(item => item.start === rowIndex);
       if (!def) return;
-      
+
       const td = createCell(def.text, def.className);
       // CSSで改行制御しているが、明示的に書き換える場合もあるかも
-      
+
       if (def.rowSpan && def.rowSpan > 1) {
         td.rowSpan = def.rowSpan;
       }
