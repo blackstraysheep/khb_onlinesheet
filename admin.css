@@ -22,6 +22,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
 }
 
 .hidden {
@@ -141,17 +142,35 @@ button:disabled {
 }
 
 .tag.ok {
+  background-color: var(--ok);
   border-color: var(--ok);
-  color: var(--ok);
+  color: #fff;
 }
 
 .tag.warn {
+  background-color: var(--warn);
   border-color: var(--warn);
-  color: var(--warn);
+  color: #fff;
 }
 
 .tag.danger {
+  background-color: var(--danger);
   border-color: var(--danger);
+  color: #fff;
+}
+
+.tag.outline.ok {
+  background-color: transparent;
+  color: var(--ok);
+}
+
+.tag.outline.warn {
+  background-color: transparent;
+  color: var(--warn);
+}
+
+.tag.outline.danger {
+  background-color: transparent;
   color: var(--danger);
 }
 
@@ -255,6 +274,8 @@ button:disabled {
 
 .scoreboard .outer-col.team-col {
   font-size: 20px;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "MS PMincho", "MS Mincho", serif;
+  font-weight: 700;
 }
 
 .scoreboard .outer-col.bout-label {

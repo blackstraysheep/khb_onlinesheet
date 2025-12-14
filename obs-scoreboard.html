@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KHB Scoreboard (OBS)</title>
+    <!-- admin.css を読み込んでデザインを統一 -->
+    <link rel="stylesheet" href="admin.css" />
+    <style>
+        /* OBS用微調整: 背景透過 */
+        html,
+        body {
+            background-color: transparent !important;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            /* 不要なスクロールバーを消す */
+        }
+
+        /* もし余白が不要なら消す */
+        .scoreboard {
+            max-width: none;
+            /* 幅制限解除 */
+            margin: 0;
+            background: rgba(255, 255, 255, 0.95);
+            /* 半透明白背景（文字が見やすいように） */
+            /* もし完全に紙のように白くしたければ background: #fff を指定 */
+
+            /* 左上に配置するため、widthフィット */
+            width: fit-content;
+        }
+
+        /* 文字サイズのスケーリング（必要であれば） */
+        table {
+            /* 縦1080基準で大きめに -> 少し縮小 */
+            zoom: 1.25;
+        }
+
+        .status-bar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 4px;
+            font-size: 12px;
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app">
+        <!-- admin.css の .card クラスなどで囲むと影などがつく -->
+        <div class="card" style="width: 100%; box-sizing: border-box;">
+            <div id="scoreboardContainer" class="scoreboard">
+                <!-- ここにJSでテーブルを描画 -->
+                <div style="text-align:center; padding:100px; color:#666;">
+                    Connecting...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar" id="statusBar" style="display:none;">Connecting...</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 共通ロジック読み込み -->
+    <script src="scoreboard.js"></script>
+    <script>
+        (function () {
+            const SUPABASE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHdrZHB1cndhbWlsenpzcmZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjAwMTcsImV4cCI6MjA3NzkzNjAxN30.YvZgEi4x0YPuxYswMQjDQdBMVOPY6wkCVfY2hJ0_dL8';
+
+            const headers = {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json',
+            };
+
+            // 状態管理
+            let currentMatchId = null;
+            let currentEpoch = 1;
+
+            const scoreboardContainer = document.getElementById('scoreboardContainer');
+            const statusBar = document.getElementById('statusBar');
+
+            function setStatus(msg) {
+                if (statusBar) statusBar.textContent = msg;
+            }
+
+            function buildRestUrl(path, params) {
+                const url = new URL(SUPABASE_URL + '/rest/v1/' + path);
+                if (params) {
+                    Object.entries(params).forEach(([k, v]) => {
+                        if (v !== undefined && v !== null) {
+                            url.searchParams.set(k, v);
+                        }
+                    });
+                }
+                return url.toString();
+            }
+
+            async function fetchJson(path, params) {
+                const url = buildRestUrl(path, params);
+                const res = await fetch(url, { headers });
+                if (!res.ok) {
+                    throw new Error(`GET ${path} failed: ${res.status}`);
+                }
+                return res.json();
+            }
+
+            async function updateScoreboard() {
+                try {
+                    // 1. state
+                    const stateRows = await fetchJson('state', {
+                        select: 'epoch, current_match_id, accepting',
+                        id: 'eq.1'
+                    });
+                    const st = stateRows[0];
+                    if (!st || !st.current_match_id) {
+                        setStatus('No active match set in state.');
+                        return;
+                    }
+
+                    const matchId = st.current_match_id;
+                    const epoch = st.epoch;
+                    currentMatchId = matchId;
+                    currentEpoch = epoch;
+
+                    setStatus(`Active: match=${matchId}, epoch=${epoch}`);
+
+                    // 2. matches
+                    const matches = await fetchJson('matches', {
+                        select: 'code,name,red_team_name,white_team_name,num_bouts',
+                        id: 'eq.' + matchId
+                    });
+                    const match = matches[0];
+                    if (!match) return;
+
+                    // 3. expected_judges
+                    const expected = await fetchJson('expected_judges', {
+                        select: 'judge_id, sort_order',
+                        match_id: 'eq.' + matchId,
+                        order: 'sort_order.asc',
+                    });
+                    const expectedIds = expected.map(r => String(r.judge_id));
+
+                    // 4. submissions
+                    const subs = await fetchJson('submissions', {
+                        select: '*',
+                        match_id: 'eq.' + matchId,
+                        epoch: 'eq.' + epoch,
+                    });
+
+                    // 5. judges details
+                    let judgesMap = {};
+                    if (expectedIds.length) {
+                        const idList = expectedIds.join(',');
+                        const judgeList = await fetchJson('judges', {
+                            select: 'id,name',
+                            id: 'in.(' + idList + ')',
+                        });
+                        judgesMap = Object.fromEntries(judgeList.map(j => [String(j.id), j.name]));
+                    }
+
+                    // データ整形
+                    const subMap = {};
+                    subs.forEach(s => { subMap[String(s.judge_id)] = s; });
+
+                    const matchLabel = (match.name || match.code).replace(/　/g, '\n');
+                    const boutLabelFull = getBoutLabel(epoch, match.num_bouts);
+
+                    let boutLabelForBoard = boutLabelFull;
+                    if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦')) {
+                        boutLabelForBoard += '戦';
+                    }
+
+                    // reorderIdsForScoreboard, getBoutLabel, buildScoreboard は scoreboard.js から利用可能
+
+                    buildScoreboard(
+                        expectedIds, // ここで元IDsを渡すが、reorderIdsForScoreboard は外で呼ぶ？
+                        // -> scoreboard.js の buildScoreboard では内部で reorder している仕様にした。
+                        //    いや、先ほどの修正で「displayIds = reorderIdsForScoreboard(ids)」してから呼んでいる形に Admin はなっていたか？
+                        //    確認。
+                        //    scoreboard.js: `const displayIds = reorderIdsForScoreboard(expectedIds);`
+                        //    つまり内部で呼び出している。
+                        //    なので、ここでは元の expectedIds を渡せばよい。
+                        judgesMap,
+                        subMap,
+                        {
+                            matchLabel,
+                            boutLabelFull: boutLabelForBoard,
+                            redTeamName: match.red_team_name || '紅',
+                            whiteTeamName: match.white_team_name || '白',
+                        },
+                        scoreboardContainer
+                    );
+
+                } catch (err) {
+                    console.error(err);
+                    setStatus('Error: ' + err.message);
+                }
+            }
+
+            updateScoreboard();
+            setInterval(updateScoreboard, 3000);
+
+        })();
+    </script>
+</body>
+
+</html>
