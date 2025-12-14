@@ -96,9 +96,6 @@
             <label for="adminSecret">管理用シークレット</label>
             <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET と同じ値" />
           </div>
-          <div>
-            <label>対象対戦コード</label>
-          </div>
         </div>
         <div class="control-group">
           <button id="btnSetMatch" class="small-btn btn-blue-grey">現在の試合に設定（current_match_id 更新）</button>
@@ -115,7 +112,7 @@
           E3未到達のため、得点読み上げはまだ準備されていません。
         </div>
         <div id="zundaQueueList" class="small"
-          style="margin-top:8px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 4px; background: #fafafa;">
+          style="margin-top:8px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 4px; background: #fafafa; position: relative;">
           <!-- 再生キュー表示用 -->
         </div>
         <div class="control-group">
@@ -366,9 +363,10 @@
 
         setAudioStatus('再生中…');
         zundaPlaying = true;
+        renderZundaQueue(true); // 開始時は強制スクロール
 
         while (zundaPlaying && zundaQueueIndex < zundaQueue.length) {
-          renderZundaQueue(); // update cursor
+          renderZundaQueue(); // 自動追従（範囲内のみ）
           const id = zundaQueue[zundaQueueIndex++];
           await playZundaClip(id);
         }
@@ -527,7 +525,7 @@
         renderZundaQueue();
       }
 
-      function renderZundaQueue() {
+      function renderZundaQueue(forceScroll = false) {
         if (!zundaQueueListEl) return;
         if (!zundaQueue.length) {
           zundaQueueListEl.innerHTML = '<div style="color:#aaa;">(キューは空です)</div>';
@@ -545,8 +543,40 @@
           const isCurrent = (idx === zundaQueueIndex);
           const style = isCurrent ? 'font-weight:bold; color:blue;' : '';
           const marker = isCurrent ? '▶ ' : '';
-          return `<div style="${style}">${marker}${idx + 1}. ${label}</div>`;
+          const divId = isCurrent ? 'currentZundaItem' : '';
+          return `<div id="${divId}" style="${style}">${marker}${idx + 1}. ${label}</div>`;
         }).join('');
+
+        const currentEl = document.getElementById('currentZundaItem');
+        if (currentEl) {
+          if (forceScroll) {
+            // currentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const itemTop = currentEl.offsetTop;
+            const itemHeight = currentEl.offsetHeight;
+            const containerHeight = zundaQueueListEl.clientHeight;
+            // center + offset
+            const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + 35;
+            zundaQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
+          } else {
+            // ユーザーが大きくスクロールしているときは追従しない（妨げない）
+            // 再生位置が表示領域内（または直近）にあるときだけ追従する
+            const cRect = zundaQueueListEl.getBoundingClientRect();
+            const iRect = currentEl.getBoundingClientRect();
+            const relativeTop = iRect.top - cRect.top;
+            const containerHeight = cRect.height;
+            const margin = 60; // 許容範囲（上下に少し余裕を持たせる）
+
+            if (relativeTop > -margin && relativeTop < containerHeight + margin) {
+              // currentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // 1.5〜2行分上（中央より下が見えるように）に表示
+              // center (50%) より 35px ほど下にスクロールさせる（＝要素が上に移動する）
+              const itemTop = currentEl.offsetTop;
+              const itemHeight = currentEl.offsetHeight;
+              const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + 35;
+              zundaQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
+            }
+          }
+        }
       }
 
       function buildZundaAudioSuite({ match, epoch, boutLabelFull, expectedIds, judgesMap, subMap }) {
