@@ -40,95 +40,91 @@
           </div>
           <div>
             <label for="epoch">epoch</label>
-            <input id="epoch" type="number" value="1" min="1" style="width: 50px;" />
+            <input id="epoch" type="number" value="1" min="1" style="width: 60px;" />
           </div>
           <div>
             <button id="loadBtn">読み込み</button>
           </div>
         </div>
 
-        <div class="row mt-6 control-group" style="justify-content: space-between; display: flex;">
+        <div class="row mt-6" style="justify-content: space-between; align-items: center;">
           <button id="toggleAcceptingBtn" class="small-btn">受付状態を確認中…</button>
-          <button id="nextMatchSetupBtn" class="small-btn btn-grey">
-            次試合作成（期待審査員設定）
-          </button>
+          <button id="nextMatchSetupBtn" class="small-btn">次試合作成（期待審査員設定）</button>
         </div>
+        <div class="msg" id="topMsg"></div>
+      </section>
+
+      <!-- 次の試合の期待審査員選択カード -->
+      <section class="card hidden" id="judgeSelectSection">
+        <h2 class="card-header small">
+          次の試合の期待審査員を設定
+        </h2>
+
+        <!-- 審査員マスタへの追加フォーム -->
+        <div class="row mb-8">
+          <div>
+            <label for="newJudgeName">審査員を追加</label>
+            <input id="newJudgeName" placeholder="審査員名を入力" />
+          </div>
+          <div>
+            <button id="addJudgeBtn" class="small-btn">審査員を追加</button>
+          </div>
+        </div>
+
+        <div class="small mb-8" id="judgeSelectInfo">
+          <!-- JSで文言を入れる -->
+        </div>
+        <div id="judgeSelectList" class="judge-select-list">
+          <!-- JSでチェックボックスを描画 -->
+        </div>
+        <div class="control-group">
+          <button id="judgeSelectAllBtn" class="small-btn">全員選択</button>
+          <button id="judgeSelectClearBtn" class="small-btn">全て解除</button>
+          <button id="judgeSelectConfirmBtn" class="small-btn">この審査員で試合作成</button>
+          <button id="judgeSelectCancelBtn" class="small-btn">キャンセル</button>
+        </div>
+      </section>
+
+
+
+
+      <!-- E5 / E6 操作（右側下） -->
+      <section class="card">
+        <h2 class="card-header">確定／次対戦操作（E5 / E6）</h2>
+        <div class="row">
+          <div>
+            <label for="adminSecret">管理用シークレット</label>
+            <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET と同じ値" />
+          </div>
+          <div>
+            <label>対象対戦コード</label>
+          </div>
+        </div>
+        <div class="control-group">
+          <button id="btnSetMatch" class="small-btn btn-blue-grey">現在の試合に設定（current_match_id 更新）</button>
+          <button id="btnE5" class="small-btn btn-red">E5 確定（スナップショット保存＆受付停止）</button>
+          <button id="btnE6" class="small-btn btn-green">E6 次の対戦へ（epoch+1 &amp; 受付再開）</button>
+        </div>
+        <div class="msg" id="e5e6Status"></div>
+      </section>
+
+      <!-- 追加：得点読み上げパネル（Zundamon） -->
+      <section class="card">
+        <h2 class="card-header">得点読み上げパネル（Zundamon）</h2>
+        <div class="small" id="audioStatus">
+          E3未到達のため、得点読み上げはまだ準備されていません。
+        </div>
+        <div id="zundaQueueList" class="small"
+          style="margin-top:8px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 4px; background: #fafafa;">
+          <!-- 再生キュー表示用 -->
+        </div>
+        <div class="control-group">
+          <button id="btnAudioPlayAll" class="small-btn">開始〜終了 全員読み上げ</button>
+          <button id="btnAudioStop" class="small-btn btn-grey">停止</button>
+        </div>
+      </section>
+
     </div>
-    <div class="msg" id="topMsg"></div>
-    </section>
-
-    <!-- 次の試合の期待審査員選択カード -->
-    <section class="card hidden" id="judgeSelectSection">
-      <h2 class="card-header small">
-        次の試合の期待審査員を設定
-      </h2>
-
-      <!-- 審査員マスタへの追加フォーム -->
-      <div class="row mb-8">
-        <div>
-          <label for="newJudgeName">審査員を追加</label>
-          <input id="newJudgeName" placeholder="審査員名を入力" />
-        </div>
-        <div>
-          <button id="addJudgeBtn" class="small-btn">審査員を追加</button>
-        </div>
-      </div>
-
-      <div class="small mb-8" id="judgeSelectInfo">
-        <!-- JSで文言を入れる -->
-      </div>
-      <div id="judgeSelectList" class="judge-select-list">
-        <!-- JSでチェックボックスを描画 -->
-      </div>
-      <div class="control-group">
-        <button id="judgeSelectAllBtn" class="small-btn">全員選択</button>
-        <button id="judgeSelectClearBtn" class="small-btn">全て解除</button>
-        <button id="judgeSelectConfirmBtn" class="small-btn">この審査員で試合作成</button>
-        <button id="judgeSelectCancelBtn" class="small-btn">キャンセル</button>
-      </div>
-    </section>
-
-
-
-
-    <!-- E5 / E6 操作（右側下） -->
-    <section class="card">
-      <h2 class="card-header">確定／次対戦操作（E5 / E6）</h2>
-      <div class="row">
-        <div>
-          <label for="adminSecret">管理用シークレット</label>
-          <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET と同じ値" />
-        </div>
-        <div>
-          <label>対象対戦コード</label>
-          <div class="small">上の「対戦コード（matches.code）」入力欄の値を使用します。</div>
-        </div>
-      </div>
-      <div class="control-group">
-        <button id="btnSetMatch" class="small-btn btn-blue-grey">現在の試合に設定（current_match_id 更新）</button>
-        <button id="btnE5" class="small-btn btn-red">E5 確定（スナップショット保存＆受付停止）</button>
-        <button id="btnE6" class="small-btn btn-green">E6 次の対戦へ（epoch+1 &amp; 受付再開）</button>
-      </div>
-      <div class="msg" id="e5e6Status"></div>
-    </section>
-
-    <!-- 追加：得点読み上げパネル（Zundamon） -->
-    <section class="card">
-      <h2 class="card-header">得点読み上げパネル（Zundamon）</h2>
-      <div class="small" id="audioStatus">
-        E3未到達のため、得点読み上げはまだ準備されていません。
-      </div>
-      <div id="zundaQueueList" class="small"
-        style="margin-top:8px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 4px; background: #fafafa;">
-        <!-- 再生キュー表示用 -->
-      </div>
-      <div class="control-group">
-        <button id="btnAudioPlayAll" class="small-btn">開始〜終了 全員読み上げ</button>
-        <button id="btnAudioStop" class="small-btn btn-grey">停止</button>
-      </div>
-    </section>
-
-  </div>
   </div>
 
   <script>
