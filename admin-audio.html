@@ -1458,7 +1458,8 @@
           });
 
           // 試合名（なければ code）、対戦名ラベル（先鋒戦など）、チーム名をまとめて渡す
-          const matchLabel = match.name || match.code;
+          // 試合名を表示用に加工（全角スペースを改行に置換）
+          const matchLabel = (match.name || match.code).replace(/　/g, '\n');
           let boutLabelForBoard = boutLabelFull || '対戦名';
           if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦')) {
             boutLabelForBoard = boutLabelForBoard + '戦';

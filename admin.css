@@ -29,7 +29,7 @@ body {
 }
 
 h1 {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   font-size: 1.3rem;
 }
 
@@ -46,7 +46,7 @@ h1 {
   background: var(--card);
   border-radius: 12px;
   border: 1px solid var(--border);
-  padding: 12px 14px;
+  padding: 8px 10px;
   margin-bottom: 12px;
 }
 
@@ -258,13 +258,13 @@ button:disabled {
 }
 
 .scoreboard .outer-col.bout-label {
-  font-size: 13px;
+  font-size: 16px;
   letter-spacing: 0.08em;
   background: transparent;
 }
 
 .scoreboard .outer-col.match-label {
-  font-size: 12px;
+  font-size: 15px;
   background: transparent;
 }
 
