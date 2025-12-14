@@ -13,10 +13,15 @@
 
   <div class="layout-grid">
     <div class="layout-left">
+      <!-- state のサマリ（右側から移動） -->
+      <section class="card fixed-width">
+        <div class="state-summary" id="stateSummary">
+          <span class="small">未読み込み</span>
+        </div>
+      </section>
+
       <!-- 審査員ごとの提出状況（左上に配置） -->
-      <section class="card">
-        <h2 class="card-header">審査員ごとの提出状況</h2>
-        <div class="small" id="judgeCaption">期待審査員・提出状況がここに表示されます。</div>
+      <section class="card fixed-width">
         <div class="scoreboard-wrapper">
           <div id="scoreboardContainer" class="scoreboard">
             <!-- JS でスコアボードを描画 -->
@@ -52,10 +57,7 @@
         </div>
 
         <div class="control-group">
-          <button id="openBtn" class="small-btn">受付開始（accepting=true）</button>
-          <button id="closeBtn" class="small-btn">受付締切（accepting=false）</button>
-          <button id="nextEpochBtn" class="small-btn">次のエポックへ</button>
-          <button id="resetE3Btn" class="small-btn">E3フラグをリセット</button>
+          <button id="toggleAcceptingBtn" class="small-btn">受付状態を確認中…</button>
         </div>
         <div class="msg" id="topMsg"></div>
       </section>
@@ -92,13 +94,7 @@
       </section>
 
 
-      <!-- state のサマリ（右側中） -->
-      <section class="card">
-        <h2 class="card-header">状態</h2>
-        <div class="state-summary" id="stateSummary">
-          <span class="small">未読み込み</span>
-        </div>
-      </section>
+
 
       <!-- E5 / E6 操作（右側下） -->
       <section class="card">
@@ -158,10 +154,8 @@
       const matchCodeInput = $('#matchCode');
       const epochInput = $('#epoch');
       const loadBtn = $('#loadBtn');
-      const openBtn = $('#openBtn');
-      const closeBtn = $('#closeBtn');
-      const nextEpochBtn = $('#nextEpochBtn');
-      const resetE3Btn = $('#resetE3Btn');
+      const toggleAcceptingBtn = $('#toggleAcceptingBtn');
+
 
       // 次試合作成関連
       const nextMatchSetupBtn = $('#nextMatchSetupBtn');
@@ -179,7 +173,6 @@
 
       const topMsg = $('#topMsg');
       const stateSummary = $('#stateSummary');
-      const judgeCaption = $('#judgeCaption');
       const scoreboardContainer = $('#scoreboardContainer');
 
       // スコアボード外枠の固定カラム（現状は仮の静的表示）
@@ -234,7 +227,7 @@
 
       function setControlsDisabled(disabled) {
         [
-          loadBtn, openBtn, closeBtn, nextEpochBtn, resetE3Btn,
+          loadBtn, toggleAcceptingBtn,
           nextMatchSetupBtn, judgeSelectConfirmBtn, judgeSelectCancelBtn,
           judgeSelectAllBtn, judgeSelectClearBtn, addJudgeBtn,
           btnAudioPlayAll, btnAudioStop
@@ -1385,7 +1378,6 @@
             scoreboardContainer.innerHTML = '';
           }
           stateSummary.innerHTML = '<span class="small">読み込み中…</span>';
-          judgeCaption.textContent = '読み込み中…';
         }
 
         const matchCode = matchCodeInput.value.trim();
@@ -1439,9 +1431,7 @@
           });
           const expectedIds = expected.map(r => String(r.judge_id));
 
-          if (!expectedIds.length && !isAuto) {
-            judgeCaption.textContent = '期待審査員が登録されていません。';
-          }
+
 
           // 4. submissions
           const subs = await fetchJson('submissions', {
@@ -1522,35 +1512,44 @@
 
             if (st.current_match_id) {
               if (st.current_match_id === matchId) {
-                parts.push('<span class="tag ok">current_match_id: この対戦が現在の試合です</span>');
+                parts.push('<span class="tag ok">current_match_id: true</span>');
               } else {
-                parts.push('<span class="tag warn">current_match_id: 別の対戦が現在の試合として設定されています</span>');
+                parts.push('<span class="tag warn">current_match_id: false</span>');
               }
             } else {
               parts.push('<span class="tag warn">current_match_id: 未設定</span>');
             }
+
+            // check current epoch
+            if (st.epoch === epoch) {
+              parts.push('<span class="tag ok">current_epoch: true</span>');
+            } else {
+              parts.push('<span class="tag warn">current_epoch: false</span>');
+            }
+
+            // ★ ボタン状態更新
+            if (toggleAcceptingBtn) {
+              if (st.accepting) {
+                toggleAcceptingBtn.textContent = '受付締切（現在: 受付中）';
+                toggleAcceptingBtn.className = 'small-btn btn-red';
+              } else {
+                toggleAcceptingBtn.textContent = '受付開始（現在: 停止中）';
+                toggleAcceptingBtn.className = 'small-btn btn-green';
+              }
+            }
           } else {
             parts.push('<span class="tag warn">state が取得できません</span>');
+            if (toggleAcceptingBtn) {
+              toggleAcceptingBtn.textContent = 'state 不明';
+              toggleAcceptingBtn.className = 'small-btn btn-grey';
+            }
           }
           parts.push(`<span>期待審査員: <strong>${expectedCount}</strong> 人</span>`);
           parts.push(`<span>提出済み: <strong>${submittedCount}</strong> 人</span>`);
 
-          stateSummary.innerHTML = parts.join(' / ');
+          stateSummary.innerHTML = parts.join('');
 
-          const boutPrefix = boutLabelFull ? `【${boutLabelFull}】` : '';
 
-          if (expectedCount && submittedCount < expectedCount) {
-            judgeCaption.textContent =
-              `${boutPrefix}期待審査員 ${expectedCount}人中 ${submittedCount}人が提出済みです。`;
-          } else if (expectedCount && submittedCount === expectedCount) {
-            judgeCaption.textContent =
-              `${boutPrefix}期待審査員は全員提出済みです。（E3 が出ているかは state.e3_reached を参照）`;
-          } else if (!expectedCount) {
-            judgeCaption.textContent =
-              boutLabelFull
-                ? `【${boutLabelFull}】期待審査員が設定されていません。`
-                : '期待審査員が設定されていません。';
-          }
 
           if (!isAuto) {
             setMsg('読み込み完了', 'ok');
@@ -1572,78 +1571,40 @@
 
       // --- state 操作用ボタン ---
 
-      openBtn.addEventListener('click', async () => {
+      toggleAcceptingBtn.addEventListener('click', async () => {
+        if (!lastState) {
+          setMsg('状態が読み込まれていません。', 'err');
+          return;
+        }
+        const isAccepting = lastState.accepting;
+        const nextVal = !isAccepting;
+        const label = nextVal ? '受付開始' : '受付締切';
+
         try {
-          setMsg('受付開始中…', '');
+          setMsg(`${label}処理中…`, '');
           setControlsDisabled(true);
 
-          const epochValue = Number(epochInput.value || '1');
+          const patch = { accepting: nextVal };
+          // 開始時は epoch も念のため送る（値は今のまま）
+          if (nextVal) {
+            const epochValue = Number(epochInput.value || '1');
+            patch.epoch = epochValue;
+          }
 
-          await patchState({
-            accepting: true,
-            epoch: epochValue,
-          });
+          await patchState(patch);
 
-          setMsg(`受付を開始しました（epoch=${epochValue}, accepting=true）。`, 'ok');
+          setMsg(`${label}しました（accepting=${nextVal}）。`, 'ok');
           await loadData();
         } catch (err) {
           console.error(err);
-          setMsg('受付開始に失敗しました: ' + err.message, 'err');
+          setMsg(`${label}に失敗しました: ` + err.message, 'err');
           setControlsDisabled(false);
         }
       });
 
-      closeBtn.addEventListener('click', async () => {
-        try {
-          setMsg('受付締切処理中…', '');
-          setControlsDisabled(true);
-          await patchState({ accepting: false });
-          setMsg('受付を締め切りました（accepting=false）。', 'ok');
-          await loadData();
-        } catch (err) {
-          console.error(err);
-          setMsg('受付締切に失敗しました: ' + err.message, 'err');
-          setControlsDisabled(false);
-        }
-      });
 
-      nextEpochBtn.addEventListener('click', async () => {
-        try {
-          setMsg('次エポックへの更新中…', '');
-          setControlsDisabled(true);
-          const currentEpoch =
-            (lastState && typeof lastState.epoch === 'number')
-              ? lastState.epoch
-              : Number(epochInput.value || '1');
-          const nextEpoch = currentEpoch + 1;
-          await patchState({
-            epoch: nextEpoch,
-            accepting: true,
-            e3_reached: false,
-          });
-          epochInput.value = String(nextEpoch);
-          setMsg(`epoch を ${currentEpoch} → ${nextEpoch} に更新しました（accepting=true, e3_reached=false）。`, 'ok');
-          await loadData();
-        } catch (err) {
-          console.error(err);
-          setMsg('次エポックへの更新に失敗しました: ' + err.message, 'err');
-          setControlsDisabled(false);
-        }
-      });
 
-      resetE3Btn.addEventListener('click', async () => {
-        try {
-          setMsg('E3 フラグをリセット中…', '');
-          setControlsDisabled(true);
-          await patchState({ e3_reached: false });
-          setMsg('state.e3_reached を false にリセットしました。', 'ok');
-          await loadData();
-        } catch (err) {
-          console.error(err);
-          setMsg('E3 リセットに失敗しました: ' + err.message, 'err');
-          setControlsDisabled(false);
-        }
-      });
+
 
       loadBtn.addEventListener('click', loadData);
 

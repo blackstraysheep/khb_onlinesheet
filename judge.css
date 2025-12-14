@@ -69,6 +69,10 @@ header .judge {
     color: var(--ink) !important;
 }
 
+.text-error {
+    color: var(--ng) !important;
+}
+
 #match-header {
     margin-top: 16px;
     margin-bottom: 0;

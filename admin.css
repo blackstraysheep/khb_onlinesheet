@@ -129,7 +129,7 @@ button:disabled {
 .state-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   font-size: .9rem;
 }
 
@@ -191,6 +191,12 @@ button:disabled {
   width: 720px;
   max-width: 100%;
   table-layout: fixed;
+}
+
+.card.fixed-width {
+  width: 752px;
+  /* 720 + 24(padding) + 2(border) + extra for safety */
+  max-width: 100%;
 }
 
 .scoreboard th,
@@ -337,7 +343,7 @@ button:disabled {
 
 .layout-right {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   grid-auto-rows: min-content;
   gap: 12px;
   overflow-y: auto;
