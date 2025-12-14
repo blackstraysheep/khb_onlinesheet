@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正解スコアボード - 試験ロ 第2回（次鋒戦）</title>
+    <link rel="stylesheet" href="admin.css">
+    <script src="scoreboard.js"></script>
+</head>
+
+<body style="padding: 20px; background: #f4f5fb;">
+    <h1>正解スコアボード - 試験ロ 第2回（次鋒戦）</h1>
+    <div id="scoreboardContainer" class="scoreboard"></div>
+
+    <script>
+        function parseScore(scoreStr) {
+            const parts = scoreStr.split('-').map(s => s.trim());
+            const parseSide = (s) => {
+                const m = s.match(/^(\d+)(?:\+(\d+))?$/);
+                return { work: parseInt(m[1]), app: parseInt(m[2] || '0') };
+            };
+            const red = parseSide(parts[0]);
+            const white = parseSide(parts[1]);
+            return {
+                red_work: red.work,
+                red_app: red.app,
+                red_total: red.work + red.app,
+                white_work: white.work,
+                white_app: white.app,
+                white_total: white.work + white.app
+            };
+        }
+
+        const judgesMap = {
+            '1': 'デモ 一郎',
+            '2': 'デモ 次郎',
+            '3': 'デモ 三郎',
+            '4': 'デモ 四郎',
+            '5': 'デモ 五郎',
+            '6': 'デモ 六郎',
+            '7': 'デモ 七郎'
+        };
+
+        const expectedIds = ['1', '2', '3', '4', '5', '6', '7'];
+
+        const scoreStrings = {
+            '1': '10+1 - 9',
+            '2': '5+1 - 6',
+            '3': '7+2 - 5',
+            '4': '9 - 7+1',
+            '5': '8+2 - 6',
+            '6': '6 - 5+2',
+            '7': '7+1 - 6'
+        };
+
+        const subMap = {};
+        for (let id in scoreStrings) {
+            const s = parseScore(scoreStrings[id]);
+            // 勝敗判定：合計点が同じ場合は作品点で判定
+            if (s.red_total > s.white_total) {
+                s.red_flag = true;
+                s.white_flag = false;
+            } else if (s.white_total > s.red_total) {
+                s.red_flag = false;
+                s.white_flag = true;
+            } else {
+                // 合計同点の場合は作品点で判定
+                if (s.red_work > s.white_work) {
+                    s.red_flag = true;
+                    s.white_flag = false;
+                } else if (s.white_work > s.red_work) {
+                    s.red_flag = false;
+                    s.white_flag = true;
+                } else {
+                    // 同点同作品点の場合も両方に星
+                    s.red_flag = true;
+                    s.white_flag = true;
+                }
+            }
+            subMap[id] = s;
+        }
+
+        buildScoreboard(expectedIds, judgesMap, subMap, {
+            matchLabel: 'テストロ',
+            boutLabelFull: '次鋒戦',
+            redTeamName: '実証実験学園Ｃ',
+            whiteTeamName: '実証実験学園Ｄ'
+        }, document.getElementById('scoreboardContainer'));
+    </script>
+</body>
+
+</html>
