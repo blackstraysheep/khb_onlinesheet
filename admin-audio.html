@@ -67,6 +67,10 @@
             <input id="newJudgeName" placeholder="審査員名を入力" />
           </div>
           <div>
+            <label for="newJudgeVoiceKey">Voice Key</label>
+            <input id="newJudgeVoiceKey" placeholder="例: sato" style="width: 80px;" />
+          </div>
+          <div>
             <button id="addJudgeBtn" class="small-btn">審査員を追加</button>
           </div>
         </div>
@@ -162,6 +166,7 @@
       const judgeSelectCancelBtn = $('#judgeSelectCancelBtn');
 
       const newJudgeNameInput = $('#newJudgeName');
+      const newJudgeVoiceKeyInput = $('#newJudgeVoiceKey');
       const addJudgeBtn = $('#addJudgeBtn');
 
 
@@ -1107,6 +1112,10 @@
           setMsg('審査員を追加中…', '');
 
           // 1. judges に INSERT
+          const voiceKey = newJudgeVoiceKeyInput ? newJudgeVoiceKeyInput.value.trim() : null;
+          const payload = { name };
+          if (voiceKey) payload.voice_key = voiceKey;
+
           const url = buildRestUrl('judges', { select: 'id,name' });
           const res = await fetch(url, {
             method: 'POST',
@@ -1114,7 +1123,7 @@
               ...headers,
               'Prefer': 'return=representation',
             },
-            body: JSON.stringify({ name }),
+            body: JSON.stringify(payload),
           });
 
           const judgeText = await res.text();
@@ -1172,6 +1181,7 @@
 
           // ここまで来れば、審査員 + トークン作成完了
           if (newJudgeNameInput) newJudgeNameInput.value = '';
+          if (newJudgeVoiceKeyInput) newJudgeVoiceKeyInput.value = '';
 
           // 審査員画面の実際のパスに合わせて変更してください
           // 例: const baseJudgeUrl = location.origin + '/khb2026_eval_system_2.html';
