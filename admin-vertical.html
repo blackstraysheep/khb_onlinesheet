@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KHB-Kuawase</title>
+  <link rel="stylesheet" href="admin-vertical.css">
+</head>
+
+<body>
+  <h1>KHB-Kuawase Admin Panel (Vertical)</h1>
+
+  <div class="layout-grid">
+    <div class="layout-left">
+      <!-- state のサマリ（右側から移動） -->
+      <section class="card fixed-width">
+        <div class="state-summary" id="stateSummary">
+          <span class="small">未読み込み</span>
+        </div>
+      </section>
+
+      <!-- 審査員ごとの提出状況（左上に配置） -->
+      <section class="card fixed-width">
+        <div class="scoreboard-wrapper">
+          <div id="scoreboardContainer" class="scoreboard">
+            <!-- JS でスコアボードを描画 -->
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="layout-right">
+      <!-- 対戦/epoch指定 + state操作（右側上） -->
+      <section class="card">
+        <div class="row">
+          <div>
+            <label for="matchCode">対戦コード（matches.code）</label>
+            <input id="matchCode" placeholder="例: demo-match" />
+          </div>
+          <div>
+            <label for="epoch">epoch</label>
+            <input id="epoch" type="number" value="1" min="1" class="input-epoch" />
+          </div>
+          <div>
+            <button id="loadBtn">読み込み</button>
+          </div>
+        </div>
+
+        <div class="row mt-6 row-spread">
+          <button id="toggleAcceptingBtn" class="small-btn">受付状態を確認中…</button>
+          <button id="nextMatchSetupBtn" class="small-btn">次試合作成（期待審査員設定）</button>
+        </div>
+        <div class="msg" id="topMsg"></div>
+      </section>
+
+      <!-- 次の試合の期待審査員選択カード -->
+      <section class="card hidden" id="judgeSelectSection">
+        <h2 class="card-header small">
+          次の試合の期待審査員を設定
+        </h2>
+
+        <!-- 試合情報入力フォーム（追加） -->
+        <div class="row mb-8">
+          <div>
+            <label for="newMatchSetupCode">試合コード</label>
+            <input id="newMatchSetupCode" placeholder="例: A-1" class="input-code" />
+          </div>
+          <div>
+            <label for="newMatchSetupName">試合名</label>
+            <input id="newMatchSetupName" placeholder="試合名" class="input-match-name" />
+          </div>
+          <div>
+            <label for="newMatchSetupRed">紅チーム</label>
+            <input id="newMatchSetupRed" placeholder="紅チーム名" class="input-team" />
+          </div>
+          <div>
+            <label for="newMatchSetupWhite">白チーム</label>
+            <input id="newMatchSetupWhite" placeholder="白チーム名" class="input-team" />
+          </div>
+          <div>
+            <label for="newMatchSetupBouts">対戦数</label>
+            <input id="newMatchSetupBouts" type="number" placeholder="5" class="input-bouts" />
+          </div>
+        </div>
+
+        <hr class="card-separator" />
+
+        <!-- 審査員マスタへの追加フォーム -->
+        <div class="row mb-8">
+          <div>
+            <label for="newJudgeName">審査員を追加</label>
+            <input id="newJudgeName" placeholder="審査員名を入力" />
+          </div>
+          <div>
+            <label for="newJudgeVoiceKey">Voice Key</label>
+            <input id="newJudgeVoiceKey" placeholder="例: sato" class="input-voice-key" />
+          </div>
+          <div>
+            <button id="addJudgeBtn" class="small-btn">審査員を追加</button>
+          </div>
+        </div>
+
+        <div class="small mb-8" id="judgeSelectInfo">
+          <!-- JSで文言を入れる -->
+        </div>
+        <div id="judgeSelectList" class="judge-select-list">
+          <!-- JSでチェックボックスを描画 -->
+        </div>
+        <div class="control-group">
+          <button id="judgeSelectAllBtn" class="small-btn">全員選択</button>
+          <button id="judgeSelectClearBtn" class="small-btn">全て解除</button>
+          <button id="judgeSelectConfirmBtn" class="small-btn btn-green">この審査員で試合作成</button>
+          <button id="judgeSelectCancelBtn" class="small-btn btn-grey">キャンセル</button>
+        </div>
+      </section>
+
+
+
+
+      <!-- E5 / E6 操作（右側下） -->
+      <section class="card">
+        <h2 class="card-header">確定／次対戦操作（E5 / E6）</h2>
+        <div class="row">
+          <div>
+            <label for="adminSecret">管理用シークレット</label>
+            <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET と同じ値" />
+          </div>
+        </div>
+        <div class="control-group">
+          <button id="btnSetMatch" class="small-btn btn-blue-grey">現在の試合に設定（current_match_id 更新）</button>
+          <button id="btnE5" class="small-btn btn-red">E5 確定（スナップショット保存＆受付停止）</button>
+          <button id="btnE6" class="small-btn btn-green">E6 次の対戦へ（epoch+1 &amp; 受付再開）</button>
+        </div>
+        <div class="msg" id="e5e6Status"></div>
+      </section>
+
+      <!-- 追加：得点読み上げパネル（Zundamon） -->
+      <section class="card">
+        <h2 class="card-header">得点読み上げパネル（Zundamon）</h2>
+        <div class="small" id="audioStatus">
+          E3未到達のため、得点読み上げはまだ準備されていません。
+        </div>
+        <div id="zundaQueueList" class="small zunda-queue-list">
+          <!-- 再生キュー表示用 -->
+        </div>
+        <div class="control-group">
+          <button id="btnAudioPlayAll" class="small-btn">開始〜終了 全員読み上げ</button>
+          <button id="btnAudioStop" class="small-btn btn-grey">停止</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="scoreboard.js"></script>
+  <script>
+    (function () {
+      const SUPABASE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co'; // プロジェクトURL
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHdrZHB1cndhbWlsenpzcmZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjAwMTcsImV4cCI6MjA3NzkzNjAxN30.YvZgEi4x0YPuxYswMQjDQdBMVOPY6wkCVfY2hJ0_dL8';
+
+      // E5/E6/SET_MATCH Edge Functions の URL
+      const CONTROL_CONFIRM_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_confirm_with_secret';
+      const CONTROL_ADVANCE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_advance_with_secret';
+      const CONTROL_SET_MATCH_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_set_current_match_with_secret';
+
+      const headers = {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      };
+
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+      const matchCodeInput = $('#matchCode');
+      const epochInput = $('#epoch');
+      const loadBtn = $('#loadBtn');
+      const toggleAcceptingBtn = $('#toggleAcceptingBtn');
+
+
+      // 次試合作成関連
+      const nextMatchSetupBtn = $('#nextMatchSetupBtn');
+      const judgeSelectSection = $('#judgeSelectSection');
+      const judgeSelectInfo = $('#judgeSelectInfo');
+      const judgeSelectList = $('#judgeSelectList');
+      const judgeSelectAllBtn = $('#judgeSelectAllBtn');
+      const judgeSelectClearBtn = $('#judgeSelectClearBtn');
+      const judgeSelectConfirmBtn = $('#judgeSelectConfirmBtn');
+      const judgeSelectCancelBtn = $('#judgeSelectCancelBtn');
+
+      const newJudgeNameInput = $('#newJudgeName');
+      const newJudgeVoiceKeyInput = $('#newJudgeVoiceKey');
+      const addJudgeBtn = $('#addJudgeBtn');
+
+      // 試合情報入力フォーム要素
+      const newMatchSetupCode = $('#newMatchSetupCode');
+      const newMatchSetupName = $('#newMatchSetupName');
+      const newMatchSetupRed = $('#newMatchSetupRed');
+      const newMatchSetupWhite = $('#newMatchSetupWhite');
+      const newMatchSetupBouts = $('#newMatchSetupBouts');
+
+
+      const topMsg = $('#topMsg');
+      const stateSummary = $('#stateSummary');
+      const scoreboardContainer = $('#scoreboardContainer');
+
+
+
+      function setMsg(text, type) {
+        if (!topMsg) return;
+        topMsg.textContent = text || '';
+        topMsg.className = 'msg';
+        if (type === 'ok') topMsg.classList.add('ok');
+        if (type === 'err') topMsg.classList.add('err');
+      }
+
+      function setControlsDisabled(disabled) {
+        [
+          loadBtn, toggleAcceptingBtn,
+          nextMatchSetupBtn, judgeSelectConfirmBtn, judgeSelectCancelBtn,
+          judgeSelectAllBtn, judgeSelectClearBtn, addJudgeBtn,
+          btnAudioPlayAll, btnAudioStop
+        ].forEach(btn => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+
+      // Zundamon 再生パネル
+      const audioStatusEl = $('#audioStatus');
+      const zundaQueueListEl = $('#zundaQueueList');
+      const btnAudioPlayAll = $('#btnAudioPlayAll');
+      const btnAudioStop = $('#btnAudioStop');
+
+      // E5/E6 パネル
+      const adminSecretInput = $('#adminSecret');
+      const btnSetMatch = $('#btnSetMatch');
+      const btnE5 = $('#btnE5');
+      const btnE6 = $('#btnE6');
+      const e5e6StatusEl = $('#e5e6Status');
+
+      // 内部状態
+      let lastState = null;        // 直近に読み込んだ state を保持
+      let autoLoading = false;     // 自動更新中の二重実行防止
+      let pendingNextMatch = null; // { prevCode, nextCode, prevMatchId, prevMatchName }
+      let lastExpectedIds = [];    // 直近に読み込んだ期待審査員ID一覧（音声用）
+
+      // ============================
+      // Zundamon 音声再生関連
+      // ============================
+      // 音声ファイルのベースURL（ユーザー環境に合わせて変更可）
+      const ZUNDA_BASE = 'https://blackstraysheep.github.io/khb_onlinesheet/audio_zundamon/';
+
+      // 定型フレーズ → ファイル名
+      const zundaPhraseFiles = {
+        start: 'saiten.wav',      // 「開始アナウンス」
+        end: 'tonatte.wav',       // 「終了アナウンス」
+        sensei: 'sensei.wav',     // 「先生」
+        vs: 'tai.wav',            // 「対」
+        kansyouten: 'kansyouten.wav', // 「鑑賞点」
+        ga: 'ga.wav',             // 「が」
+        red: 'aka.wav',           // 「紅」
+        white: 'siro.wav',        // 「白」
+        desu: 'desu.wav',         // 「です。」
+        de: 'de.wav',             // 「で」
+        draw_phrase: 'douten.wav' // 「の同点ですが、作品点の高い」
+      };
+
+      // クリップID → HTMLAudioElement
+      const zundaAudio = {};
+      let zundaInitialized = false;
+      let zundaPlaying = false;
+
+      // 再生キュー（クリップIDの配列）
+      let zundaQueue = [];
+      let zundaQueueIndex = 0;
+
+      // 審査員ごとの読み上げセグメント { judgeId: { revision, clips: [...] } }
+      let zundaJudgeSegments = {};
+      let pendingZundaRefresh = null;
+
+      function setAudioStatus(text) {
+        if (!audioStatusEl) return;
+        audioStatusEl.textContent = text || '';
+      }
+
+      function initZundamon() {
+        if (zundaInitialized) return;
+        // 定型フレーズを事前ロード（任意）
+        Object.entries(zundaPhraseFiles).forEach(([id, file]) => {
+          zundaAudio[id] = new Audio(ZUNDA_BASE + file);
+        });
+        zundaInitialized = true;
+      }
+
+      // 指定IDの Audio インスタンスを用意（なければ作る）
+      function ensureZundaClip(id) {
+        if (zundaAudio[id]) return;
+
+        // 定型フレーズ
+        if (zundaPhraseFiles[id]) {
+          zundaAudio[id] = new Audio(ZUNDA_BASE + zundaPhraseFiles[id]);
+          return;
+        }
+
+        // 数字（論理ID: num_1,num_2,num_5... → 実ファイル）
+        if (id.startsWith('num_')) {
+          const n = Number(id.slice(4));
+          let file;
+          if (n === 1) {
+            file = '1ten.wav';   // 1点
+          } else if (n === 2) {
+            file = '2ten.wav';   // 2点
+          } else if (n >= 5 && n <= 12) {
+            file = `${n}.wav`;   // 5.wav〜12.wav
+          } else {
+            console.warn('Zundamon: 未定義の数字クリップです:', n);
+            return;
+          }
+          zundaAudio[id] = new Audio(ZUNDA_BASE + file);
+          return;
+        }
+
+        // 審査員名（judge_xxx → judge_xxx.wav）
+        if (id.startsWith('judge_')) {
+          zundaAudio[id] = new Audio(ZUNDA_BASE + `${id}.wav`);
+          return;
+        }
+
+        console.warn('Zundamon: ファイルマッピングがないIDです:', id);
+      }
+
+      function playZundaClip(id) {
+        return new Promise(resolve => {
+          initZundamon();
+          ensureZundaClip(id);
+          const audio = zundaAudio[id];
+          if (!audio) {
+            console.warn('Zundamon: Audio インスタンスがありません:', id);
+            resolve();
+            return;
+          }
+
+          audio.currentTime = 0;
+          audio.onended = () => resolve();
+          audio.onerror = () => resolve();
+
+          audio.play().catch(err => {
+            console.warn('Zundamon: 再生エラー', err);
+            resolve();
+          });
+        });
+      }
+
+      async function playZundaQueue() {
+        if (!zundaQueue.length) {
+          setAudioStatus('再生キューが空です。');
+          zundaPlaying = false;
+          return;
+        }
+
+        // 開始時に scoreboard_visible = true
+        patchState({ scoreboard_visible: true }).catch(err => console.error(err));
+
+        setAudioStatus('再生中…');
+        zundaPlaying = true;
+        renderZundaQueue(true); // 開始時は強制スクロール
+
+        while (zundaPlaying && zundaQueueIndex < zundaQueue.length) {
+          renderZundaQueue(); // 自動追従（範囲内のみ）
+          const id = zundaQueue[zundaQueueIndex++];
+          await playZundaClip(id);
+        }
+        renderZundaQueue(); // final update
+
+        if (zundaPlaying) {
+          setAudioStatus('再生完了');
+        } else {
+          setAudioStatus('停止しました');
+        }
+        zundaPlaying = false;
+        // 終了時（または中断時）に scoreboard_visible = false
+        patchState({ scoreboard_visible: false }).catch(err => console.error(err));
+
+        applyPendingZundaRefresh();
+      }
+
+      function stopZunda() {
+        zundaPlaying = false;
+        Object.values(zundaAudio).forEach(a => {
+          try { a.pause(); } catch (e) { }
+        });
+        patchState({ scoreboard_visible: false }).catch(err => console.error(err));
+        setAudioStatus('停止しました');
+        applyPendingZundaRefresh();
+      }
+
+      // 数値 n を「Zundamon 数字クリップ」のID配列に変換
+      // 1 → ['num_1'] (1ten.wav), 2 → ['num_2'], 5〜12 → ['num_5']... といった感じ
+      function numToZundaIds(n) {
+        const v = Number(n);
+        if (!Number.isFinite(v) || v < 0) {
+          return [];
+        }
+
+        if (v === 1) {
+          return ['num_1'];
+        }
+        if (v === 2) {
+          return ['num_2'];
+        }
+
+        // 5〜12 のみ想定
+        if (v >= 5 && v <= 12) {
+          return [`num_${v}`];
+        }
+
+        console.warn('Zundamon: 対応していない点数です:', v);
+        return [];
+      }
+
+      // 音声用キー決定関数（voice_key優先、なければid）
+      function getJudgeVoiceKey(judgeId, judgesMap) {
+        const j = judgesMap[judgeId];
+        if (j && j.voice_key) {
+          return j.voice_key;
+        }
+        return judgeId;
+      }
+
+      // submissions を元に、zundaJudgeSegments を構築
+      // 内容：
+      // （審査員名）先生。
+      // （red作品）対（white作品）。
+      // 鑑賞点（c）が（紅／白）です。
+      // （red合計）対（white合計）で（紅／白）。*
+      //   *同点なら「（red合計）対（white合計）の同点ですが、作品点の高い（紅／白）。」
+      function buildZundaSegments(match, epoch, boutLabelFull, expectedIds, judgesMap, subMap) {
+        zundaJudgeSegments = {};
+        if (!expectedIds || !expectedIds.length) return;
+
+        expectedIds.forEach(jid => {
+          const sub = subMap[jid];
+          if (!sub) return;
+
+          const clips = [];
+
+          const redWork = sub.red_work;
+          const whiteWork = sub.white_work;
+          const redApp = sub.red_app;
+          const whiteApp = sub.white_app;
+          const redTotal = sub.red_total;
+          const whiteTotal = sub.white_total;
+
+          // （審査員名）先生。（まとめて1ファイル）
+          // judge_<voice_key>.wav を使用（voice_keyがない場合は judge_<id>.wav になる）
+          const vk = getJudgeVoiceKey(jid, judgesMap);
+          clips.push(`judge_${vk}`);
+
+          // （red作品）対（white作品）。
+          if (Number.isFinite(redWork)) clips.push(...numToZundaIds(redWork));
+          clips.push('vs');
+          if (Number.isFinite(whiteWork)) clips.push(...numToZundaIds(whiteWork));
+
+          // 鑑賞点（c）が（紅／白）です。
+          if ((redApp || 0) > 0 || (whiteApp || 0) > 0) {
+            let winnerSideForApp = 'red';
+            let appScore = redApp;
+            if ((whiteApp || 0) > (redApp || 0)) {
+              winnerSideForApp = 'white';
+              appScore = whiteApp;
+            }
+            clips.push('kansyouten');
+            if (Number.isFinite(appScore)) clips.push(...numToZundaIds(appScore));
+            clips.push('ga');
+            clips.push(winnerSideForApp === 'red' ? 'red' : 'white');
+            clips.push('desu');
+          }
+
+          // 合計部分
+          const haveTotals = Number.isFinite(redTotal) && Number.isFinite(whiteTotal);
+          if (haveTotals) {
+            // （red合計）対（white合計）
+            clips.push(...numToZundaIds(redTotal));
+            clips.push('vs');
+            clips.push(...numToZundaIds(whiteTotal));
+
+            // 勝者色（合計が同点なら作品点で判定）
+            const isDrawTotal = (redTotal === whiteTotal);
+            let winnerSideForTotal = 'red';
+            if (!isDrawTotal) {
+              winnerSideForTotal = (redTotal > whiteTotal) ? 'red' : 'white';
+            } else {
+              // 同点時 → 作品点の高い方
+              if ((whiteWork || 0) > (redWork || 0)) {
+                winnerSideForTotal = 'white';
+              } else {
+                winnerSideForTotal = 'red';
+              }
+            }
+
+            if (isDrawTotal) {
+              // 「の同点ですが、作品点の高い」「紅／白。」
+              clips.push('draw_phrase');
+            } else {
+              // 「で」「紅／白。」
+              clips.push('de');
+            }
+            clips.push(winnerSideForTotal === 'red' ? 'red' : 'white');
+          }
+
+          zundaJudgeSegments[jid] = {
+            revision: sub.revision || 1,
+            clips,
+          };
+        });
+      }
+
+      // 現在の zundaJudgeSegments から再生キューを構築
+      // 「開始」→ 各審査員の内容 →「終了」
+      function rebuildZundaQueue(match, epoch, boutLabelFull) {
+        const queue = [];
+
+        // 冒頭アナウンス
+        queue.push('start');
+
+        // 各審査員のセグメントを順に
+        Object.entries(zundaJudgeSegments).forEach(([jid, seg]) => {
+          seg.clips.forEach(id => queue.push(id));
+        });
+
+        // 締めのアナウンス
+        queue.push('end');
+
+        zundaQueue = queue;
+        zundaQueueIndex = 0;
+        zundaQueue = queue;
+        zundaQueueIndex = 0;
+        setAudioStatus(`再生キューを準備しました（${queue.length}クリップ）。`);
+        renderZundaQueue();
+      }
+
+      function renderZundaQueue(forceScroll = false) {
+        if (!zundaQueueListEl) return;
+        if (!zundaQueue.length) {
+          zundaQueueListEl.innerHTML = '<div class="zunda-empty">(キューは空です)</div>';
+          return;
+        }
+        zundaQueueListEl.innerHTML = zundaQueue.map((id, idx) => {
+          let label = id;
+          if (zundaPhraseFiles[id]) {
+            label = `[定型] ${id}`;
+          } else if (id.startsWith('judge_')) {
+            label = `[審査員] ${id}`;
+          } else if (id.startsWith('num_')) {
+            label = `[数字] ${id.replace('num_', '')}`;
+          }
+          const isCurrent = (idx === zundaQueueIndex);
+          const cls = isCurrent ? 'zunda-item current' : 'zunda-item';
+          const marker = isCurrent ? '▶ ' : '';
+          const divId = isCurrent ? 'currentZundaItem' : '';
+          return `<div id="${divId}" class="${cls}">${marker}${idx + 1}. ${label}</div>`;
+        }).join('');
+
+        const currentEl = document.getElementById('currentZundaItem');
+        if (currentEl) {
+          if (forceScroll) {
+            // currentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const itemTop = currentEl.offsetTop;
+            const itemHeight = currentEl.offsetHeight;
+            const containerHeight = zundaQueueListEl.clientHeight;
+            // center + offset
+            const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + 35;
+            zundaQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
+          } else {
+            // ユーザーが大きくスクロールしているときは追従しない（妨げない）
+            // 再生位置が表示領域内（または直近）にあるときだけ追従する
+            const cRect = zundaQueueListEl.getBoundingClientRect();
+            const iRect = currentEl.getBoundingClientRect();
+            const relativeTop = iRect.top - cRect.top;
+            const containerHeight = cRect.height;
+            const margin = 60; // 許容範囲（上下に少し余裕を持たせる）
+
+            if (relativeTop > -margin && relativeTop < containerHeight + margin) {
+              // currentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // 1.5〜2行分上（中央より下が見えるように）に表示
+              // center (50%) より 35px ほど下にスクロールさせる（＝要素が上に移動する）
+              const itemTop = currentEl.offsetTop;
+              const itemHeight = currentEl.offsetHeight;
+              const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + 35;
+              zundaQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
+            }
+          }
+        }
+      }
+
+      function buildZundaAudioSuite({ match, epoch, boutLabelFull, expectedIds, judgesMap, subMap }) {
+        buildZundaSegments(match, epoch, boutLabelFull, expectedIds, judgesMap, subMap);
+        rebuildZundaQueue(match, epoch, boutLabelFull);
+      }
+
+      function scheduleZundaAudioRefresh(data) {
+        if (!data || !data.expectedIds || !data.expectedIds.length) {
+          pendingZundaRefresh = null;
+          zundaQueue = [];
+          zundaQueueIndex = 0;
+          setAudioStatus('再生キューが空です。');
+          return;
+        }
+        lastExpectedIds = data.expectedIds.slice(); // どこかの上位で定義されている想定
+        if (zundaPlaying) {
+          // 再生中なら、再生完了後に更新
+          pendingZundaRefresh = data;
+          return;
+        }
+        pendingZundaRefresh = null;
+        buildZundaAudioSuite(data);
+      }
+
+      function applyPendingZundaRefresh() {
+        if (!pendingZundaRefresh) return;
+        const data = pendingZundaRefresh;
+        pendingZundaRefresh = null;
+        buildZundaAudioSuite(data);
+      }
+
+
+      // ランダムなアクセストークンを生成（"khb-" + 32桁の16進文字列）
+      function generateToken() {
+        const hex = [];
+        const chars = '0123456789abcdef';
+        for (let i = 0; i < 32; i++) {
+          hex.push(chars[Math.floor(Math.random() * chars.length)]);
+        }
+        return 'khb-' + hex.join('');
+      }
+
+
+      function buildRestUrl(path, params) {
+        const url = new URL(SUPABASE_URL + '/rest/v1/' + path);
+        if (params) {
+          Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null) {
+              url.searchParams.set(k, v);
+            }
+          });
+        }
+        return url.toString();
+      }
+
+      async function fetchJson(path, params) {
+        const url = buildRestUrl(path, params);
+        const res = await fetch(url, { headers });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`GET ${path} failed: ${res.status} ${txt}`);
+        }
+        return res.json();
+      }
+
+      async function patchState(patch) {
+        const url = buildRestUrl('state', { id: 'eq.1' });
+        const res = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            ...headers,
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify(patch),
+        });
+        const txt = await res.text();
+        if (!res.ok) {
+          throw new Error(`PATCH state failed: ${res.status} ${txt}`);
+        }
+        try {
+          const data = JSON.parse(txt);
+          lastState = data[0] || null;
+        } catch {
+          lastState = null;
+        }
+      }
+
+      // 例: "khb2026_A1" → "khb2026_A2"
+      function calcNextMatchCode(code) {
+        const s = (code || '').trim();
+        if (!s) return s;
+        const m = s.match(/^(.*?)(\d+)(\D*)$/);
+        if (!m) return s;
+        const prefix = m[1];
+        const numStr = m[2];
+        const suffix = m[3] || '';
+        const next = String(Number(numStr) + 1).padStart(numStr.length, '0');
+        return prefix + next + suffix;
+      }
+
+      function showJudgeSelectSection(show) {
+        if (!judgeSelectSection) return;
+        judgeSelectSection.style.display = show ? 'block' : 'none';
+        if (!show && judgeSelectList) {
+          judgeSelectList.innerHTML = '';
+        }
+      }
+
+      function showJudgeSelectSection(show) {
+        if (!judgeSelectSection) return;
+        judgeSelectSection.style.display = show ? 'block' : 'none';
+        if (!show && judgeSelectList) {
+          judgeSelectList.innerHTML = '';
+        }
+      }
+
+      // ★ 審査員選択リスト内の要素を上下に移動させる
+      function moveJudgeItem(item, delta) {
+        const parent = item.parentElement;
+        if (!parent) return;
+        const items = Array.from(parent.querySelectorAll('.judge-select-item'));
+        const index = items.indexOf(item);
+        if (index === -1) return;
+
+        const newIndex = index + delta;
+        if (newIndex < 0 || newIndex >= items.length) return;
+
+        const ref = items[newIndex];
+        if (delta < 0) {
+          // 上へ
+          parent.insertBefore(item, ref);
+        } else {
+          // 下へ（ref の次に挿入）
+          parent.insertBefore(item, ref.nextSibling);
+        }
+      }
+
+      // 結果パネル表示用に、席順配列を「中心から外側へ」並び替える
+      // 例: 7人 → 元の並び [1,2,3,4,5,6,7] を [6,4,2,1,3,5,7] に変換
+
+
+      // ドラッグ中の要素の直下に来ている要素を取得
+      function getDragAfterElement(container, y) {
+        const items = [...container.querySelectorAll('.judge-select-item:not(.dragging)')];
+        let closest = { offset: Number.POSITIVE_INFINITY, element: null };
+
+        items.forEach(item => {
+          const box = item.getBoundingClientRect();
+          const offset = y - (box.top + box.height / 2);
+          if (offset < 0 && Math.abs(offset) < closest.offset) {
+            closest = { offset: Math.abs(offset), element: item };
+          }
+        });
+
+        return closest.element;
+      }
+
+      // khb_score 風スコアボード構築 (縦型レイアウト)
+      function buildScoreboard(expectedIds, judgesMap, subMap, meta) {
+        if (!scoreboardContainer) return;
+        scoreboardContainer.innerHTML = '';
+
+        if (!expectedIds || !expectedIds.length) {
+          return;
+        }
+
+        meta = meta || {};
+        const matchLabel = meta.matchLabel || '試合名';
+        const boutLabelFull = meta.boutLabelFull || '対戦名';
+        const redTeam = meta.redTeamName || '紅チーム';
+        const whiteTeam = meta.whiteTeamName || '白チーム';
+
+        const table = document.createElement('table');
+        table.className = 'scoreboard-v';
+        const tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+
+        // createCell helper
+        const createCell = (text, className, rowSpan, colSpan) => {
+          const td = document.createElement('td');
+          if (className) td.className = className;
+          if (text !== undefined && text !== null) td.textContent = text;
+          if (rowSpan) td.rowSpan = rowSpan;
+          if (colSpan) td.colSpan = colSpan;
+          return td;
+        };
+
+        // --- Header Rows ---
+
+        // 1. Top Header: [Red Team Header] [Match Info] [White Team Header]
+        const trTop = document.createElement('tr');
+        trTop.appendChild(createCell('紅', 'header-team-red', 1, 3)); // 3 cols
+
+        // Handle line breaks: Match name contains full-width space -> <br>
+        const displayMatchLabel = (matchLabel || '').replace(/　/g, '<br>');
+        const tdMatch = createCell('', 'header-match-info', 1, 1);
+        tdMatch.innerHTML = displayMatchLabel;
+
+        trTop.appendChild(tdMatch);
+        trTop.appendChild(createCell('白', 'header-team-white', 1, 3)); // 3 cols
+        tbody.appendChild(trTop);
+
+        // 2. Team Names Rows
+        const trTeam = document.createElement('tr');
+        trTeam.appendChild(createCell(redTeam, 'team-name-red', 1, 3)); // 3 cols
+        const tdBout = createCell(boutLabelFull, 'header-match-info', 1, 1);
+        trTeam.appendChild(tdBout);
+        trTeam.appendChild(createCell(whiteTeam, 'team-name-white', 1, 3)); // 3 cols
+        tbody.appendChild(trTeam);
+
+        // 3. Poems Row (Optional based on image, but we might not have poem data here. Skipping for now or leaving placeholders)
+        // If we had poems, they would go here. For now, we skip to Column Headers.
+
+        // 4. Column Headers
+        // Win/Loss | Flag | Total | [Work/App] || Judge || [Work/App] | Total | Flag | Win/Loss
+        const trColHead = document.createElement('tr');
+
+        // Red Side Cols
+        // trColHead.appendChild(createCell('勝敗', 'col-header', 1, 1)); // Win/Loss - skipping logic for now
+        trColHead.appendChild(createCell('旗', 'col-header', 1, 1));
+        trColHead.appendChild(createCell('合計', 'col-header', 1, 1));
+        const tdRedWorkApp = createCell('作品点<br>鑑賞点', 'col-header', 1, 1);
+        tdRedWorkApp.innerHTML = '作品点<div class="sub-label">鑑賞点</div>';
+        trColHead.appendChild(tdRedWorkApp);
+
+        // Center Judge
+        trColHead.appendChild(createCell('審査員', 'col-header', 1, 1));
+
+        // White Side Cols
+        const tdWhiteWorkApp = createCell('作品点<br>鑑賞点', 'col-header', 1, 1);
+        tdWhiteWorkApp.innerHTML = '作品点<div class="sub-label">鑑賞点</div>';
+        trColHead.appendChild(tdWhiteWorkApp);
+        trColHead.appendChild(createCell('合計', 'col-header', 1, 1));
+        trColHead.appendChild(createCell('旗', 'col-header', 1, 1));
+        // trColHead.appendChild(createCell('勝敗', 'col-header', 1, 1)); // Win/Loss
+
+        tbody.appendChild(trColHead);
+
+
+        // --- Data Rows (Judges) ---
+        expectedIds.forEach(id => {
+          const s = subMap[id] || {};
+          const tr = document.createElement('tr');
+
+          // --- Red Side ---
+          // Win/Loss (skip)
+
+          // Flag
+          const tdRedFlag = createCell('', 'cell-flag red-flag');
+          if (s.red_flag) tdRedFlag.textContent = '◆'; // Using Diamond shape as per image or Star? Image used diamonds.
+          tr.appendChild(tdRedFlag);
+
+          // Total
+          tr.appendChild(createCell(s.red_total != null ? s.red_total : '', 'cell-total'));
+
+          // Work / App (Stacked)
+          const tdRedScores = createCell('', 'cell-scores');
+          const redWorkDiv = document.createElement('div');
+          redWorkDiv.className = 'score-main';
+          redWorkDiv.textContent = s.red_work != null ? s.red_work : '';
+          const redAppDiv = document.createElement('div');
+          redAppDiv.className = 'score-sub'; // App score is smaller
+          redAppDiv.textContent = (s.red_app != null && s.red_app !== 0) ? s.red_app : '';
+          tdRedScores.appendChild(redWorkDiv);
+          tdRedScores.appendChild(redAppDiv);
+          tr.appendChild(tdRedScores);
+
+          // --- Judge Name (Center) ---
+          let name = id.slice(0, 8);
+          const j = judgesMap[id];
+          if (j) name = (typeof j === 'object' ? j.name : j) || name;
+          tr.appendChild(createCell(name, 'cell-judge'));
+
+          // --- White Side ---
+          // Work / App (Stacked)
+          const tdWhiteScores = createCell('', 'cell-scores');
+          const whiteWorkDiv = document.createElement('div');
+          whiteWorkDiv.className = 'score-main';
+          whiteWorkDiv.textContent = s.white_work != null ? s.white_work : '';
+          const whiteAppDiv = document.createElement('div');
+          whiteAppDiv.className = 'score-sub';
+          whiteAppDiv.textContent = (s.white_app != null && s.white_app !== 0) ? s.white_app : '';
+          tdWhiteScores.appendChild(whiteWorkDiv);
+          tdWhiteScores.appendChild(whiteAppDiv);
+          tr.appendChild(tdWhiteScores);
+
+          // Total
+          tr.appendChild(createCell(s.white_total != null ? s.white_total : '', 'cell-total'));
+
+          // Flag
+          const tdWhiteFlag = createCell('', 'cell-flag'); // White flag usually plain or black diamond? Image had Red=RedDiamond, White=BlackDiamond?
+          // Actually in kendo/etc Red=Red, White=White. But on paper White often represented by empty or black if bg is white.
+          // Existing code used "★". Image shows Red Diamond (◆) and Black Diamond (◆).
+          // I will use ◆ for both but class distinguishes color.
+          if (s.white_flag) {
+            tdWhiteFlag.textContent = '◆';
+            tdWhiteFlag.classList.add('white-flag');
+          }
+          tr.appendChild(tdWhiteFlag);
+
+          // Win/Loss (skip)
+
+          tbody.appendChild(tr);
+        });
+
+        scoreboardContainer.appendChild(table);
+      }
+
+      // 「次の試合」ボタンを押したとき：審査員選択UIを開く
+      async function openJudgeSelectionForNextMatch() {
+        const curCode = (matchCodeInput.value || '').trim();
+        if (!curCode) {
+          setMsg('現在の対戦コードを先に入力してください。', 'err');
+          return;
+        }
+
+        const nextCode = calcNextMatchCode(curCode);
+        if (!nextCode) {
+          setMsg('次の試合コードを計算できませんでした。', 'err');
+          return;
+        }
+
+        try {
+          setMsg('次の試合の期待審査員候補を取得中…', '');
+
+          // 現在試合の情報を取得
+          const curMatches = await fetchJson('matches', {
+            select: 'id,code,name,num_bouts',
+            code: 'eq.' + curCode
+          });
+          const curMatch = curMatches[0];
+          const prevMatchId = curMatch ? curMatch.id : null;
+          const curMatchName = curMatch ? curMatch.name : '';
+          const curNumBouts = (curMatch && curMatch.num_bouts) ? curMatch.num_bouts : 5; // default
+
+          // 次の試合が既に存在するか確認（あればその情報を入れる）
+          const nextMatches = await fetchJson('matches', {
+            select: 'id,code,name,red_team_name,white_team_name,num_bouts',
+            code: 'eq.' + nextCode
+          });
+          const existingNextMatch = nextMatches[0];
+
+          // 入力欄を初期化
+          if (existingNextMatch) {
+            if (newMatchSetupCode) newMatchSetupCode.value = existingNextMatch.code || nextCode;
+            if (newMatchSetupName) newMatchSetupName.value = existingNextMatch.name || '';
+            if (newMatchSetupRed) newMatchSetupRed.value = existingNextMatch.red_team_name || '';
+            if (newMatchSetupWhite) newMatchSetupWhite.value = existingNextMatch.white_team_name || '';
+            if (newMatchSetupBouts) newMatchSetupBouts.value = existingNextMatch.num_bouts || curNumBouts;
+          } else {
+            // 新規作成の場合のデフォルト値
+            if (newMatchSetupCode) newMatchSetupCode.value = nextCode;
+
+            // 名前: 既になければ空欄（ユーザー要望）
+            if (newMatchSetupName) newMatchSetupName.value = '';
+
+            // チーム名は空欄か、任意で引き継ぐ（ここでは空欄）
+            if (newMatchSetupRed) newMatchSetupRed.value = '';
+            if (newMatchSetupWhite) newMatchSetupWhite.value = '';
+            // 対戦数は前回のものを引き継ぐ
+            if (newMatchSetupBouts) newMatchSetupBouts.value = curNumBouts;
+          }
+
+
+          pendingNextMatch = {
+            prevCode: curCode,
+            nextCode: nextCode,
+            prevMatchId: curMatch ? curMatch.id : null,
+            prevMatchName: curMatchName,
+          };
+          // 全審査員一覧
+          const judges = await fetchJson('judges', {
+            select: 'id,name',
+          });
+
+          // 前回試合の期待審査員
+          let prevExpectedIds = [];
+          if (prevMatchId) {
+            const expected = await fetchJson('expected_judges', {
+              select: 'judge_id,sort_order',
+              match_id: 'eq.' + prevMatchId,
+              order: 'sort_order.asc',
+            });
+            prevExpectedIds = (expected || []).map(r => String(r.judge_id));
+          }
+
+          // 既定選択：前回期待審査員があればそれ、なければ全員
+          const defaultSet = new Set(
+            prevExpectedIds.length ? prevExpectedIds : judges.map(j => j.id)
+          );
+
+          // ★ 並び順：前回の expected_judges の順番 → 残りを名前順
+          if (prevExpectedIds.length) {
+            const orderIndex = new Map();
+            prevExpectedIds.forEach((id, idx) => {
+              orderIndex.set(String(id), idx);
+            });
+
+            judges.sort((a, b) => {
+              const ida = String(a.id);
+              const idb = String(b.id);
+
+              const ia = orderIndex.has(ida) ? orderIndex.get(ida) : Number.MAX_SAFE_INTEGER;
+              const ib = orderIndex.has(idb) ? orderIndex.get(idb) : Number.MAX_SAFE_INTEGER;
+
+              if (ia !== ib) {
+                return ia - ib;
+              }
+
+              const na = a.name || '';
+              const nb = b.name || '';
+              return na.localeCompare(nb, 'ja');
+            });
+          } else {
+            // 前回情報がないときだけ、名前順にしておく
+            judges.sort((a, b) => {
+              const na = a.name || '';
+              const nb = b.name || '';
+              return na.localeCompare(nb, 'ja');
+            });
+          }
+
+
+
+
+          if (judgeSelectInfo) {
+            // const baseInfo = `次の試合コード: ${nextCode}`; // 削除（ユーザー要望）
+            const judgeInfo =
+              prevExpectedIds.length
+                ? `前回の期待審査員 ${prevExpectedIds.length}人を既定で選択しました。`
+                : `前回の期待審査員設定が無いため、審査員全員 (${judges.length}人) を既定で選択しました。`;
+            judgeSelectInfo.textContent = judgeInfo;
+          }
+
+
+          if (judgeSelectList) {
+            judgeSelectList.innerHTML = '';
+
+            judges.forEach((j) => {
+              const div = document.createElement('div');
+              div.className = 'judge-select-item';
+              div.dataset.judgeId = j.id;
+              div.draggable = true;  // ★ ドラッグ可能に
+
+              const id = 'judgeChk_' + j.id;
+              const checked = defaultSet.has(j.id) ? 'checked' : '';
+
+              div.innerHTML =
+                `<label><input type="checkbox" class="judge-select-checkbox" ` +
+                `data-judge-id="${j.id}" id="${id}" ${checked}> ` +
+                `${j.name || '(名前未設定)'}</label>`;
+
+              // ドラッグ開始/終了でクラスを付け替え
+              div.addEventListener('dragstart', (e) => {
+                div.classList.add('dragging');
+                if (e.dataTransfer) {
+                  e.dataTransfer.effectAllowed = 'move';
+                }
+              });
+              div.addEventListener('dragend', () => {
+                div.classList.remove('dragging');
+              });
+
+              judgeSelectList.appendChild(div);
+            });
+
+            // リスト全体に dragover を1回だけ登録
+            if (!judgeSelectList._dndInitialized) {
+              judgeSelectList.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const dragging = judgeSelectList.querySelector('.judge-select-item.dragging');
+                if (!dragging) return;
+
+                const afterElement = getDragAfterElement(judgeSelectList, e.clientY);
+                if (afterElement == null) {
+                  judgeSelectList.appendChild(dragging);
+                } else {
+                  judgeSelectList.insertBefore(dragging, afterElement);
+                }
+              });
+              judgeSelectList._dndInitialized = true;
+            }
+          }
+
+
+          showJudgeSelectSection(true);
+          setMsg('次の試合の期待審査員を選択してください。', '');
+
+        } catch (err) {
+          console.error('openJudgeSelectionForNextMatch error', err);
+          setMsg('次の試合の期待審査員取得に失敗しました: ' + (err.message || String(err)), 'err');
+        }
+      }
+
+      // 審査員マスタに追加 ＋ 審査員用アクセストークン発行（match_id/epoch なし版＋エラー表示強化）
+      async function addJudgeFromUI() {
+        const name = (newJudgeNameInput && newJudgeNameInput.value || '').trim();
+        if (!name) {
+          setMsg('審査員名を入力してください。', 'err');
+          return;
+        }
+
+        try {
+          setControlsDisabled(true);
+          setMsg('審査員を追加中…', '');
+
+          // 1. judges に INSERT
+          const voiceKey = newJudgeVoiceKeyInput ? newJudgeVoiceKeyInput.value.trim() : null;
+          const payload = { name };
+          if (voiceKey) payload.voice_key = voiceKey;
+
+          const url = buildRestUrl('judges', { select: 'id,name' });
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const judgeText = await res.text();
+          if (!res.ok) {
+            console.error('add judge failed', res.status, judgeText);
+            setMsg(`審査員の追加に失敗しました: ${res.status} ${judgeText}`, 'err');
+            return;
+          }
+
+          let j;
+          try {
+            const rows = JSON.parse(judgeText);
+            j = rows && rows[0];
+          } catch (e) {
+            console.error('parse judge response error', e, judgeText);
+            setMsg('審査員追加レスポンスの解析に失敗しました。', 'err');
+            return;
+          }
+
+          if (!j || !j.id) {
+            setMsg('審査員の追加に失敗しました（IDが取得できません）。', 'err');
+            return;
+          }
+          const judgeId = j.id;
+
+          // 2. access_tokens にトークンを INSERT（match_id/epoch は既に削除済み前提）
+          const token = generateToken();
+          const tokenUrl = buildRestUrl('access_tokens', { select: 'token,judge_id,role,created_at' });
+
+          const tokenPayload = {
+            token,
+            judge_id: judgeId,
+            role: 'judge',
+            // created_at は DEFAULT に任せる
+          };
+
+          const resTok = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify(tokenPayload),
+          });
+
+          const tokenText = await resTok.text();
+          if (!resTok.ok) {
+            console.error('create access_token failed', resTok.status, tokenText);
+            setMsg(
+              `審査員「${j.name}」は追加されましたが、アクセストークンの作成に失敗しました: ${resTok.status} ${tokenText}`,
+              'err'
+            );
+            return;
+          }
+
+          // ここまで来れば、審査員 + トークン作成完了
+          if (newJudgeNameInput) newJudgeNameInput.value = '';
+          if (newJudgeVoiceKeyInput) newJudgeVoiceKeyInput.value = '';
+
+          // 審査員画面の実際のパスに合わせて変更してください
+          // 例: const baseJudgeUrl = location.origin + '/khb2026_eval_system_2.html';
+          const baseJudgeUrl = location.origin + '/judge.html';
+          const judgeUrl = `${baseJudgeUrl}?token=${encodeURIComponent(token)}`;
+
+          setMsg(
+            `審査員を追加しました: ${j.name} ／ トークン: ${token} ／ URL: ${judgeUrl}`,
+            'ok'
+          );
+
+          // 審査員選択パネルが開いていれば再読み込み
+          if (judgeSelectSection && judgeSelectSection.style.display !== 'none') {
+            await openJudgeSelectionForNextMatch();
+          }
+
+        } catch (err) {
+          console.error('addJudgeFromUI error', err);
+          setMsg('審査員追加中にエラーが発生しました: ' + (err.message || String(err)), 'err');
+        } finally {
+          setControlsDisabled(false);
+        }
+      }
+
+
+      async function createMatchWithExpectedJudges() {
+        if (!pendingNextMatch) {
+          setMsg('次の試合情報がありません。「次の試合を作成」からやり直してください。', 'err');
+          return;
+        }
+
+        const nextCode = (newMatchSetupCode && newMatchSetupCode.value.trim()) || pendingNextMatch.nextCode;
+        const prevMatchName = pendingNextMatch.prevMatchName || '';
+
+        if (!judgeSelectList) {
+          setMsg('内部エラー: 審査員リストが見つかりません。', 'err');
+          return;
+        }
+
+        const checkboxes = Array.from(
+          judgeSelectList.querySelectorAll('.judge-select-checkbox')
+        );
+
+        const selectedIds = checkboxes
+          .filter(cb => cb.checked)
+          .map(cb => cb.getAttribute('data-judge-id'))
+          .filter(Boolean);
+
+        if (!selectedIds.length) {
+          setMsg('少なくとも1人は審査員を選択してください。', 'err');
+          return;
+        }
+
+        try {
+          setControlsDisabled(true);
+          setMsg('試合と期待審査員を作成中…', '');
+
+          // 0. すでに同じ code の試合があるか確認
+          let newMatch = null;
+          const existing = await fetchJson('matches', {
+            select: 'id,code,name',
+            code: 'eq.' + nextCode,
+          });
+
+          if (existing && existing.length) {
+            // 既存試合を再利用
+            newMatch = existing[0];
+          } else {
+            // 1. なければ matches に試合を新規作成
+            const url = buildRestUrl('matches', { select: 'id,code,name' });
+
+            // UIから取得（空なら空文字列のママ）
+            let newName = (newMatchSetupName && newMatchSetupName.value.trim()) || null;
+            // ユーザー要望により空欄許可のため、自動生成フォールバックは削除
+
+            const redTeam = (newMatchSetupRed && newMatchSetupRed.value.trim()) || null;
+            const whiteTeam = (newMatchSetupWhite && newMatchSetupWhite.value.trim()) || null;
+            let numBouts = (newMatchSetupBouts && Number(newMatchSetupBouts.value));
+            if (!numBouts || isNaN(numBouts)) numBouts = 5; // default
+
+            const resMatch = await fetch(url, {
+              method: 'POST',
+              headers: {
+                ...headers,
+                'Prefer': 'return=representation',
+              },
+              body: JSON.stringify({
+                code: nextCode,
+                name: newName,
+                red_team_name: redTeam,
+                white_team_name: whiteTeam,
+                num_bouts: numBouts
+              }),
+            });
+
+            if (!resMatch.ok) {
+              const txt = await resMatch.text();
+              console.error('create match failed', resMatch.status, txt);
+              setMsg(`試合作成に失敗しました: ${resMatch.status}`, 'err');
+              setControlsDisabled(false);
+              return;
+            }
+
+            const rows = await resMatch.json();
+            newMatch = rows && rows[0];
+            if (!newMatch) {
+              setMsg('試合作成に失敗しました（レスポンスが空）', 'err');
+              setControlsDisabled(false);
+              return;
+            }
+          }
+
+          // ★ 既存試合を更新する場合も考慮して、もし newMatch が取得できたら
+          // 入力された情報で UPDATE をかける（名前やチーム名の修正を反映させるため）
+          // ただし "existing" だった場合のみ更新などの制御も考えられるが、
+          // ここでは「ユーザーが入力した情報を正」として常に更新を試みる
+          if (newMatch) {
+            const patchUrl = buildRestUrl('matches', { id: 'eq.' + newMatch.id });
+            const newName = (newMatchSetupName && newMatchSetupName.value.trim()) || newMatch.name;
+            const redTeam = (newMatchSetupRed && newMatchSetupRed.value.trim()) || newMatch.red_team_name;
+            const whiteTeam = (newMatchSetupWhite && newMatchSetupWhite.value.trim()) || newMatch.white_team_name;
+            let numBouts = (newMatchSetupBouts && Number(newMatchSetupBouts.value));
+            if (!numBouts || isNaN(numBouts)) numBouts = newMatch.num_bouts || 5;
+
+            await fetch(patchUrl, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({
+                name: newName,
+                red_team_name: redTeam,
+                white_team_name: whiteTeam,
+                num_bouts: numBouts
+              })
+            }).catch(e => console.error('match update warning', e));
+          }
+
+          const newMatchId = newMatch.id;
+
+          // 2. その試合の既存 expected_judges を一旦削除（上書きのため）
+          const delUrl = buildRestUrl('expected_judges', {
+            match_id: 'eq.' + newMatchId,
+          });
+          const resDel = await fetch(delUrl, {
+            method: 'DELETE',
+            headers,
+          });
+          if (!resDel.ok) {
+            const txt = await resDel.text();
+            console.error('delete expected_judges failed', resDel.status, txt);
+            setMsg(`既存の期待審査員の削除に失敗しました: ${resDel.status}`, 'err');
+            setControlsDisabled(false);
+            return;
+          }
+
+          // 3. 選択された審査員で expected_judges を一括作成（席順つき）
+          const ejUrl = buildRestUrl('expected_judges', {
+            select: 'match_id,judge_id,sort_order'
+          });
+
+          const payload = selectedIds.map((jid, index) => ({
+            match_id: newMatchId,
+            judge_id: jid,
+            sort_order: index + 1,   // 上から順に 1,2,3,... を付与
+          }));
+
+          const resEj = await fetch(ejUrl, {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!resEj.ok) {
+            const txt = await resEj.text();
+            console.error('create expected_judges failed', resEj.status, txt);
+            setMsg(`期待審査員の保存に失敗しました: ${resEj.status}`, 'err');
+            setControlsDisabled(false);
+            return;
+          }
+
+          // 完了：画面状態を新しい試合に切り替え
+          matchCodeInput.value = nextCode;
+          if (epochInput) epochInput.value = '1';
+
+          showJudgeSelectSection(false);
+          pendingNextMatch = null;
+
+          setMsg(
+            `試合作成/更新完了: ${nextCode} ／ 期待審査員 ${selectedIds.length}人`,
+            'ok'
+          );
+
+          // そのまま新しい試合を読み込む
+          await loadData(false);
+
+        } catch (err) {
+          console.error('createMatchWithExpectedJudges error', err);
+          setMsg('試合作成中にエラーが発生しました: ' + (err.message || String(err)), 'err');
+        } finally {
+          setControlsDisabled(false);
+        }
+      }
+
+      // epoch と num_bouts から対戦名（先鋒戦など）を決め打ち
+      // getBoutLabel は scoreboard.js に移動済み
+
+
+      // データ読み込み
+      async function loadData(isAuto = false) {
+        if (isAuto && autoLoading) return;
+        if (isAuto) {
+          autoLoading = true;
+        } else {
+          setMsg('読み込み中…', '');
+          setControlsDisabled(true);
+          if (scoreboardContainer) {
+            scoreboardContainer.innerHTML = '';
+          }
+          stateSummary.innerHTML = '<span class="small">読み込み中…</span>';
+        }
+
+        const matchCode = matchCodeInput.value.trim();
+        const epoch = Number(epochInput.value || '1');
+
+        if (!matchCode) {
+          if (!isAuto) {
+            setMsg('対戦コードを入力してください。', 'err');
+            setControlsDisabled(false);
+          }
+          if (isAuto) autoLoading = false;
+          return;
+        }
+
+        try {
+          // 1. matches
+          const matches = await fetchJson('matches', {
+            select: 'id,code,name,red_team_name,white_team_name,num_bouts',
+            code: 'eq.' + matchCode,
+          });
+
+          if (!matches.length) {
+            if (!isAuto) {
+              setMsg(`matches.code = "${matchCode}" の対戦が見つかりません。`, 'err');
+              stateSummary.innerHTML = '<span class="small">対戦が見つかりません。</span>';
+            }
+            if (isAuto) autoLoading = false;
+            return;
+          }
+          const match = matches[0];
+          const matchId = match.id;
+
+          // 2. state を取得（current_match_id も含める）
+          const stateRows = await fetchJson('state', {
+            select: 'epoch,accepting,e3_reached,updated_at,current_match_id',
+            id: 'eq.1',
+          });
+          const st = stateRows[0] || null;
+          lastState = st;
+
+          // ★ ここで対戦名を num_bouts から決定
+          const numBouts = Number(match.num_bouts || 0);
+          const boutLabelFull = getBoutLabel(epoch, numBouts); // 例: 「先鋒戦」「中堅戦」
+
+
+          // 3. expected_judges（席順ソート）
+          const expected = await fetchJson('expected_judges', {
+            select: 'judge_id, sort_order',
+            match_id: 'eq.' + matchId,
+            order: 'sort_order.asc',
+          });
+          const expectedIds = expected.map(r => String(r.judge_id));
+
+
+
+          // 4. submissions
+          const subs = await fetchJson('submissions', {
+            select: 'judge_id,revision,red_work,red_app,red_total,red_flag,white_work,white_app,white_total,white_flag',
+            match_id: 'eq.' + matchId,
+            epoch: 'eq.' + epoch,
+          });
+
+          // 5. judges
+          let judgesMap = {};
+          if (expectedIds.length) {
+            const idList = expectedIds.join(',');
+            const judges = await fetchJson('judges', {
+              select: 'id,name,voice_key',
+              id: 'in.(' + idList + ')',
+            });
+            judgesMap = Object.fromEntries(
+              judges.map(j => [
+                String(j.id),
+                { name: j.name, voice_key: j.voice_key }
+              ])
+            );
+          }
+
+          // 6. マップ化 & スコアボード描画
+          const subMap = {};
+          subs.forEach(s => {
+            subMap[String(s.judge_id)] = s;
+          });
+
+          // 試合名（なければ code）、対戦名ラベル（先鋒戦など）、チーム名をまとめて渡す
+          // 試合名を表示用に加工（全角スペースを改行に置換）
+          const matchLabel = (match.name || match.code).replace(/　/g, '\n');
+          let boutLabelForBoard = boutLabelFull || '対戦名';
+          if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦')) {
+            boutLabelForBoard = boutLabelForBoard + '戦';
+          }
+          // ★ 縦型では「上から順」が自然かつOBS版と合わせるため、reorderIdsForScoreboard は使わずそのまま渡す
+          const displayIds = expectedIds;
+          buildScoreboard(
+            displayIds,
+            judgesMap,
+            subMap,
+            {
+              matchLabel: matchLabel,
+              boutLabelFull: boutLabelForBoard,
+              redTeamName: match.red_team_name || '紅',
+              whiteTeamName: match.white_team_name || '白',
+            },
+            scoreboardContainer
+          );
+
+          // Zundamon 用：期待審査員と submissions を元にシーケンスを準備
+          scheduleZundaAudioRefresh({
+            match,
+            epoch,
+            boutLabelFull,
+            expectedIds,
+            judgesMap,
+            subMap,
+          });
+
+          // 7. 状態サマリ／キャプション
+          const submittedIds = new Set(subs.map(s => String(s.judge_id)));
+          const submittedCount = submittedIds.size;
+          const expectedCount = expectedIds.length;
+
+          const parts = [];
+          parts.push(`<span>試合: <strong>${match.code}</strong> (${match.name || ''})</span>`);
+
+          if (boutLabelFull) {
+            parts.push(`<span>第${epoch}対戦（${boutLabelFull}）</span>`);
+          } else {
+            parts.push(`<span>第${epoch}対戦</span>`);
+          }
+
+          if (st) {
+            parts.push(`<span>state.epoch: <strong>${st.epoch}</strong></span>`);
+            parts.push(
+              `<span class="tag ${st.accepting ? 'ok' : 'danger'}">accepting: ${st.accepting}</span>`
+            );
+            parts.push(
+              `<span class="tag outline ${st.e3_reached ? 'ok' : 'warn'}">e3_reached: ${st.e3_reached}</span>`
+            );
+
+            if (st.current_match_id) {
+              if (st.current_match_id === matchId) {
+                parts.push('<span class="tag ok">current_match_id: true</span>');
+              } else {
+                parts.push('<span class="tag warn">current_match_id: false</span>');
+              }
+            } else {
+              parts.push('<span class="tag warn">current_match_id: 未設定</span>');
+            }
+
+            // check current epoch
+            if (st.epoch === epoch) {
+              parts.push('<span class="tag ok">current_epoch: true</span>');
+            } else {
+              parts.push('<span class="tag warn">current_epoch: false</span>');
+            }
+
+            // ★ ボタン状態更新
+            if (toggleAcceptingBtn) {
+              if (st.accepting) {
+                toggleAcceptingBtn.textContent = '受付締切（現在: 受付中）';
+                toggleAcceptingBtn.className = 'small-btn btn-red';
+              } else {
+                toggleAcceptingBtn.textContent = '受付開始（現在: 停止中）';
+                toggleAcceptingBtn.className = 'small-btn btn-green';
+              }
+            }
+          } else {
+            parts.push('<span class="tag warn">state が取得できません</span>');
+            if (toggleAcceptingBtn) {
+              toggleAcceptingBtn.textContent = 'state 不明';
+              toggleAcceptingBtn.className = 'small-btn btn-grey';
+            }
+          }
+          parts.push(`<span>期待審査員: <strong>${expectedCount}</strong> 人</span>`);
+          parts.push(`<span>提出済み: <strong>${submittedCount}</strong> 人</span>`);
+
+          stateSummary.innerHTML = parts.join('');
+
+
+
+          if (!isAuto) {
+            setMsg('読み込み完了', 'ok');
+          }
+        } catch (err) {
+          console.error(err);
+          if (!isAuto) {
+            setMsg('読み込み中にエラーが発生しました: ' + err.message, 'err');
+            stateSummary.innerHTML = '<span class="small">エラーが発生しました。</span>';
+          }
+        } finally {
+          if (isAuto) {
+            autoLoading = false;
+          } else {
+            setControlsDisabled(false);
+          }
+        }
+      }
+
+      // --- state 操作用ボタン ---
+
+      toggleAcceptingBtn.addEventListener('click', async () => {
+        if (!lastState) {
+          setMsg('状態が読み込まれていません。', 'err');
+          return;
+        }
+        const isAccepting = lastState.accepting;
+        const nextVal = !isAccepting;
+        const label = nextVal ? '受付開始' : '受付締切';
+
+        try {
+          setMsg(`${label}処理中…`, '');
+          setControlsDisabled(true);
+
+          const patch = { accepting: nextVal };
+          // 開始時は epoch も念のため送る（値は今のまま）
+          if (nextVal) {
+            const epochValue = Number(epochInput.value || '1');
+            patch.epoch = epochValue;
+          }
+
+          await patchState(patch);
+
+          setMsg(`${label}しました（accepting=${nextVal}）。`, 'ok');
+          await loadData();
+        } catch (err) {
+          console.error(err);
+          setMsg(`${label}に失敗しました: ` + err.message, 'err');
+          setControlsDisabled(false);
+        }
+      });
+
+
+
+
+
+      loadBtn.addEventListener('click', loadData);
+
+      // 「次の試合」設定 UI
+      if (nextMatchSetupBtn) {
+        nextMatchSetupBtn.addEventListener('click', () => {
+          openJudgeSelectionForNextMatch();
+        });
+      }
+
+      // 審査員選択カードのボタンたち
+      if (judgeSelectAllBtn) {
+        judgeSelectAllBtn.addEventListener('click', () => {
+          if (!judgeSelectList) return;
+          judgeSelectList.querySelectorAll('.judge-select-checkbox').forEach(cb => {
+            cb.checked = true;
+          });
+        });
+      }
+      if (judgeSelectClearBtn) {
+        judgeSelectClearBtn.addEventListener('click', () => {
+          if (!judgeSelectList) return;
+          judgeSelectList.querySelectorAll('.judge-select-checkbox').forEach(cb => {
+            cb.checked = false;
+          });
+        });
+      }
+      if (judgeSelectConfirmBtn) {
+        judgeSelectConfirmBtn.addEventListener('click', () => {
+          createMatchWithExpectedJudges();
+        });
+      }
+      if (judgeSelectCancelBtn) {
+        judgeSelectCancelBtn.addEventListener('click', () => {
+          showJudgeSelectSection(false);
+          pendingNextMatch = null;
+          setMsg('次の試合作成をキャンセルしました。', '');
+        });
+      }
+      if (addJudgeBtn) {
+        addJudgeBtn.addEventListener('click', addJudgeFromUI);
+      }
+
+      // --- E5 / E6 / SET_MATCH 管理ロジック ---
+
+      function setE5E6Status(message, isOk) {
+        if (!e5e6StatusEl) return;
+        e5e6StatusEl.textContent = message;
+        e5e6StatusEl.className = 'msg';
+        if (isOk === true) e5e6StatusEl.classList.add('ok');
+        if (isOk === false) e5e6StatusEl.classList.add('err');
+      }
+
+      async function callControlFunction(url, body) {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch (_) { }
+
+        if (!res.ok || data.error) {
+          const msg = data.error || res.status;
+          throw new Error(String(msg));
+        }
+        return data;
+      }
+
+      async function onClickSetMatch() {
+        const adminSecret = adminSecretInput ? adminSecretInput.value.trim() : '';
+        const matchCode = matchCodeInput ? matchCodeInput.value.trim() : '';
+        const epochVal = Number(epochInput.value || '1');
+
+        if (!adminSecret) {
+          setE5E6Status('管理用シークレットを入力してください。', false);
+          return;
+        }
+        if (!matchCode) {
+          setE5E6Status('対象の対戦コード（matches.code）を入力してください。', false);
+          return;
+        }
+
+        setE5E6Status('現在の試合を設定中…（current_match_id, epoch, accepting を更新）', true);
+
+        try {
+          const data = await callControlFunction(CONTROL_SET_MATCH_URL, {
+            admin_secret: adminSecret,
+            match_code: matchCode,
+            epoch: epochVal,
+          });
+
+          if (epochInput && typeof data.epoch === 'number') {
+            epochInput.value = String(data.epoch);
+          }
+
+          setE5E6Status(
+            `現在の試合を設定しました: match=${data.match?.code || matchCode}, epoch=${data.epoch}`,
+            true
+          );
+          await loadData();
+        } catch (err) {
+          console.error(err);
+          setE5E6Status('現在の試合の設定に失敗しました: ' + (err.message || String(err)), false);
+        }
+      }
+
+      async function onClickE5() {
+        const adminSecret = adminSecretInput ? adminSecretInput.value.trim() : '';
+        const matchCode = matchCodeInput ? matchCodeInput.value.trim() : '';
+
+        if (!adminSecret) {
+          setE5E6Status('管理用シークレットを入力してください。', false);
+          return;
+        }
+        if (!matchCode) {
+          setE5E6Status('対象の対戦コード（matches.code）を入力してください。', false);
+          return;
+        }
+
+        setE5E6Status('E5 実行中…（スナップショット保存と受付停止）', true);
+
+        try {
+          const data = await callControlFunction(CONTROL_CONFIRM_URL, {
+            admin_secret: adminSecret,
+            match_code: matchCode,
+          });
+          setE5E6Status(
+            `E5 完了: match=${matchCode}, epoch=${data.epoch}（スナップショット件数: ${data.snapshot_count}）`,
+            true
+          );
+          await loadData();
+        } catch (err) {
+          console.error(err);
+          setE5E6Status('E5 失敗: ' + (err.message || String(err)), false);
+        }
+      }
+
+      async function onClickE6() {
+        const adminSecret = adminSecretInput ? adminSecretInput.value.trim() : '';
+        if (!adminSecret) {
+          setE5E6Status('管理用シークレットを入力してください。', false);
+          return;
+        }
+
+        setE5E6Status('E6 実行中…（epoch を進めて受付再開）', true);
+
+        try {
+          const data = await callControlFunction(CONTROL_ADVANCE_URL, {
+            admin_secret: adminSecret,
+          });
+
+          if (epochInput && typeof data.to_epoch === 'number') {
+            epochInput.value = String(data.to_epoch);
+          }
+
+          setE5E6Status(
+            `E6 完了: epoch ${data.from_epoch} → ${data.to_epoch} に進めました（受付再開）`,
+            true
+          );
+          await loadData();
+        } catch (err) {
+          console.error(err);
+          setE5E6Status('E6 失敗: ' + (err.message || String(err)), false);
+        }
+      }
+
+      if (btnSetMatch) btnSetMatch.addEventListener('click', onClickSetMatch);
+      if (btnE5) btnE5.addEventListener('click', onClickE5);
+      if (btnE6) btnE6.addEventListener('click', onClickE6);
+
+      // 自動更新
+      setInterval(() => {
+        if (!matchCodeInput.value.trim()) return;
+        loadData(true);
+      }, 2000);
+
+      // 音声再生ボタン
+      if (btnAudioPlayAll) {
+        btnAudioPlayAll.addEventListener('click', () => {
+          if (!zundaQueue.length) {
+            setAudioStatus('再生キューが空です。先に読み込みを行ってください。');
+            return;
+          }
+          if (zundaPlaying) {
+            setAudioStatus('すでに再生中です。');
+            return;
+          }
+          zundaQueueIndex = 0;
+          playZundaQueue();
+        });
+      }
+      if (btnAudioStop) {
+        btnAudioStop.addEventListener('click', () => {
+          stopZunda();
+        });
+      }
+
+    })();
+  </script>
+
+
+</body>
+
+</html>
