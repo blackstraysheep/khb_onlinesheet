@@ -203,7 +203,15 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
   addOuterCells(tr, rowIndex, 'left');
   tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
   displayIds.forEach(id => {
-    const name = judgesMap[id] || id.slice(0, 4);
+    let name = id.slice(0, 4);
+    const j = judgesMap[id];
+    if (j) {
+      if (typeof j === 'string') {
+        name = j;
+      } else if (typeof j === 'object' && j.name) {
+        name = j.name;
+      }
+    }
     const td = createCell(name, 'judge-name center-block-cell vertical');
     tr.appendChild(td);
   });

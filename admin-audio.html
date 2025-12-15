@@ -376,6 +376,15 @@
         return [];
       }
 
+      // 音声用キー決定関数（voice_key優先、なければid）
+      function getJudgeVoiceKey(judgeId, judgesMap) {
+        const j = judgesMap[judgeId];
+        if (j && j.voice_key) {
+          return j.voice_key;
+        }
+        return judgeId;
+      }
+
       // submissions を元に、zundaJudgeSegments を構築
       // 内容：
       // （審査員名）先生。
@@ -400,9 +409,10 @@
           const redTotal = sub.red_total;
           const whiteTotal = sub.white_total;
 
-          // （審査員名）先生。
-          clips.push(`judge_${jid}`);
-          clips.push('sensei');
+          // （審査員名）先生。（まとめて1ファイル）
+          // judge_<voice_key>.wav を使用（voice_keyがない場合は judge_<id>.wav になる）
+          const vk = getJudgeVoiceKey(jid, judgesMap);
+          clips.push(`judge_${vk}`);
 
           // （red作品）対（white作品）。
           if (Number.isFinite(redWork)) clips.push(...numToZundaIds(redWork));
@@ -841,7 +851,15 @@
         addOuterCells(tr, rowIndex, 'left');
         tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
         expectedIds.forEach(id => {
-          const name = judgesMap[id] || id.slice(0, 8);
+          let name = id.slice(0, 8);
+          const j = judgesMap[id];
+          if (j) {
+            if (typeof j === 'string') {
+              name = j;
+            } else if (typeof j === 'object' && j.name) {
+              name = j.name;
+            }
+          }
           const td = createCell(name, 'judge-name center-block-cell vertical');
           tr.appendChild(td);
         });
@@ -1421,10 +1439,15 @@
           if (expectedIds.length) {
             const idList = expectedIds.join(',');
             const judges = await fetchJson('judges', {
-              select: 'id,name',
+              select: 'id,name,voice_key',
               id: 'in.(' + idList + ')',
             });
-            judgesMap = Object.fromEntries(judges.map(j => [String(j.id), j.name]));
+            judgesMap = Object.fromEntries(
+              judges.map(j => [
+                String(j.id),
+                { name: j.name, voice_key: j.voice_key }
+              ])
+            );
           }
 
           // 6. マップ化 & スコアボード描画
