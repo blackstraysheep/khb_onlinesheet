@@ -411,3 +411,64 @@ button:disabled {
 .judge-select-item label {
   cursor: pointer;
 }
+
+/* Match Setup & Zunda UI */
+.input-code {
+  width: 210px;
+  min-width: 0;
+}
+
+.input-match-name {
+  width: 210px;
+  min-width: 0;
+}
+
+.input-team {
+  width: 180px;
+  min-width: 0;
+}
+
+.input-bouts {
+  width: 52px;
+  min-width: 0;
+}
+
+.input-voice-key {
+  width: 140px;
+  min-width: 0;
+}
+
+.input-epoch {
+  width: 60px;
+  min-width: 0;
+}
+
+.card-separator {
+  margin: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.zunda-queue-list {
+  margin-top: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  padding: 4px;
+  background: #fafafa;
+  position: relative;
+}
+
+.zunda-empty {
+  color: #aaa;
+}
+
+.zunda-item.current {
+  font-weight: bold;
+  color: blue;
+}
+
+.row-spread {
+  justify-content: space-between;
+  align-items: center;
+}

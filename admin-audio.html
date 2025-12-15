@@ -40,14 +40,14 @@
           </div>
           <div>
             <label for="epoch">epoch</label>
-            <input id="epoch" type="number" value="1" min="1" style="width: 60px;" />
+            <input id="epoch" type="number" value="1" min="1" class="input-epoch" />
           </div>
           <div>
             <button id="loadBtn">読み込み</button>
           </div>
         </div>
 
-        <div class="row mt-6" style="justify-content: space-between; align-items: center;">
+        <div class="row mt-6 row-spread">
           <button id="toggleAcceptingBtn" class="small-btn">受付状態を確認中…</button>
           <button id="nextMatchSetupBtn" class="small-btn">次試合作成（期待審査員設定）</button>
         </div>
@@ -64,27 +64,27 @@
         <div class="row mb-8">
           <div>
             <label for="newMatchSetupCode">試合コード</label>
-            <input id="newMatchSetupCode" placeholder="例: A-1" style="width: 140px;" />
+            <input id="newMatchSetupCode" placeholder="例: A-1" class="input-code" />
           </div>
           <div>
             <label for="newMatchSetupName">試合名</label>
-            <input id="newMatchSetupName" placeholder="試合名" style="width: 140px;" />
+            <input id="newMatchSetupName" placeholder="試合名" class="input-match-name" />
           </div>
           <div>
             <label for="newMatchSetupRed">紅チーム</label>
-            <input id="newMatchSetupRed" placeholder="紅チーム名" style="width: 100px;" />
+            <input id="newMatchSetupRed" placeholder="紅チーム名" class="input-team" />
           </div>
           <div>
             <label for="newMatchSetupWhite">白チーム</label>
-            <input id="newMatchSetupWhite" placeholder="白チーム名" style="width: 100px;" />
+            <input id="newMatchSetupWhite" placeholder="白チーム名" class="input-team" />
           </div>
           <div>
             <label for="newMatchSetupBouts">対戦数</label>
-            <input id="newMatchSetupBouts" type="number" placeholder="5" style="width: 30px;" />
+            <input id="newMatchSetupBouts" type="number" placeholder="5" class="input-bouts" />
           </div>
         </div>
 
-        <hr style="margin: 8px 0; border: 0; border-top: 1px solid #ddd;" />
+        <hr class="card-separator" />
 
         <!-- 審査員マスタへの追加フォーム -->
         <div class="row mb-8">
@@ -94,7 +94,7 @@
           </div>
           <div>
             <label for="newJudgeVoiceKey">Voice Key</label>
-            <input id="newJudgeVoiceKey" placeholder="例: sato" style="width: 80px;" />
+            <input id="newJudgeVoiceKey" placeholder="例: sato" class="input-voice-key" />
           </div>
           <div>
             <button id="addJudgeBtn" class="small-btn">審査員を追加</button>
@@ -110,8 +110,8 @@
         <div class="control-group">
           <button id="judgeSelectAllBtn" class="small-btn">全員選択</button>
           <button id="judgeSelectClearBtn" class="small-btn">全て解除</button>
-          <button id="judgeSelectConfirmBtn" class="small-btn">この審査員で試合作成</button>
-          <button id="judgeSelectCancelBtn" class="small-btn">キャンセル</button>
+          <button id="judgeSelectConfirmBtn" class="small-btn btn-green">この審査員で試合作成</button>
+          <button id="judgeSelectCancelBtn" class="small-btn btn-grey">キャンセル</button>
         </div>
       </section>
 
@@ -141,8 +141,7 @@
         <div class="small" id="audioStatus">
           E3未到達のため、得点読み上げはまだ準備されていません。
         </div>
-        <div id="zundaQueueList" class="small"
-          style="margin-top:8px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 4px; background: #fafafa; position: relative;">
+        <div id="zundaQueueList" class="small zunda-queue-list">
           <!-- 再生キュー表示用 -->
         </div>
         <div class="control-group">
@@ -545,7 +544,7 @@
       function renderZundaQueue(forceScroll = false) {
         if (!zundaQueueListEl) return;
         if (!zundaQueue.length) {
-          zundaQueueListEl.innerHTML = '<div style="color:#aaa;">(キューは空です)</div>';
+          zundaQueueListEl.innerHTML = '<div class="zunda-empty">(キューは空です)</div>';
           return;
         }
         zundaQueueListEl.innerHTML = zundaQueue.map((id, idx) => {
@@ -558,10 +557,10 @@
             label = `[数字] ${id.replace('num_', '')}`;
           }
           const isCurrent = (idx === zundaQueueIndex);
-          const style = isCurrent ? 'font-weight:bold; color:blue;' : '';
+          const cls = isCurrent ? 'zunda-item current' : 'zunda-item';
           const marker = isCurrent ? '▶ ' : '';
           const divId = isCurrent ? 'currentZundaItem' : '';
-          return `<div id="${divId}" style="${style}">${marker}${idx + 1}. ${label}</div>`;
+          return `<div id="${divId}" class="${cls}">${marker}${idx + 1}. ${label}</div>`;
         }).join('');
 
         const currentEl = document.getElementById('currentZundaItem');
