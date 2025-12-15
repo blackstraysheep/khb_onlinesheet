@@ -60,6 +60,32 @@
           次の試合の期待審査員を設定
         </h2>
 
+        <!-- 試合情報入力フォーム（追加） -->
+        <div class="row mb-8">
+          <div>
+            <label for="newMatchSetupCode">試合コード</label>
+            <input id="newMatchSetupCode" placeholder="例: A-1" style="width: 140px;" />
+          </div>
+          <div>
+            <label for="newMatchSetupName">試合名</label>
+            <input id="newMatchSetupName" placeholder="試合名" style="width: 140px;" />
+          </div>
+          <div>
+            <label for="newMatchSetupRed">紅チーム</label>
+            <input id="newMatchSetupRed" placeholder="紅チーム名" style="width: 100px;" />
+          </div>
+          <div>
+            <label for="newMatchSetupWhite">白チーム</label>
+            <input id="newMatchSetupWhite" placeholder="白チーム名" style="width: 100px;" />
+          </div>
+          <div>
+            <label for="newMatchSetupBouts">対戦数</label>
+            <input id="newMatchSetupBouts" type="number" placeholder="5" style="width: 30px;" />
+          </div>
+        </div>
+
+        <hr style="margin: 8px 0; border: 0; border-top: 1px solid #ddd;" />
+
         <!-- 審査員マスタへの追加フォーム -->
         <div class="row mb-8">
           <div>
@@ -168,6 +194,13 @@
       const newJudgeNameInput = $('#newJudgeName');
       const newJudgeVoiceKeyInput = $('#newJudgeVoiceKey');
       const addJudgeBtn = $('#addJudgeBtn');
+
+      // 試合情報入力フォーム要素
+      const newMatchSetupCode = $('#newMatchSetupCode');
+      const newMatchSetupName = $('#newMatchSetupName');
+      const newMatchSetupRed = $('#newMatchSetupRed');
+      const newMatchSetupWhite = $('#newMatchSetupWhite');
+      const newMatchSetupBouts = $('#newMatchSetupBouts');
 
 
       const topMsg = $('#topMsg');
@@ -970,13 +1003,50 @@
           setMsg('次の試合の期待審査員候補を取得中…', '');
 
           // 現在試合の情報を取得
-          const matches = await fetchJson('matches', {
-            select: 'id,code,name',
-            code: 'eq.' + curCode,
+          const curMatches = await fetchJson('matches', {
+            select: 'id,code,name,num_bouts',
+            code: 'eq.' + curCode
           });
-          const prevMatch = matches && matches[0] || null;
-          const prevMatchId = prevMatch ? prevMatch.id : null;
+          const curMatch = curMatches[0];
+          const prevMatchId = curMatch ? curMatch.id : null;
+          const curMatchName = curMatch ? curMatch.name : '';
+          const curNumBouts = (curMatch && curMatch.num_bouts) ? curMatch.num_bouts : 5; // default
 
+          // 次の試合が既に存在するか確認（あればその情報を入れる）
+          const nextMatches = await fetchJson('matches', {
+            select: 'id,code,name,red_team_name,white_team_name,num_bouts',
+            code: 'eq.' + nextCode
+          });
+          const existingNextMatch = nextMatches[0];
+
+          // 入力欄を初期化
+          if (existingNextMatch) {
+            if (newMatchSetupCode) newMatchSetupCode.value = existingNextMatch.code || nextCode;
+            if (newMatchSetupName) newMatchSetupName.value = existingNextMatch.name || '';
+            if (newMatchSetupRed) newMatchSetupRed.value = existingNextMatch.red_team_name || '';
+            if (newMatchSetupWhite) newMatchSetupWhite.value = existingNextMatch.white_team_name || '';
+            if (newMatchSetupBouts) newMatchSetupBouts.value = existingNextMatch.num_bouts || curNumBouts;
+          } else {
+            // 新規作成の場合のデフォルト値
+            if (newMatchSetupCode) newMatchSetupCode.value = nextCode;
+
+            // 名前: 既になければ空欄（ユーザー要望）
+            if (newMatchSetupName) newMatchSetupName.value = '';
+
+            // チーム名は空欄か、任意で引き継ぐ（ここでは空欄）
+            if (newMatchSetupRed) newMatchSetupRed.value = '';
+            if (newMatchSetupWhite) newMatchSetupWhite.value = '';
+            // 対戦数は前回のものを引き継ぐ
+            if (newMatchSetupBouts) newMatchSetupBouts.value = curNumBouts;
+          }
+
+
+          pendingNextMatch = {
+            prevCode: curCode,
+            nextCode: nextCode,
+            prevMatchId: curMatch ? curMatch.id : null,
+            prevMatchName: curMatchName,
+          };
           // 全審査員一覧
           const judges = await fetchJson('judges', {
             select: 'id,name',
@@ -1029,21 +1099,16 @@
             });
           }
 
-          pendingNextMatch = {
-            prevCode: curCode,
-            nextCode,
-            prevMatchId,
-            prevMatchName: prevMatch ? prevMatch.name : '',
-          };
+
 
 
           if (judgeSelectInfo) {
-            const baseInfo = `次の試合コード: ${nextCode}`;
+            // const baseInfo = `次の試合コード: ${nextCode}`; // 削除（ユーザー要望）
             const judgeInfo =
               prevExpectedIds.length
                 ? `前回の期待審査員 ${prevExpectedIds.length}人を既定で選択しました。`
                 : `前回の期待審査員設定が無いため、審査員全員 (${judges.length}人) を既定で選択しました。`;
-            judgeSelectInfo.textContent = baseInfo + ' ／ ' + judgeInfo;
+            judgeSelectInfo.textContent = judgeInfo;
           }
 
 
@@ -1102,7 +1167,7 @@
 
         } catch (err) {
           console.error('openJudgeSelectionForNextMatch error', err);
-          setMsg('次の試合の期待審査員取得に失敗しました。', 'err');
+          setMsg('次の試合の期待審査員取得に失敗しました: ' + (err.message || String(err)), 'err');
         }
       }
 
@@ -1220,7 +1285,7 @@
           return;
         }
 
-        const nextCode = pendingNextMatch.nextCode;
+        const nextCode = (newMatchSetupCode && newMatchSetupCode.value.trim()) || pendingNextMatch.nextCode;
         const prevMatchName = pendingNextMatch.prevMatchName || '';
 
         if (!judgeSelectList) {
@@ -1260,20 +1325,14 @@
             // 1. なければ matches に試合を新規作成
             const url = buildRestUrl('matches', { select: 'id,code,name' });
 
-            // 名前は前回 name の末尾数字+1 を試みる
-            let newName = nextCode;
-            if (prevMatchName) {
-              const m = prevMatchName.match(/^(.*?)(\d+)(\D*)$/);
-              if (m) {
-                const prefix = m[1];
-                const numStr = m[2];
-                const suffix = m[3] || '';
-                const nextNum = String(Number(numStr) + 1);
-                newName = prefix + nextNum + suffix;
-              } else {
-                newName = prevMatchName + '（次）';
-              }
-            }
+            // UIから取得（空なら空文字列のママ）
+            let newName = (newMatchSetupName && newMatchSetupName.value.trim()) || null;
+            // ユーザー要望により空欄許可のため、自動生成フォールバックは削除
+
+            const redTeam = (newMatchSetupRed && newMatchSetupRed.value.trim()) || null;
+            const whiteTeam = (newMatchSetupWhite && newMatchSetupWhite.value.trim()) || null;
+            let numBouts = (newMatchSetupBouts && Number(newMatchSetupBouts.value));
+            if (!numBouts || isNaN(numBouts)) numBouts = 5; // default
 
             const resMatch = await fetch(url, {
               method: 'POST',
@@ -1284,6 +1343,9 @@
               body: JSON.stringify({
                 code: nextCode,
                 name: newName,
+                red_team_name: redTeam,
+                white_team_name: whiteTeam,
+                num_bouts: numBouts
               }),
             });
 
@@ -1302,6 +1364,30 @@
               setControlsDisabled(false);
               return;
             }
+          }
+
+          // ★ 既存試合を更新する場合も考慮して、もし newMatch が取得できたら
+          // 入力された情報で UPDATE をかける（名前やチーム名の修正を反映させるため）
+          // ただし "existing" だった場合のみ更新などの制御も考えられるが、
+          // ここでは「ユーザーが入力した情報を正」として常に更新を試みる
+          if (newMatch) {
+            const patchUrl = buildRestUrl('matches', { id: 'eq.' + newMatch.id });
+            const newName = (newMatchSetupName && newMatchSetupName.value.trim()) || newMatch.name;
+            const redTeam = (newMatchSetupRed && newMatchSetupRed.value.trim()) || newMatch.red_team_name;
+            const whiteTeam = (newMatchSetupWhite && newMatchSetupWhite.value.trim()) || newMatch.white_team_name;
+            let numBouts = (newMatchSetupBouts && Number(newMatchSetupBouts.value));
+            if (!numBouts || isNaN(numBouts)) numBouts = newMatch.num_bouts || 5;
+
+            await fetch(patchUrl, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({
+                name: newName,
+                red_team_name: redTeam,
+                white_team_name: whiteTeam,
+                num_bouts: numBouts
+              })
+            }).catch(e => console.error('match update warning', e));
           }
 
           const newMatchId = newMatch.id;
