@@ -57,11 +57,13 @@
 
     <div id="app">
         <!-- admin.css の .card クラスなどで囲むと影などがつく -->
-        <div class="card" style="width: 100%; box-sizing: border-box;">
+        <div class="card" style="width: 100%; box-sizing: border-box; opacity: 0; transition: opacity 0.5s ease;"
+            id="mainCard">
             <div id="scoreboardContainer" class="scoreboard">
                 <!-- ここにJSでテーブルを描画 -->
-                <div style="text-align:center; padding:100px; color:#666;">
-                    Connecting...
+                <!-- ここにJSでテーブルを描画 -->
+                <div style="text-align:center; padding:100px; color:#666; display:none;">
+                    <!-- Connecting... text removed -->
                 </div>
             </div>
         </div>
@@ -87,6 +89,7 @@
             let currentMatchId = null;
             let currentEpoch = 1;
 
+            const mainCard = document.getElementById('mainCard');
             const scoreboardContainer = document.getElementById('scoreboardContainer');
             const statusBar = document.getElementById('statusBar');
 
@@ -119,13 +122,20 @@
                 try {
                     // 1. state
                     const stateRows = await fetchJson('state', {
-                        select: 'epoch, current_match_id, accepting',
+                        select: 'epoch, current_match_id, accepting, scoreboard_visible',
                         id: 'eq.1'
                     });
                     const st = stateRows[0];
                     if (!st || !st.current_match_id) {
                         setStatus('No active match set in state.');
+                        if (mainCard) mainCard.style.opacity = '0';
                         return;
+                    }
+
+                    // 同期表示フラグチェック
+                    const isVisible = !!st.scoreboard_visible;
+                    if (mainCard) {
+                        mainCard.style.opacity = isVisible ? '1' : '0';
                     }
 
                     const matchId = st.current_match_id;
@@ -202,14 +212,24 @@
                         scoreboardContainer
                     );
 
+                    // フェードイン制御は scoreboard_visible に委譲するため、
+                    // ここでの初回フェードインロジックは削除（または上書き）
+                    // if (mainCard) { ... } -> 削除
+
                 } catch (err) {
                     console.error(err);
                     setStatus('Error: ' + err.message);
                 }
             }
 
+            window.addEventListener('beforeunload', () => {
+                if (mainCard) {
+                    mainCard.style.opacity = '0';
+                }
+            });
+
             updateScoreboard();
-            setInterval(updateScoreboard, 3000);
+            setInterval(updateScoreboard, 1000);
 
         })();
     </script>

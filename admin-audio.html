@@ -328,6 +328,9 @@
           return;
         }
 
+        // 開始時に scoreboard_visible = true
+        patchState({ scoreboard_visible: true }).catch(err => console.error(err));
+
         setAudioStatus('再生中…');
         zundaPlaying = true;
         renderZundaQueue(true); // 開始時は強制スクロール
@@ -345,6 +348,9 @@
           setAudioStatus('停止しました');
         }
         zundaPlaying = false;
+        // 終了時（または中断時）に scoreboard_visible = false
+        patchState({ scoreboard_visible: false }).catch(err => console.error(err));
+
         applyPendingZundaRefresh();
       }
 
@@ -353,6 +359,7 @@
         Object.values(zundaAudio).forEach(a => {
           try { a.pause(); } catch (e) { }
         });
+        patchState({ scoreboard_visible: false }).catch(err => console.error(err));
         setAudioStatus('停止しました');
         applyPendingZundaRefresh();
       }
