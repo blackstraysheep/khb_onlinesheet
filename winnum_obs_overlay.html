@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <title>KHB Win Counter Overlay</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: "CMU Serif", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+        }
+
+        /* 全体 */
+        #scoreboard {
+            display: inline-flex;
+            align-items: center;
+            gap: 8em;
+            font-size: 64px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow:
+                0 0 6px rgba(0, 0, 0, .6),
+                0 0 12px rgba(0, 0, 0, .4);
+            white-space: nowrap;
+        }
+
+        .team.red {
+            color: #ff5a5a;
+        }
+
+        .team.white {
+            color: #ffffff;
+        }
+
+        .sep {
+            opacity: 0.85;
+        }
+
+        /* 勝数 */
+        .count {
+            display: inline-block;
+            min-width: 1.2em;
+            text-align: center;
+        }
+
+        /* 変更時アニメーション */
+        .pulse {
+            animation: pulse 0.55s ease-out;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            35% {
+                transform: scale(1.25);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="scoreboard">
+        <span id="redCount" class="count">0</span>
+        <span id="whiteCount" class="count">0</span>
+    </div>
+
+    <script>
+        /*
+          ===== 設定 =====
+        */
+        const SUPABASE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHdrZHB1cndhbWlsenpzcmZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjAwMTcsImV4cCI6MjA3NzkzNjAxN30.YvZgEi4x0YPuxYswMQjDQdBMVOPY6wkCVfY2hJ0_dL8';
+        const POLL_INTERVAL_MS = 2000;
+
+        /*
+          ===== 内部状態 =====
+        */
+        let lastRed = null;
+        let lastWhite = null;
+
+        /*
+          ===== DOM =====
+        */
+        const redEl = document.getElementById("redCount");
+        const whiteEl = document.getElementById("whiteCount");
+
+        /*
+          ===== ユーティリティ =====
+        */
+        function applyPulse(el) {
+            el.classList.remove("pulse");
+            // reflow（連続発火対策）
+            void el.offsetWidth;
+            el.classList.add("pulse");
+        }
+
+        /*
+          ===== state 取得 =====
+        */
+        async function fetchState() {
+            try {
+                const res = await fetch(
+                    `${SUPABASE_URL}/rest/v1/state?id=eq.1&select=red_wins,white_wins`,
+                    {
+                        headers: {
+                            apikey: SUPABASE_ANON_KEY,
+                            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                        },
+                    }
+                );
+
+                if (!res.ok) return;
+
+                const rows = await res.json();
+                if (!rows || !rows[0]) return;
+
+                const { red_wins, white_wins } = rows[0];
+
+                if (typeof red_wins !== "number" || typeof white_wins !== "number") {
+                    return;
+                }
+
+                if (red_wins !== lastRed) {
+                    redEl.textContent = red_wins;
+                    if (lastRed !== null) applyPulse(redEl);
+                    lastRed = red_wins;
+                }
+
+                if (white_wins !== lastWhite) {
+                    whiteEl.textContent = white_wins;
+                    if (lastWhite !== null) applyPulse(whiteEl);
+                    lastWhite = white_wins;
+                }
+
+            } catch (e) {
+                // OBS用途なので黙殺（ログを出したければ console.error）
+            }
+        }
+
+        /*
+          ===== 起動 =====
+        */
+        fetchState();
+        setInterval(fetchState, POLL_INTERVAL_MS);
+    </script>
+</body>
+
+</html>
