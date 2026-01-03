@@ -318,9 +318,9 @@
           return;
         }
 
-        // 審査員名（judge_xxx → judge_xxx.wav）
+        // 審査員名（judge_xxx → judge_xxx.mp3）
         if (id.startsWith('judge_')) {
-          zundaAudio[id] = new Audio(ZUNDA_BASE + `${id}.wav`);
+          zundaAudio[id] = new Audio(ZUNDA_BASE + `${id}.mp3`);
           return;
         }
 
