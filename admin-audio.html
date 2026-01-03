@@ -250,21 +250,21 @@
       // Zundamon 音声再生関連
       // ============================
       // 音声ファイルのベースURL（ユーザー環境に合わせて変更可）
-      const ZUNDA_BASE = 'https://blackstraysheep.github.io/khb_onlinesheet/audio_zundamon/';
+      const ZUNDA_BASE = 'https://blackstraysheep.github.io/khb_onlinesheet/audio/';
 
       // 定型フレーズ → ファイル名
       const zundaPhraseFiles = {
         start: 'start.mp3',      // 「開始アナウンス」
         end: 'end.mp3',       // 「終了アナウンス」
         vs: 'vs.mp3',            // 「対」
-        kansyou_1_red: 'kansyo_1_red.mp3', // 「鑑賞点1点が赤」
+        kansyou_1_red: 'kansyo_1_red.mp3', // 「鑑賞点」
         kansyou_2_red: 'kansyo_2_red.mp3',
         kansyou_1_white: 'kansyo_1_white.mp3',
         kansyou_2_white: 'kansyo_2_white.mp3',
-        win_red: 'deRed.mp3', //「で赤」
+        win_red: 'deRed.mp3',
         win_white: 'deWhite.mp3',
-        win_draw_red: 'deRed_sakuhin.mp3', //「の同点ですが、作品点の高い赤」
-        win_draw_white: 'deWhite_sakuhin.mp3'
+        win_draw_red: 'deRed_sakuhin.mp3',
+        win_draw_white: 'deWhite_sakuhin.mp3',
       };
 
       // クリップID → HTMLAudioElement
@@ -308,12 +308,8 @@
         if (id.startsWith('num_')) {
           const n = Number(id.slice(4));
           let file;
-          if (n === 1) {
-            file = '1ten.wav';   // 1点
-          } else if (n === 2) {
-            file = '2ten.wav';   // 2点
-          } else if (n >= 5 && n <= 12) {
-            file = `${n}.wav`;   // 5.wav〜12.wav
+          if (n >= 5 && n <= 12) {
+            file = `${n}.mp3`;   // 5.wav〜12.mp3
           } else {
             console.warn('Zundamon: 未定義の数字クリップです:', n);
             return;
@@ -322,9 +318,9 @@
           return;
         }
 
-        // 審査員名（judge_xxx → judge_xxx.wav）
+        // 審査員名（judge_xxx → judge_xxx.mp3）
         if (id.startsWith('judge_')) {
-          zundaAudio[id] = new Audio(ZUNDA_BASE + `${id}.wav`);
+          zundaAudio[id] = new Audio(ZUNDA_BASE + `${id}.mp3`);
           return;
         }
 
@@ -404,13 +400,6 @@
           return [];
         }
 
-        if (v === 1) {
-          return ['num_1'];
-        }
-        if (v === 2) {
-          return ['num_2'];
-        }
-
         // 5〜12 のみ想定
         if (v >= 5 && v <= 12) {
           return [`num_${v}`];
@@ -454,7 +443,7 @@
           const whiteTotal = sub.white_total;
 
           // （審査員名）先生。（まとめて1ファイル）
-          // judge_<voice_key>.wav を使用（voice_keyがない場合は judge_<id>.wav になる）
+          // judge_<voice_key>.wav を使用
           const vk = getJudgeVoiceKey(jid, judgesMap);
           clips.push(`judge_${vk}`);
 
@@ -463,19 +452,18 @@
           clips.push('vs');
           if (Number.isFinite(whiteWork)) clips.push(...numToZundaIds(whiteWork));
 
-          // 鑑賞点（c）が（紅／白）です。
+          // 鑑賞点読み上げ
+          // kansyou_1_red, kansyou_2_red, kansyou_1_white, kansyou_2_white
           if ((redApp || 0) > 0 || (whiteApp || 0) > 0) {
-            let winnerSideForApp = 'red';
+            let appSide = 'red';
             let appScore = redApp;
             if ((whiteApp || 0) > (redApp || 0)) {
-              winnerSideForApp = 'white';
+              appSide = 'white';
               appScore = whiteApp;
             }
-            clips.push('kansyouten');
-            if (Number.isFinite(appScore)) clips.push(...numToZundaIds(appScore));
-            clips.push('ga');
-            clips.push(winnerSideForApp === 'red' ? 'red' : 'white');
-            clips.push('desu');
+            if (appScore === 1 || appScore === 2) {
+              clips.push(`kansyou_${appScore}_${appSide}`);
+            }
           }
 
           // 合計部分
@@ -485,29 +473,29 @@
             clips.push(...numToZundaIds(redTotal));
             clips.push('vs');
             clips.push(...numToZundaIds(whiteTotal));
+          }
 
-            // 勝者色（合計が同点なら作品点で判定）
-            const isDrawTotal = (redTotal === whiteTotal);
-            let winnerSideForTotal = 'red';
-            if (!isDrawTotal) {
-              winnerSideForTotal = (redTotal > whiteTotal) ? 'red' : 'white';
+          // 勝者発表
+          // win_red, win_white, win_draw_red, win_draw_white
+          const isDrawTotal = (redTotal === whiteTotal);
+          let winnerSideForTotal = 'red';
+          if (!isDrawTotal) {
+            winnerSideForTotal = (redTotal > whiteTotal) ? 'red' : 'white';
+          } else {
+            // 同点時 → 作品点の高い方
+            if ((whiteWork || 0) > (redWork || 0)) {
+              winnerSideForTotal = 'white';
             } else {
-              // 同点時 → 作品点の高い方
-              if ((whiteWork || 0) > (redWork || 0)) {
-                winnerSideForTotal = 'white';
-              } else {
-                winnerSideForTotal = 'red';
-              }
+              winnerSideForTotal = 'red';
             }
+          }
 
-            if (isDrawTotal) {
-              // 「の同点ですが、作品点の高い」「紅／白。」
-              clips.push('draw_phrase');
-            } else {
-              // 「で」「紅／白。」
-              clips.push('de');
-            }
-            clips.push(winnerSideForTotal === 'red' ? 'red' : 'white');
+          if (isDrawTotal) {
+            // 「の同点ですが、作品点の高い」+（色）
+            clips.push(`win_draw_${winnerSideForTotal}`);
+          } else {
+            // 「で」+（色）
+            clips.push(`win_${winnerSideForTotal}`);
           }
 
           zundaJudgeSegments[jid] = {
@@ -533,8 +521,6 @@
         // 締めのアナウンス
         queue.push('end');
 
-        zundaQueue = queue;
-        zundaQueueIndex = 0;
         zundaQueue = queue;
         zundaQueueIndex = 0;
         setAudioStatus(`再生キューを準備しました（${queue.length}クリップ）。`);
