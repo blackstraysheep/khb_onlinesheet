@@ -36,6 +36,7 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => null) as {
       admin_secret?: string;
+      venue_code?: string;
       match_code?: string;
       epoch?: number;
     } | null;
@@ -54,6 +55,15 @@ serve(async (req) => {
     if (!clientSecret || clientSecret !== adminSecret) {
       return json({ error: "unauthorized" }, 401);
     }
+
+    // 会場を解決
+    const venueCode = (body?.venue_code ?? "default").trim();
+    const { data: venueRow, error: venueErr } = await supabase
+      .from("venues").select("id").eq("code", venueCode).maybeSingle();
+    if (venueErr || !venueRow) {
+      return json({ error: `venue not found: ${venueCode}` }, 404);
+    }
+    const venueId = venueRow.id as string;
 
     const match_code = body?.match_code?.trim();
     if (!match_code) {
@@ -109,7 +119,7 @@ serve(async (req) => {
         
         updated_at: nowIso,
       })
-      .eq("id", 1);
+      .eq("venue_id", venueId);
 
     if (updErr) {
       console.error("state update error on SET_MATCH", updErr);

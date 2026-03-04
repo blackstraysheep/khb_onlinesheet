@@ -22,10 +22,10 @@ type JudgeInput = { name: string };
 
 type RequestBody = {
   admin_secret?: string;
+  venue_code?: string;
   match_code?: string;
   match_name?: string;
   judges?: JudgeInput[];
-  max_uses?: number | null;
   token_prefix?: string;
 };
 
@@ -62,10 +62,10 @@ serve(async (req) => {
 
     const {
       admin_secret,
+      venue_code = "default",
       match_code,
       match_name,
       judges,
-      max_uses = null,
       token_prefix = "khb-",
     } = body ?? {};
 
@@ -139,7 +139,16 @@ serve(async (req) => {
       }
     }
 
-    // 4. 審査員ごとに judges / expected_judges / access_tokens を整備
+    // 2.5. 会場を解決
+    const venueCodeStr = (venue_code ?? "default").trim();
+    const { data: venueRow, error: venueErr } = await supabase
+      .from("venues").select("id").eq("code", venueCodeStr).maybeSingle();
+    if (venueErr || !venueRow) {
+      return json({ error: `venue not found: ${venueCodeStr}` }, 404);
+    }
+    const venueId = venueRow.id as string;
+
+    // 3. 寁査員ごとに judges / expected_judges / access_tokens を整備
     const judgeResults: {
       judge_id: string;
       judge_name: string;
@@ -223,8 +232,8 @@ serve(async (req) => {
         const { error: delErr } = await supabase
           .from("access_tokens")
           .delete()
-          .eq("match_id", match_id)
           .eq("judge_id", judge_id)
+          .eq("venue_id", venueId)
           .eq("role", "judge");
 
         if (delErr) {
@@ -235,12 +244,9 @@ serve(async (req) => {
           .from("access_tokens")
           .insert({
             token,
-            match_id,
             judge_id,
             role: "judge",
-            // epoch は現在は使っていないが、NOT NULL 制約があれば 1 を入れておく
-            epoch: 1,
-            max_uses: max_uses,
+            venue_id: venueId,
           });
 
         if (insErr) {

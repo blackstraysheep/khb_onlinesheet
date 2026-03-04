@@ -120,10 +120,17 @@
 
             async function updateScoreboard() {
                 try {
-                    // 1. state
+                    // 1. state（会場別）
+                    const venueCode = new URLSearchParams(window.location.search).get('venue') || 'default';
+                    const venueRows = await fetchJson('venues', { select: 'id', code: 'eq.' + venueCode });
+                    const venueId = venueRows[0]?.id;
+                    if (!venueId) {
+                        setStatus(`venue not found: ${venueCode}`);
+                        return;
+                    }
                     const stateRows = await fetchJson('state', {
                         select: 'epoch, current_match_id, accepting, scoreboard_visible',
-                        id: 'eq.1'
+                        venue_id: 'eq.' + venueId
                     });
                     const st = stateRows[0];
                     if (!st || !st.current_match_id) {

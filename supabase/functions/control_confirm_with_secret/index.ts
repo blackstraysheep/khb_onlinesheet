@@ -74,6 +74,15 @@ serve(async (req) => {
       return json({ error: "unauthorized" }, 401);
     }
 
+    // 会場を解決
+    const venueCode = ((body?.venue_code ?? "default") + "").trim();
+    const { data: venueRow, error: venueErr } = await supabase
+      .from("venues").select("id").eq("code", venueCode).maybeSingle();
+    if (venueErr || !venueRow) {
+      return json({ error: `venue not found: ${venueCode}` }, 404);
+    }
+    const venueId = venueRow.id as string;
+
     const match_code = body?.match_code;
     if (!match_code) {
       return json({ error: "match_code is required" }, 400);
@@ -95,7 +104,7 @@ serve(async (req) => {
     const { data: stateRow, error: stateErr } = await supabase
       .from("state")
       .select("*")
-      .eq("id", 1)
+      .eq("venue_id", venueId)
       .maybeSingle();
 
     if (stateErr || !stateRow) {
@@ -281,7 +290,7 @@ serve(async (req) => {
         wins_updated_at: nowIso,
         updated_at: nowIso,
       })
-      .eq("id", 1);
+      .eq("venue_id", venueId);
 
     if (updStateErr) {
       console.error("state update error on E5", updStateErr);

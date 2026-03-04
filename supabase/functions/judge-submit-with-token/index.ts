@@ -81,8 +81,9 @@ serve(async (req)=>{
       }, 403);
     }
     const judge_id = String(tokenRow.judge_id);
-    // 2. state を取得（現在の match + epoch + accepting）
-    const { data: stateRow, error: stateErr } = await supabase.from("state").select("*").eq("id", 1).maybeSingle();
+    const venue_id = String(tokenRow.venue_id);
+    // 2. state を取得（会場別：現在の match + epoch + accepting）
+    const { data: stateRow, error: stateErr } = await supabase.from("state").select("*").eq("venue_id", venue_id).maybeSingle();
     if (stateErr || !stateRow) {
       return json({
         error: "state not found"
@@ -262,12 +263,12 @@ serve(async (req)=>{
           const submittedIds = Array.from(new Set(submittedAll.map((r)=>String(r.judge_id))));
           const allSubmitted = expectedIds.every((id)=>submittedIds.includes(id));
           if (allSubmitted) {
-            const { data: stateRow2 } = await supabase.from("state").select("*").eq("id", 1).maybeSingle();
+            const { data: stateRow2 } = await supabase.from("state").select("*").eq("venue_id", venue_id).maybeSingle();
             if (stateRow2 && !stateRow2.e3_reached && stateRow2.epoch === epoch) {
               await supabase.from("state").update({
                 e3_reached: true,
                 updated_at: nowIso
-              }).eq("id", 1);
+              }).eq("venue_id", venue_id);
               await supabase.from("event_log").insert({
                 event_type: "E3",
                 match_id,

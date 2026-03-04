@@ -1,0 +1,13 @@
+{
+  // supabase/functions 以下のファイルを Deno として解析する
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.lint": true,
+  "deno.unstable": false,
+
+  // supabase/functions 以外（HTML/JS）は通常の TypeScript/JS として扱う
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
+}

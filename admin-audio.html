@@ -35,6 +35,10 @@
       <section class="card">
         <div class="row">
           <div>
+            <label for="venueCode">会場コード</label>
+            <input id="venueCode" placeholder="例: A（未入力時は default）" value="default" class="input-code" />
+          </div>
+          <div>
             <label for="matchCode">対戦コード（matches.code）</label>
             <input id="matchCode" placeholder="例: demo-match" />
           </div>
@@ -164,6 +168,10 @@
       const CONTROL_CONFIRM_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_confirm_with_secret';
       const CONTROL_ADVANCE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_advance_with_secret';
       const CONTROL_SET_MATCH_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_set_current_match_with_secret';
+      // 会場・寁査員・試合管理 Edge Functions
+      const ADMIN_ADD_JUDGE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/admin-add-judge';
+      const ADMIN_SET_MATCH_JUDGES_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/admin-set-match-judges';
+      const ADMIN_PATCH_STATE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/admin-patch-state';
 
       const headers = {
         'apikey': SUPABASE_ANON_KEY,
@@ -200,7 +208,11 @@
       const newMatchSetupRed = $('#newMatchSetupRed');
       const newMatchSetupWhite = $('#newMatchSetupWhite');
       const newMatchSetupBouts = $('#newMatchSetupBouts');
-
+      const venueCodeInput = $('#venueCode');
+      let currentVenueId = null; // 会場コードを解決したIDをキャッシュ
+      if (venueCodeInput) {
+        venueCodeInput.addEventListener('change', () => { currentVenueId = null; });
+      }
 
       const topMsg = $('#topMsg');
       const stateSummary = $('#stateSummary');
@@ -645,25 +657,21 @@
         return res.json();
       }
 
+      // state を更新（admin-patch-state Edge Function 経由）
       async function patchState(patch) {
-        const url = buildRestUrl('state', { id: 'eq.1' });
-        const res = await fetch(url, {
-          method: 'PATCH',
-          headers: {
-            ...headers,
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify(patch),
-        });
-        const txt = await res.text();
-        if (!res.ok) {
-          throw new Error(`PATCH state failed: ${res.status} ${txt}`);
+        const adminSec = adminSecretInput ? adminSecretInput.value.trim() : '';
+        if (!adminSec) {
+          console.warn('patchState: 管理用シークレット未入力のためスキップ');
+          return;
         }
-        try {
-          const data = JSON.parse(txt);
-          lastState = data[0] || null;
-        } catch {
-          lastState = null;
+        const venueCode = (venueCodeInput && venueCodeInput.value.trim()) || 'default';
+        const data = await callControlFunction(ADMIN_PATCH_STATE_URL, {
+          admin_secret: adminSec,
+          venue_code: venueCode,
+          patch,
+        });
+        if (data && data.state) {
+          lastState = { ...lastState, ...data.state };
         }
       }
 
@@ -1156,11 +1164,16 @@
         }
       }
 
-      // 審査員マスタに追加 ＋ 審査員用アクセストークン発行（match_id/epoch なし版＋エラー表示強化）
+      // 審査員マスタに追加 ＋ 審査員用アクセストークン発行（admin-add-judge Edge Function 経由）
       async function addJudgeFromUI() {
         const name = (newJudgeNameInput && newJudgeNameInput.value || '').trim();
         if (!name) {
           setMsg('審査員名を入力してください。', 'err');
+          return;
+        }
+        const adminSec = adminSecretInput ? adminSecretInput.value.trim() : '';
+        if (!adminSec) {
+          setMsg('管理用シークレットを入力してください。', 'err');
           return;
         }
 
@@ -1168,85 +1181,22 @@
           setControlsDisabled(true);
           setMsg('審査員を追加中…', '');
 
-          // 1. judges に INSERT
-          const voiceKey = newJudgeVoiceKeyInput ? newJudgeVoiceKeyInput.value.trim() : null;
-          const payload = { name };
-          if (voiceKey) payload.voice_key = voiceKey;
+          const voiceKey = newJudgeVoiceKeyInput ? newJudgeVoiceKeyInput.value.trim() : '';
+          const venueCode = (venueCodeInput && venueCodeInput.value.trim()) || 'default';
 
-          const url = buildRestUrl('judges', { select: 'id,name' });
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-              ...headers,
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify(payload),
+          const data = await callControlFunction(ADMIN_ADD_JUDGE_URL, {
+            admin_secret: adminSec,
+            name,
+            voice_key: voiceKey || undefined,
+            venue_code: venueCode,
           });
 
-          const judgeText = await res.text();
-          if (!res.ok) {
-            console.error('add judge failed', res.status, judgeText);
-            setMsg(`審査員の追加に失敗しました: ${res.status} ${judgeText}`, 'err');
-            return;
-          }
-
-          let j;
-          try {
-            const rows = JSON.parse(judgeText);
-            j = rows && rows[0];
-          } catch (e) {
-            console.error('parse judge response error', e, judgeText);
-            setMsg('審査員追加レスポンスの解析に失敗しました。', 'err');
-            return;
-          }
-
-          if (!j || !j.id) {
-            setMsg('審査員の追加に失敗しました（IDが取得できません）。', 'err');
-            return;
-          }
-          const judgeId = j.id;
-
-          // 2. access_tokens にトークンを INSERT（match_id/epoch は既に削除済み前提）
-          const token = generateToken();
-          const tokenUrl = buildRestUrl('access_tokens', { select: 'token,judge_id,role,created_at' });
-
-          const tokenPayload = {
-            token,
-            judge_id: judgeId,
-            role: 'judge',
-            // created_at は DEFAULT に任せる
-          };
-
-          const resTok = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: {
-              ...headers,
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify(tokenPayload),
-          });
-
-          const tokenText = await resTok.text();
-          if (!resTok.ok) {
-            console.error('create access_token failed', resTok.status, tokenText);
-            setMsg(
-              `審査員「${j.name}」は追加されましたが、アクセストークンの作成に失敗しました: ${resTok.status} ${tokenText}`,
-              'err'
-            );
-            return;
-          }
-
-          // ここまで来れば、審査員 + トークン作成完了
           if (newJudgeNameInput) newJudgeNameInput.value = '';
           if (newJudgeVoiceKeyInput) newJudgeVoiceKeyInput.value = '';
 
-          // 審査員画面の実際のパスに合わせて変更してください
-          // 例: const baseJudgeUrl = location.origin + '/khb2026_eval_system_2.html';
-          const baseJudgeUrl = location.origin + '/judge.html';
-          const judgeUrl = `${baseJudgeUrl}?token=${encodeURIComponent(token)}`;
-
+          const judgeUrl = `${location.origin}/judge.html?token=${encodeURIComponent(data.token)}`;
           setMsg(
-            `審査員を追加しました: ${j.name} ／ トークン: ${token} ／ URL: ${judgeUrl}`,
+            `審査員を追加しました: ${data.judge_name} ／ トークン: ${data.token} ／ URL: ${judgeUrl}`,
             'ok'
           );
 
@@ -1296,130 +1246,29 @@
           setControlsDisabled(true);
           setMsg('試合と期待審査員を作成中…', '');
 
-          // 0. すでに同じ code の試合があるか確認
-          let newMatch = null;
-          const existing = await fetchJson('matches', {
-            select: 'id,code,name',
-            code: 'eq.' + nextCode,
-          });
-
-          if (existing && existing.length) {
-            // 既存試合を再利用
-            newMatch = existing[0];
-          } else {
-            // 1. なければ matches に試合を新規作成
-            const url = buildRestUrl('matches', { select: 'id,code,name' });
-
-            // UIから取得（空なら空文字列のママ）
-            let newName = (newMatchSetupName && newMatchSetupName.value.trim()) || null;
-            // ユーザー要望により空欄許可のため、自動生成フォールバックは削除
-
-            const redTeam = (newMatchSetupRed && newMatchSetupRed.value.trim()) || null;
-            const whiteTeam = (newMatchSetupWhite && newMatchSetupWhite.value.trim()) || null;
-            let numBouts = (newMatchSetupBouts && Number(newMatchSetupBouts.value));
-            if (!numBouts || isNaN(numBouts)) numBouts = 5; // default
-
-            const resMatch = await fetch(url, {
-              method: 'POST',
-              headers: {
-                ...headers,
-                'Prefer': 'return=representation',
-              },
-              body: JSON.stringify({
-                code: nextCode,
-                name: newName,
-                red_team_name: redTeam,
-                white_team_name: whiteTeam,
-                num_bouts: numBouts
-              }),
-            });
-
-            if (!resMatch.ok) {
-              const txt = await resMatch.text();
-              console.error('create match failed', resMatch.status, txt);
-              setMsg(`試合作成に失敗しました: ${resMatch.status}`, 'err');
-              setControlsDisabled(false);
-              return;
-            }
-
-            const rows = await resMatch.json();
-            newMatch = rows && rows[0];
-            if (!newMatch) {
-              setMsg('試合作成に失敗しました（レスポンスが空）', 'err');
-              setControlsDisabled(false);
-              return;
-            }
-          }
-
-          // ★ 既存試合を更新する場合も考慮して、もし newMatch が取得できたら
-          // 入力された情報で UPDATE をかける（名前やチーム名の修正を反映させるため）
-          // ただし "existing" だった場合のみ更新などの制御も考えられるが、
-          // ここでは「ユーザーが入力した情報を正」として常に更新を試みる
-          if (newMatch) {
-            const patchUrl = buildRestUrl('matches', { id: 'eq.' + newMatch.id });
-            const newName = (newMatchSetupName && newMatchSetupName.value.trim()) || newMatch.name;
-            const redTeam = (newMatchSetupRed && newMatchSetupRed.value.trim()) || newMatch.red_team_name;
-            const whiteTeam = (newMatchSetupWhite && newMatchSetupWhite.value.trim()) || newMatch.white_team_name;
-            let numBouts = (newMatchSetupBouts && Number(newMatchSetupBouts.value));
-            if (!numBouts || isNaN(numBouts)) numBouts = newMatch.num_bouts || 5;
-
-            await fetch(patchUrl, {
-              method: 'PATCH',
-              headers,
-              body: JSON.stringify({
-                name: newName,
-                red_team_name: redTeam,
-                white_team_name: whiteTeam,
-                num_bouts: numBouts
-              })
-            }).catch(e => console.error('match update warning', e));
-          }
-
-          const newMatchId = newMatch.id;
-
-          // 2. その試合の既存 expected_judges を一旦削除（上書きのため）
-          const delUrl = buildRestUrl('expected_judges', {
-            match_id: 'eq.' + newMatchId,
-          });
-          const resDel = await fetch(delUrl, {
-            method: 'DELETE',
-            headers,
-          });
-          if (!resDel.ok) {
-            const txt = await resDel.text();
-            console.error('delete expected_judges failed', resDel.status, txt);
-            setMsg(`既存の期待審査員の削除に失敗しました: ${resDel.status}`, 'err');
+          const adminSec = adminSecretInput ? adminSecretInput.value.trim() : '';
+          if (!adminSec) {
+            setMsg('管理用シークレットを入力してください。', 'err');
             setControlsDisabled(false);
             return;
           }
+          const venueCode = (venueCodeInput && venueCodeInput.value.trim()) || 'default';
+          const matchName = (newMatchSetupName && newMatchSetupName.value.trim()) || null;
+          const redTeam = (newMatchSetupRed && newMatchSetupRed.value.trim()) || null;
+          const whiteTeam = (newMatchSetupWhite && newMatchSetupWhite.value.trim()) || null;
+          let numBouts = Number(newMatchSetupBouts && newMatchSetupBouts.value);
+          if (!numBouts || isNaN(numBouts)) numBouts = 5;
 
-          // 3. 選択された審査員で expected_judges を一括作成（席順つき）
-          const ejUrl = buildRestUrl('expected_judges', {
-            select: 'match_id,judge_id,sort_order'
+          await callControlFunction(ADMIN_SET_MATCH_JUDGES_URL, {
+            admin_secret: adminSec,
+            venue_code: venueCode,
+            match_code: nextCode,
+            match_name: matchName,
+            red_team_name: redTeam,
+            white_team_name: whiteTeam,
+            num_bouts: numBouts,
+            judge_ids: selectedIds,
           });
-
-          const payload = selectedIds.map((jid, index) => ({
-            match_id: newMatchId,
-            judge_id: jid,
-            sort_order: index + 1,   // 上から順に 1,2,3,... を付与
-          }));
-
-          const resEj = await fetch(ejUrl, {
-            method: 'POST',
-            headers: {
-              ...headers,
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify(payload),
-          });
-
-          if (!resEj.ok) {
-            const txt = await resEj.text();
-            console.error('create expected_judges failed', resEj.status, txt);
-            setMsg(`期待審査員の保存に失敗しました: ${resEj.status}`, 'err');
-            setControlsDisabled(false);
-            return;
-          }
 
           // 完了：画面状態を新しい試合に切り替え
           matchCodeInput.value = nextCode;
@@ -1492,11 +1341,17 @@
           const match = matches[0];
           const matchId = match.id;
 
-          // 2. state を取得（current_match_id も含める）
-          const stateRows = await fetchJson('state', {
-            select: 'epoch,accepting,e3_reached,updated_at,current_match_id',
-            id: 'eq.1',
-          });
+          // 2. state を取得（会場別）
+          {
+            const vc = (venueCodeInput && venueCodeInput.value.trim()) || 'default';
+            if (!currentVenueId) {
+              const vRows = await fetchJson('venues', { select: 'id', code: 'eq.' + vc });
+              if (vRows[0]) currentVenueId = vRows[0].id;
+            }
+          }
+          const stateRows = currentVenueId
+            ? await fetchJson('state', { select: 'epoch,accepting,e3_reached,updated_at,current_match_id', venue_id: 'eq.' + currentVenueId })
+            : await fetchJson('state', { select: 'epoch,accepting,e3_reached,updated_at,current_match_id', id: 'eq.1' });
           const st = stateRows[0] || null;
           lastState = st;
 
@@ -1787,6 +1642,7 @@
         try {
           const data = await callControlFunction(CONTROL_SET_MATCH_URL, {
             admin_secret: adminSecret,
+            venue_code: (venueCodeInput && venueCodeInput.value.trim()) || 'default',
             match_code: matchCode,
             epoch: epochVal,
           });
@@ -1824,6 +1680,7 @@
         try {
           const data = await callControlFunction(CONTROL_CONFIRM_URL, {
             admin_secret: adminSecret,
+            venue_code: (venueCodeInput && venueCodeInput.value.trim()) || 'default',
             match_code: matchCode,
           });
           setE5E6Status(
@@ -1849,6 +1706,7 @@
         try {
           const data = await callControlFunction(CONTROL_ADVANCE_URL, {
             admin_secret: adminSecret,
+            venue_code: (venueCodeInput && venueCodeInput.value.trim()) || 'default',
           });
 
           if (epochInput && typeof data.to_epoch === 'number') {
