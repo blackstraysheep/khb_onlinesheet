@@ -285,6 +285,7 @@ serve(async (req) => {
       .from("state")
       .update({
         accepting: false,
+        accepting_since: null,
         red_wins,
         white_wins,
         wins_updated_at: nowIso,

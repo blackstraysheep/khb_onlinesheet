@@ -1,6 +1,6 @@
 // supabase/functions/admin-add-judge/index.ts
 // 審査員の新規作成とアクセストークン発行
-// admin_secret による認証 + venue_code で会場に紐付け
+// admin_secret による認証（会場非依存: 1審査員1トークン）
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -44,7 +44,6 @@ serve(async (req) => {
       admin_secret?: string;
       name?: string;
       voice_key?: string;
-      venue_code?: string;
       token_prefix?: string;
     } | null;
 
@@ -65,20 +64,7 @@ serve(async (req) => {
       return json({ error: "name is required" }, 400);
     }
     const voiceKey = (body?.voice_key ?? "").trim() || null;
-    const venueCode = (body?.venue_code ?? "default").trim();
     const tokenPrefix = (body?.token_prefix ?? "khb-").trim();
-
-    // 3. 会場を解決
-    const { data: venueRow, error: venueErr } = await supabase
-      .from("venues")
-      .select("id")
-      .eq("code", venueCode)
-      .maybeSingle();
-
-    if (venueErr || !venueRow) {
-      return json({ error: `venue not found: ${venueCode}` }, 404);
-    }
-    const venueId = venueRow.id as string;
 
     // 4. judges テーブルに upsert（同名なら voice_key を更新）
     let judgeId: string;
@@ -115,21 +101,30 @@ serve(async (req) => {
       }
     }
 
-    // 5. この審査員の既存トークンを削除して新規発行
-    await supabase
-      .from("access_tokens")
-      .delete()
-      .eq("judge_id", judgeId)
-      .eq("venue_id", venueId);
+    // 5. この審査員の既存トークンを確認（あれば再利用）
+    let token: string;
+    {
+      const { data: existingToken } = await supabase
+        .from("access_tokens")
+        .select("token")
+        .eq("judge_id", judgeId)
+        .eq("role", "judge")
+        .limit(1)
+        .maybeSingle();
 
-    const token = generateToken(tokenPrefix);
-    const { error: tokErr } = await supabase
-      .from("access_tokens")
-      .insert({ token, judge_id: judgeId, role: "judge", venue_id: venueId });
+      if (existingToken) {
+        token = existingToken.token as string;
+      } else {
+        token = generateToken(tokenPrefix);
+        const { error: tokErr } = await supabase
+          .from("access_tokens")
+          .insert({ token, judge_id: judgeId, role: "judge" });
 
-    if (tokErr) {
-      console.error("access_tokens insert error", tokErr);
-      return json({ error: "failed to create access token" }, 500);
+        if (tokErr) {
+          console.error("access_tokens insert error", tokErr);
+          return json({ error: "failed to create access token" }, 500);
+        }
+      }
     }
 
     return json({

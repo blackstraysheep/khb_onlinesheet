@@ -1026,13 +1026,11 @@
       setMsg('審査員を追加中…', '');
 
       const voiceKey  = newJudgeVoiceKeyInput ? newJudgeVoiceKeyInput.value.trim() : '';
-      const venueCode = (venueCodeInput && venueCodeInput.value.trim()) || 'default';
 
       const data = await callControlFunction(ADMIN_ADD_JUDGE_URL, {
         admin_secret: adminSec,
         name,
         voice_key: voiceKey || undefined,
-        venue_code: venueCode,
       });
 
       // 審査員名・ボイスキー入力欄のみクリア（試合情報は保持）
@@ -1120,7 +1118,6 @@
 
       await callControlFunction(ADMIN_SET_MATCH_JUDGES_URL, {
         admin_secret: adminSec,
-        venue_code: venueCode,
         match_code: nextCode,
         match_name: matchName,
         red_team_name: redTeam,

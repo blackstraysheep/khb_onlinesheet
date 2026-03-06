@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>試合管理 - KHB Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
+    h1 { font-size: 1.3rem; margin-bottom: 12px; }
+    .card { background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .card-header { font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid #334; padding-bottom: 6px; }
+    label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 2px; }
+    input, select { background: #0f3460; color: #fff; border: 1px solid #334; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; }
+    input:focus, select:focus { outline: none; border-color: #e94560; }
+    .input-sm { width: 80px; }
+    .input-md { width: 160px; }
+    .input-lg { width: 240px; }
+    button { cursor: pointer; border: none; border-radius: 4px; padding: 6px 14px; font-size: 0.82rem; color: #fff; background: #0f3460; }
+    button:hover { opacity: 0.85; }
+    .btn-green { background: #1b998b; }
+    .btn-red { background: #e94560; }
+    .btn-grey { background: #555; }
+    .btn-blue { background: #3a86ff; }
+    .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .mt-8 { margin-top: 8px; }
+    .mb-8 { margin-bottom: 8px; }
+    .msg { font-size: 0.8rem; margin-top: 6px; min-height: 1.2em; }
+    .msg.ok { color: #1b998b; }
+    .msg.err { color: #e94560; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #223; }
+    th { color: #aaa; font-weight: 600; font-size: 0.75rem; }
+    td { color: #ddd; }
+    tr:hover td { background: #1a2744; }
+    .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+    .tag-green { background: #1b998b33; color: #1b998b; }
+    .tag-red { background: #e9456033; color: #e94560; }
+    .tag-grey { background: #55555533; color: #999; }
+    .tag-blue { background: #3a86ff33; color: #3a86ff; }
+    .link { color: #3a86ff; cursor: pointer; text-decoration: underline; }
+    .hidden { display: none !important; }
+    .back-link { display: inline-block; margin-bottom: 10px; color: #3a86ff; text-decoration: none; font-size: 0.85rem; }
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <a class="back-link" href="admin.html">&larr; 管理画面に戻る</a>
+  <h1>試合管理</h1>
+
+  <!-- 認証 -->
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="adminSecret">管理用シークレット</label>
+        <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET" class="input-lg" />
+      </div>
+      <div>
+        <label for="venueCode">会場コード</label>
+        <input id="venueCode" value="default" class="input-md" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 試合作成/編集 -->
+  <div class="card">
+    <h2 class="card-header">試合作成・編集</h2>
+    <div class="row mb-8">
+      <div><label for="matchCode">試合コード</label><input id="matchCode" placeholder="例: A-1" class="input-md" /></div>
+      <div><label for="matchName">試合名</label><input id="matchName" placeholder="例: 予選A" class="input-md" /></div>
+      <div><label for="timeline">タイムライン</label><input id="timeline" type="number" step="0.1" placeholder="例: 1" class="input-sm" /></div>
+      <div><label for="numBouts">対戦数</label><input id="numBouts" type="number" value="5" min="1" max="9" class="input-sm" /></div>
+    </div>
+    <div class="row mb-8">
+      <div><label for="redTeam">紅チーム</label><input id="redTeam" placeholder="紅チーム名" class="input-md" /></div>
+      <div><label for="whiteTeam">白チーム</label><input id="whiteTeam" placeholder="白チーム名" class="input-md" /></div>
+    </div>
+    <div class="row">
+      <button id="btnSaveMatch" class="btn-green">試合を保存</button>
+    </div>
+    <div class="msg" id="saveMsg"></div>
+  </div>
+
+  <!-- 試合一覧 -->
+  <div class="card">
+    <h2 class="card-header">試合一覧</h2>
+    <div class="row mb-8">
+      <button id="btnRefreshMatches" class="btn-blue">一覧を更新</button>
+    </div>
+    <div id="matchListContainer">
+      <table>
+        <thead>
+          <tr><th>TL</th><th>コード</th><th>試合名</th><th>紅</th><th>白</th><th>対戦数</th><th>状態</th><th>操作</th></tr>
+        </thead>
+        <tbody id="matchListBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 受付中(accepting)一覧 -->
+  <div class="card">
+    <h2 class="card-header">受付中の試合 (accepting = true)</h2>
+    <div id="acceptingListContainer">
+      <table>
+        <thead>
+          <tr><th>会場</th><th>試合コード</th><th>epoch</th><th>e3_reached</th><th>accepting_since</th></tr>
+        </thead>
+        <tbody id="acceptingListBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const SUPABASE_URL = 'http://127.0.0.1:54321';
+    const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+    const ADMIN_SETUP_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-setup-match';
+
+    const headers = {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    };
+
+    const $ = (s) => document.querySelector(s);
+
+    // ============================
+    // REST helper
+    // ============================
+    async function fetchJson(table, params = {}) {
+      const url = new URL(SUPABASE_URL + '/rest/v1/' + table);
+      for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+      const res = await fetch(url, { headers });
+      return res.json();
+    }
+
+    // ============================
+    // 試合保存
+    // ============================
+    $('#btnSaveMatch').addEventListener('click', async () => {
+      const secret = $('#adminSecret').value.trim();
+      const matchCode = $('#matchCode').value.trim();
+      const matchName = $('#matchName').value.trim();
+      const timeline = parseFloat($('#timeline').value);
+      const numBouts = parseInt($('#numBouts').value) || 5;
+      const redTeam = $('#redTeam').value.trim();
+      const whiteTeam = $('#whiteTeam').value.trim();
+
+      if (!secret) return showMsg('#saveMsg', '管理用シークレットを入力', true);
+      if (!matchCode) return showMsg('#saveMsg', '試合コードを入力', true);
+      if (!matchName) return showMsg('#saveMsg', '試合名を入力', true);
+      if (!Number.isFinite(timeline)) return showMsg('#saveMsg', 'タイムラインを入力（数値）', true);
+
+      try {
+        const res = await fetch(ADMIN_SETUP_MATCH_URL, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            admin_secret: secret,
+            match_code: matchCode,
+            match_name: matchName,
+            timeline,
+            num_bouts: numBouts,
+            red_team_name: redTeam || undefined,
+            white_team_name: whiteTeam || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        showMsg('#saveMsg', `保存完了: ${data.match?.code}`, false);
+        refreshMatches();
+      } catch (e) {
+        showMsg('#saveMsg', e.message, true);
+      }
+    });
+
+    // ============================
+    // 試合一覧取得
+    // ============================
+    async function refreshMatches() {
+      try {
+        const matches = await fetchJson('matches', {
+          select: 'id,code,name,timeline,num_bouts,red_team_name,white_team_name',
+          order: 'timeline.asc,code.asc',
+        });
+
+        // 受付中(state)の情報も取得
+        const states = await fetchJson('state', {
+          select: 'current_match_id,venue_id,epoch,accepting,e3_reached,accepting_since',
+        });
+        const stateByMatch = new Map();
+        for (const s of states) {
+          if (s.current_match_id) stateByMatch.set(s.current_match_id, s);
+        }
+
+        // 会場情報
+        const venues = await fetchJson('venues', { select: 'id,code' });
+        const venueCodeById = new Map(venues.map(v => [v.id, v.code]));
+
+        const tbody = $('#matchListBody');
+        tbody.innerHTML = '';
+        for (const m of matches) {
+          const st = stateByMatch.get(m.id);
+          let stateTag = '<span class="tag tag-grey">未開始</span>';
+          if (st) {
+            if (st.accepting) {
+              stateTag = `<span class="tag tag-green">受付中 (ep${st.epoch})</span>`;
+            } else {
+              stateTag = `<span class="tag tag-red">停止 (ep${st.epoch})</span>`;
+            }
+          }
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${m.timeline ?? '-'}</td>
+            <td>${esc(m.code)}</td>
+            <td>${esc(m.name)}</td>
+            <td>${esc(m.red_team_name || '')}</td>
+            <td>${esc(m.white_team_name || '')}</td>
+            <td>${m.num_bouts ?? '-'}</td>
+            <td>${stateTag}</td>
+            <td><span class="link" data-code="${esc(m.code)}">編集</span></td>
+          `;
+          tr.querySelector('.link').addEventListener('click', () => loadMatchForEdit(m));
+          tbody.appendChild(tr);
+        }
+
+        // accepting 一覧も更新
+        refreshAccepting(states, matches, venueCodeById);
+      } catch (e) {
+        console.error('refreshMatches error', e);
+      }
+    }
+
+    function refreshAccepting(states, matches, venueCodeById) {
+      const matchById = new Map(matches.map(m => [m.id, m]));
+      const tbody = $('#acceptingListBody');
+      tbody.innerHTML = '';
+      const accepting = states.filter(s => s.accepting);
+      for (const s of accepting) {
+        const m = matchById.get(s.current_match_id);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
+          <td>${esc(m?.code || '-')}</td>
+          <td>${s.epoch}</td>
+          <td>${s.e3_reached ? 'YES' : 'no'}</td>
+          <td>${s.accepting_since ? new Date(s.accepting_since).toLocaleString('ja-JP') : '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function loadMatchForEdit(m) {
+      $('#matchCode').value = m.code || '';
+      $('#matchName').value = m.name || '';
+      $('#timeline').value = m.timeline ?? '';
+      $('#numBouts').value = m.num_bouts ?? 5;
+      $('#redTeam').value = m.red_team_name || '';
+      $('#whiteTeam').value = m.white_team_name || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showMsg(sel, text, isErr) {
+      const el = $(sel);
+      el.textContent = text;
+      el.className = 'msg ' + (isErr ? 'err' : 'ok');
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    $('#btnRefreshMatches').addEventListener('click', refreshMatches);
+
+    // 初期読み込み
+    refreshMatches();
+  })();
+  </script>
+</body>
+</html>

@@ -81,49 +81,121 @@ serve(async (req)=>{
       }, 403);
     }
     const judge_id = String(tokenRow.judge_id);
-    const venue_id = String(tokenRow.venue_id);
-    // 2. state を取得（会場別：現在の match + epoch + accepting）
-    const { data: stateRow, error: stateErr } = await supabase.from("state").select("*").eq("venue_id", venue_id).maybeSingle();
-    if (stateErr || !stateRow) {
-      return json({
-        error: "state not found"
-      }, 500);
+
+    // 2. タイムライン方式で担当試合を特定
+    //    accepting=true の state を全取得 → expected_judges で自分が含まれるものに絞る
+    //    → 最終epoch E5確定済みを除外 → timeline昇順 → accepting_since昇順
+    const { data: activeStates, error: statesErr } = await supabase
+      .from("state")
+      .select("*")
+      .eq("accepting", true);
+    if (statesErr) {
+      return json({ error: "failed to load states" }, 500);
     }
+    if (!activeStates || activeStates.length === 0) {
+      if (infoMode) {
+        // 審査員名だけ返す
+        const { data: judgeRow } = await supabase.from("judges").select("id, name").eq("id", judge_id).maybeSingle();
+        return json({ ok: true, mode: "info", waiting: true, judge_id, judge_name: judgeRow?.name ?? null });
+      }
+      return json({ error: "no active match" }, 409);
+    }
+
+    // current_match_id の一覧と match 情報を取得
+    const matchIds = activeStates.map((s) => s.current_match_id).filter(Boolean);
+    if (matchIds.length === 0) {
+      if (infoMode) {
+        const { data: judgeRow } = await supabase.from("judges").select("id, name").eq("id", judge_id).maybeSingle();
+        return json({ ok: true, mode: "info", waiting: true, judge_id, judge_name: judgeRow?.name ?? null });
+      }
+      return json({ error: "current match not set" }, 409);
+    }
+
+    // expected_judges で自分が含まれる match に絞る
+    const { data: myExpected, error: myExpErr } = await supabase
+      .from("expected_judges")
+      .select("match_id")
+      .eq("judge_id", judge_id)
+      .in("match_id", matchIds);
+    if (myExpErr) {
+      return json({ error: "failed to check expected_judges" }, 500);
+    }
+    const myMatchIds = new Set((myExpected ?? []).map((r) => String(r.match_id)));
+
+    // match 情報を取得（timeline を含む）
+    const { data: matchRows, error: matchesErr } = await supabase
+      .from("matches")
+      .select("id, code, name, num_bouts, red_team_name, white_team_name, timeline")
+      .in("id", matchIds);
+    if (matchesErr) {
+      return json({ error: "failed to load matches" }, 500);
+    }
+    const matchById = new Map((matchRows ?? []).map((m) => [String(m.id), m]));
+
+    // 最終epoch E5確定済み（match_snapshots に最終epoch分が存在）を除外
+    const { data: finalSnaps, error: snapsErr } = await supabase
+      .from("match_snapshots")
+      .select("match_id, epoch")
+      .in("match_id", matchIds);
+    if (snapsErr) {
+      return json({ error: "failed to load snapshots" }, 500);
+    }
+    // match_id → 確定済み最大epoch
+    const confirmedMaxEpoch = new Map<string, number>();
+    for (const snap of (finalSnaps ?? [])) {
+      const mid = String(snap.match_id);
+      const cur = confirmedMaxEpoch.get(mid) ?? 0;
+      if (snap.epoch > cur) confirmedMaxEpoch.set(mid, snap.epoch);
+    }
+
+    // 候補をフィルタ
+    type Candidate = { stateRow: any; matchRow: any };
+    const candidates: Candidate[] = [];
+    for (const st of activeStates) {
+      const mid = String(st.current_match_id);
+      if (!myMatchIds.has(mid)) continue; // 自分が期待されていない
+      const m = matchById.get(mid);
+      if (!m) continue;
+      const numBouts = typeof m.num_bouts === "number" ? m.num_bouts : 5;
+      const maxConfirmed = confirmedMaxEpoch.get(mid) ?? 0;
+      if (maxConfirmed >= numBouts) continue; // 最終epoch確定済み = 試合完了
+      candidates.push({ stateRow: st, matchRow: m });
+    }
+
+    if (candidates.length === 0) {
+      if (infoMode) {
+        const { data: judgeRow } = await supabase.from("judges").select("id, name").eq("id", judge_id).maybeSingle();
+        return json({ ok: true, mode: "info", waiting: true, judge_id, judge_name: judgeRow?.name ?? null });
+      }
+      return json({ error: "no active match for this judge" }, 409);
+    }
+
+    // timeline 昇順 → accepting_since 昇順でソート
+    candidates.sort((a, b) => {
+      const tA = a.matchRow.timeline ?? 0;
+      const tB = b.matchRow.timeline ?? 0;
+      if (tA !== tB) return tA - tB;
+      const asA = a.stateRow.accepting_since ? new Date(a.stateRow.accepting_since).getTime() : 0;
+      const asB = b.stateRow.accepting_since ? new Date(b.stateRow.accepting_since).getTime() : 0;
+      return asA - asB;
+    });
+
+    const chosen = candidates[0];
+    const stateRow = chosen.stateRow;
+    const matchRow = chosen.matchRow;
+    const venue_id = String(stateRow.venue_id);
+    const match_id = String(matchRow.id);
     const epoch = stateRow.epoch;
     const accepting = stateRow.accepting;
-    const current_match_id = stateRow.current_match_id ?? null;
-    if (typeof epoch !== "number" || !Number.isInteger(epoch) || epoch < 1) {
-      return json({
-        error: "invalid state.epoch"
-      }, 500);
-    }
-    if (!current_match_id) {
-      // 現在の試合がセットされていない
-      return json({
-        error: "current match not set"
-      }, 409);
-    }
-    const match_id = current_match_id;
-    // 3. 対戦情報を取得（code, name, num_bouts, red/white チーム名）
-    const { data: matchRow, error: matchErr } = await supabase.from("matches").select("id, code, name, num_bouts, red_team_name, white_team_name").eq("id", match_id).maybeSingle();
-    if (matchErr || !matchRow) {
-      return json({
-        error: "match not found"
-      }, 500);
-    }
     const numBouts = typeof matchRow.num_bouts === "number" ? matchRow.num_bouts : 5;
-    // epoch / num_bouts から bout 情報を生成（slot は epoch と同じ整数）
+    if (typeof epoch !== "number" || !Number.isInteger(epoch) || epoch < 1) {
+      return json({ error: "invalid state.epoch" }, 500);
+    }
+    // epoch / num_bouts から bout 情報を生成
     const bout = {
       slot: epoch,
       label: getBoutLabel(epoch, numBouts)
     };
-    // 4. 期待審査員かどうか
-    const { data: expected, error: expErr } = await supabase.from("expected_judges").select("judge_id").eq("match_id", match_id).eq("judge_id", judge_id).maybeSingle();
-    if (expErr || !expected) {
-      return json({
-        error: "unexpected judge"
-      }, 403);
-    }
     // ★ info モードのときはここで情報だけ返して終了（審査員名＋提出済み点数も付ける）
     if (infoMode) {
       // judges テーブルから審査員名を取得（失敗しても致命ではない）

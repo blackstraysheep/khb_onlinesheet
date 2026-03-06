@@ -22,9 +22,12 @@ type JudgeInput = { name: string };
 
 type RequestBody = {
   admin_secret?: string;
-  venue_code?: string;
   match_code?: string;
   match_name?: string;
+  timeline?: number;
+  num_bouts?: number;
+  red_team_name?: string;
+  white_team_name?: string;
   judges?: JudgeInput[];
   token_prefix?: string;
 };
@@ -62,9 +65,12 @@ serve(async (req) => {
 
     const {
       admin_secret,
-      venue_code = "default",
       match_code,
       match_name,
+      timeline,
+      num_bouts,
+      red_team_name,
+      white_team_name,
       judges,
       token_prefix = "khb-",
     } = body ?? {};
@@ -92,9 +98,11 @@ serve(async (req) => {
     if (!match_name || typeof match_name !== "string") {
       return json({ error: "match_name is required" }, 400);
     }
-    if (!Array.isArray(judges) || judges.length === 0) {
-      return json({ error: "judges array is required" }, 400);
+    if (typeof timeline !== "number" || !Number.isFinite(timeline)) {
+      return json({ error: "timeline is required (number)" }, 400);
     }
+    const numBouts = (typeof num_bouts === "number" && Number.isInteger(num_bouts) && num_bouts >= 1)
+      ? num_bouts : 5;
 
     // 3. 対戦を取得 or 作成（code で一意とみなす）
     let match_id: string;
@@ -111,23 +119,27 @@ serve(async (req) => {
         return json({ error: "failed to select match" }, 500);
       }
 
+      const matchPayload: Record<string, unknown> = {
+        name: match_name,
+        timeline,
+        num_bouts: numBouts,
+      };
+      if (red_team_name !== undefined) matchPayload.red_team_name = red_team_name;
+      if (white_team_name !== undefined) matchPayload.white_team_name = white_team_name;
+
       if (existing) {
         match_id = existing.id as string;
-
-        // 名前が変わっていたら更新
-        if (existing.name !== match_name) {
-          const { error: updErr } = await supabase
-            .from("matches")
-            .update({ name: match_name })
-            .eq("id", match_id);
-          if (updErr) {
-            console.error("matches update error", updErr);
-          }
+        const { error: updErr } = await supabase
+          .from("matches")
+          .update(matchPayload)
+          .eq("id", match_id);
+        if (updErr) {
+          console.error("matches update error", updErr);
         }
       } else {
         const { data: inserted, error: insErr } = await supabase
           .from("matches")
-          .insert({ code: match_code, name: match_name })
+          .insert({ code: match_code, ...matchPayload })
           .select("id, code, name")
           .single();
 
@@ -139,16 +151,7 @@ serve(async (req) => {
       }
     }
 
-    // 2.5. 会場を解決
-    const venueCodeStr = (venue_code ?? "default").trim();
-    const { data: venueRow, error: venueErr } = await supabase
-      .from("venues").select("id").eq("code", venueCodeStr).maybeSingle();
-    if (venueErr || !venueRow) {
-      return json({ error: `venue not found: ${venueCodeStr}` }, 404);
-    }
-    const venueId = venueRow.id as string;
-
-    // 3. 寁査員ごとに judges / expected_judges / access_tokens を整備
+    // 3. 審査員ごとに judges / expected_judges / access_tokens を整備
     const judgeResults: {
       judge_id: string;
       judge_name: string;
@@ -156,7 +159,7 @@ serve(async (req) => {
       role: "judge";
     }[] = [];
 
-    for (const j of judges) {
+    for (const j of (judges ?? [])) {
       const name = (j?.name || "").trim();
       if (!name) continue;
 
@@ -225,36 +228,37 @@ serve(async (req) => {
         }
       }
 
-      // 4-3. access_tokens を発行
-      const token = generateToken(token_prefix);
-
+      // 4-3. access_tokens を発行（1審査員1トークン: venue_id なし）
+      // 既存トークンがあればそれを使い回す
+      let token: string;
       {
-        const { error: delErr } = await supabase
+        const { data: existingToken } = await supabase
           .from("access_tokens")
-          .delete()
+          .select("token")
           .eq("judge_id", judge_id)
-          .eq("venue_id", venueId)
-          .eq("role", "judge");
+          .eq("role", "judge")
+          .limit(1)
+          .maybeSingle();
 
-        if (delErr) {
-          console.error("access_tokens delete error", delErr);
-        }
+        if (existingToken) {
+          token = existingToken.token as string;
+        } else {
+          token = generateToken(token_prefix);
+          const { error: insErr } = await supabase
+            .from("access_tokens")
+            .insert({
+              token,
+              judge_id,
+              role: "judge",
+            });
 
-        const { error: insErr } = await supabase
-          .from("access_tokens")
-          .insert({
-            token,
-            judge_id,
-            role: "judge",
-            venue_id: venueId,
-          });
-
-        if (insErr) {
-          console.error("access_tokens insert error", insErr);
-          return json(
-            { error: `failed to insert access_token for judge: ${name}` },
-            500,
-          );
+          if (insErr) {
+            console.error("access_tokens insert error", insErr);
+            return json(
+              { error: `failed to insert access_token for judge: ${name}` },
+              500,
+            );
+          }
         }
       }
 
@@ -272,6 +276,8 @@ serve(async (req) => {
         id: match_id,
         code: match_code,
         name: match_name,
+        timeline,
+        num_bouts: numBouts,
       },
       judge_tokens: judgeResults,
     });
