@@ -397,19 +397,35 @@ button:disabled {
 }
 
 .judge-select-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 4px;
   font-size: 0.92rem;
-  cursor: move;
-  /* ★ ドラッグっぽいカーソル */
+  cursor: grab;
+}
+
+.judge-select-item::before {
+  content: '⠿';
+  font-size: 1.1rem;
+  color: #aaa;
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .judge-select-item.dragging {
   opacity: 0.6;
-  /* ★ ドラッグ中は半透明に */
+  cursor: grabbing;
+}
+
+.judge-select-item.dragging::before {
+  cursor: grabbing;
 }
 
 .judge-select-item label {
   cursor: pointer;
+  flex: 1;
 }
 
 /* Match Setup & Zunda UI */

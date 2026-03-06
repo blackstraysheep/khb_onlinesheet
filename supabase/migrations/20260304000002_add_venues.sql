@@ -63,7 +63,7 @@ ALTER TABLE public.state
     ALTER COLUMN venue_id SET NOT NULL;
 
 ALTER TABLE public.state
-    ADD CONSTRAINT IF NOT EXISTS state_venue_id_key UNIQUE (venue_id);
+    ADD CONSTRAINT state_venue_id_key UNIQUE (venue_id);
 
 -- ================================================================
 -- 5. access_tokens テーブルに venue_id 列を追加

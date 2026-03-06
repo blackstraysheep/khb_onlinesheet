@@ -161,17 +161,17 @@
   <script src="scoreboard.js"></script>
   <script>
     (function () {
-      const SUPABASE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co'; // プロジェクトURL
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHdrZHB1cndhbWlsenpzcmZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjAwMTcsImV4cCI6MjA3NzkzNjAxN30.YvZgEi4x0YPuxYswMQjDQdBMVOPY6wkCVfY2hJ0_dL8';
+      const SUPABASE_URL = 'http://127.0.0.1:54321'; // ローカルテスト用
+      const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 
       // E5/E6/SET_MATCH Edge Functions の URL
-      const CONTROL_CONFIRM_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_confirm_with_secret';
-      const CONTROL_ADVANCE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_advance_with_secret';
-      const CONTROL_SET_MATCH_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_set_current_match_with_secret';
-      // 会場・寁査員・試合管理 Edge Functions
-      const ADMIN_ADD_JUDGE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/admin-add-judge';
-      const ADMIN_SET_MATCH_JUDGES_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/admin-set-match-judges';
-      const ADMIN_PATCH_STATE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/admin-patch-state';
+      const CONTROL_CONFIRM_URL = 'http://127.0.0.1:54321/functions/v1/control_confirm_with_secret';
+      const CONTROL_ADVANCE_URL = 'http://127.0.0.1:54321/functions/v1/control_advance_with_secret';
+      const CONTROL_SET_MATCH_URL = 'http://127.0.0.1:54321/functions/v1/control_set_current_match_with_secret';
+      // 会場・審査員・試合管理 Edge Functions
+      const ADMIN_ADD_JUDGE_URL = 'http://127.0.0.1:54321/functions/v1/admin-add-judge';
+      const ADMIN_SET_MATCH_JUDGES_URL = 'http://127.0.0.1:54321/functions/v1/admin-set-match-judges';
+      const ADMIN_PATCH_STATE_URL = 'http://127.0.0.1:54321/functions/v1/admin-patch-state';
 
       const headers = {
         'apikey': SUPABASE_ANON_KEY,
@@ -1177,6 +1177,13 @@
           return;
         }
 
+        // 試合情報フォームの入力内容を先に保存（非同期処理中に上書きされないように）
+        const savedMatchCode  = newMatchSetupCode  ? newMatchSetupCode.value  : '';
+        const savedMatchName  = newMatchSetupName  ? newMatchSetupName.value  : '';
+        const savedRedTeam    = newMatchSetupRed   ? newMatchSetupRed.value   : '';
+        const savedWhiteTeam  = newMatchSetupWhite ? newMatchSetupWhite.value : '';
+        const savedBouts      = newMatchSetupBouts ? newMatchSetupBouts.value : '';
+
         try {
           setControlsDisabled(true);
           setMsg('審査員を追加中…', '');
@@ -1191,18 +1198,38 @@
             venue_code: venueCode,
           });
 
+          // 審査員名・ボイスキー入力欄だけクリア（試合情報は保持）
           if (newJudgeNameInput) newJudgeNameInput.value = '';
           if (newJudgeVoiceKeyInput) newJudgeVoiceKeyInput.value = '';
 
-          const judgeUrl = `${location.origin}/judge.html?token=${encodeURIComponent(data.token)}`;
-          setMsg(
-            `審査員を追加しました: ${data.judge_name} ／ トークン: ${data.token} ／ URL: ${judgeUrl}`,
-            'ok'
-          );
+          // 試合情報フォームを確実に復元
+          if (newMatchSetupCode)  newMatchSetupCode.value  = savedMatchCode;
+          if (newMatchSetupName)  newMatchSetupName.value  = savedMatchName;
+          if (newMatchSetupRed)   newMatchSetupRed.value   = savedRedTeam;
+          if (newMatchSetupWhite) newMatchSetupWhite.value = savedWhiteTeam;
+          if (newMatchSetupBouts) newMatchSetupBouts.value = savedBouts;
 
-          // 審査員選択パネルが開いていれば再読み込み
+          const judgeUrl = `${location.origin}/judge.html?token=${encodeURIComponent(data.token)}`;
+
+          // トークンは専用エリアに表示（setMsgで上書きされないように）
+          const judgeInfoEl = $('#judgeSelectInfo');
+          if (judgeInfoEl) {
+            judgeInfoEl.innerHTML =
+              `<strong>✔ 審査員追加完了:</strong> ${data.judge_name}` +
+              `<br>トークン: <code>${data.token}</code>` +
+              `<br>URL: <a href="${judgeUrl}" target="_blank">${judgeUrl}</a>`;
+          }
+          setMsg(`審査員を追加しました: ${data.judge_name}`, 'ok');
+
+          // 審査員選択パネルが開いていれば審査員リストだけ再読み込み
           if (judgeSelectSection && judgeSelectSection.style.display !== 'none') {
-            await openJudgeSelectionForNextMatch();
+            await refreshJudgeSelectList();
+            // リスト再読み込み後にも念のため復元
+            if (newMatchSetupCode)  newMatchSetupCode.value  = savedMatchCode;
+            if (newMatchSetupName)  newMatchSetupName.value  = savedMatchName;
+            if (newMatchSetupRed)   newMatchSetupRed.value   = savedRedTeam;
+            if (newMatchSetupWhite) newMatchSetupWhite.value = savedWhiteTeam;
+            if (newMatchSetupBouts) newMatchSetupBouts.value = savedBouts;
           }
 
         } catch (err) {
@@ -1291,6 +1318,94 @@
         } finally {
           setControlsDisabled(false);
         }
+      }
+
+      // 審査員選択リストだけ再読み込み（フォーム入力内容は保持）
+      async function refreshJudgeSelectList() {
+        if (!pendingNextMatch) return;
+        const prevMatchId = pendingNextMatch.prevMatchId;
+
+        // 現在の入力内容を保存
+        const savedCode  = newMatchSetupCode  ? newMatchSetupCode.value  : '';
+        const savedName  = newMatchSetupName  ? newMatchSetupName.value  : '';
+        const savedRed   = newMatchSetupRed   ? newMatchSetupRed.value   : '';
+        const savedWhite = newMatchSetupWhite ? newMatchSetupWhite.value : '';
+        const savedBouts = newMatchSetupBouts ? newMatchSetupBouts.value : '';
+
+        // 現在チェックされている審査員IDを保存
+        const checkedIds = new Set(
+          Array.from((judgeSelectList || document).querySelectorAll('.judge-select-checkbox:checked'))
+            .map(cb => cb.getAttribute('data-judge-id'))
+        );
+
+        try {
+          const judges = await fetchJson('judges', { select: 'id,name' });
+          let prevExpectedIds = [];
+          if (prevMatchId) {
+            const expected = await fetchJson('expected_judges', {
+              select: 'judge_id,sort_order',
+              match_id: 'eq.' + prevMatchId,
+              order: 'sort_order.asc',
+            });
+            prevExpectedIds = (expected || []).map(r => String(r.judge_id));
+          }
+
+          // 新しく追加された審査員はチェック済みにする
+          const newJudgeIds = judges.map(j => String(j.id)).filter(id => !checkedIds.has(id) && !prevExpectedIds.length);
+          const finalCheckedIds = new Set([...checkedIds, ...newJudgeIds]);
+
+          // リストを再描画（既存チェック状態を引き継ぐ）
+          if (judgeSelectList) {
+            judgeSelectList.innerHTML = '';
+            // 前回の並び順を維持しつつ新規追加分を末尾に
+            const orderMap = new Map();
+            (prevExpectedIds.length ? prevExpectedIds : []).forEach((id, i) => orderMap.set(id, i));
+            const sorted = [...judges].sort((a, b) => {
+              const ai = orderMap.has(String(a.id)) ? orderMap.get(String(a.id)) : 9999;
+              const bi = orderMap.has(String(b.id)) ? orderMap.get(String(b.id)) : 9999;
+              return ai !== bi ? ai - bi : a.name.localeCompare(b.name, 'ja');
+            });
+            sorted.forEach(j => {
+              const checked = finalCheckedIds.has(String(j.id));
+              const div = document.createElement('div');
+              div.className = 'judge-select-item';
+              div.dataset.judgeId = j.id;
+              div.draggable = true;
+              const id = 'judgeChk_' + j.id;
+              div.innerHTML =
+                `<label><input type="checkbox" class="judge-select-checkbox" ` +
+                `data-judge-id="${j.id}" id="${id}" ${checked ? 'checked' : ''}> ` +
+                `${j.name || '(名前未設定)'}</label>`;
+              div.addEventListener('dragstart', (e) => {
+                div.classList.add('dragging');
+                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+              });
+              div.addEventListener('dragend', () => div.classList.remove('dragging'));
+              judgeSelectList.appendChild(div);
+            });
+            // dragover は1回だけ登録
+            if (!judgeSelectList._dndInitialized) {
+              judgeSelectList.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const dragging = judgeSelectList.querySelector('.judge-select-item.dragging');
+                if (!dragging) return;
+                const afterElement = getDragAfterElement(judgeSelectList, e.clientY);
+                if (!afterElement) judgeSelectList.appendChild(dragging);
+                else judgeSelectList.insertBefore(dragging, afterElement);
+              });
+              judgeSelectList._dndInitialized = true;
+            }
+          }
+        } catch (e) {
+          console.error('refreshJudgeSelectList error', e);
+        }
+
+        // フォーム入力を復元
+        if (newMatchSetupCode  && savedCode)  newMatchSetupCode.value  = savedCode;
+        if (newMatchSetupName  && savedName !== undefined) newMatchSetupName.value  = savedName;
+        if (newMatchSetupRed   && savedRed  !== undefined) newMatchSetupRed.value   = savedRed;
+        if (newMatchSetupWhite && savedWhite !== undefined) newMatchSetupWhite.value = savedWhite;
+        if (newMatchSetupBouts && savedBouts) newMatchSetupBouts.value = savedBouts;
       }
 
       // epoch と num_bouts から対戦名（先鋒戦など）を決め打ち

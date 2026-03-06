@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Edge Functions ローカル環境変数（シークレットを含むため git 管理外）
+functions/.env
