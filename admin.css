@@ -488,3 +488,127 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
 }
+
+/* =========================
+ 縦型スコアボード（.scoreboard-v）
+ ========================= */
+.scoreboard-v {
+  width: 90%;
+  border-collapse: collapse;
+  margin: 0 auto;
+  border: 2px solid #333;
+  table-layout: fixed;
+}
+
+.scoreboard-v th,
+.scoreboard-v td {
+  border: 1px solid #999;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0 4px;
+}
+
+.scoreboard-v .col-header {
+  background: #f0f0f0;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.scoreboard-v .header-team-red {
+  background-color: #d32f2f;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: white;
+  height: 48px;
+}
+
+.scoreboard-v .header-team-white {
+  background-color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  height: 48px;
+}
+
+.scoreboard-v .header-match-info {
+  font-size: 1.0rem;
+  font-weight: bold;
+  line-height: 1.3;
+  background: #fff;
+  white-space: pre-wrap;
+  height: 48px;
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.scoreboard-v .team-name-red,
+.scoreboard-v .team-name-white {
+  font-size: 1.4rem;
+  font-weight: 800;
+  height: 48px;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+
+.scoreboard-v .cell-flag {
+  font-size: 1.5rem;
+  width: 40px;
+}
+
+.scoreboard-v .red-flag {
+  color: #d32f2f;
+}
+
+.scoreboard-v .white-flag {
+  color: #333;
+}
+
+.scoreboard-v .cell-total {
+  font-size: 1.8rem;
+  font-weight: bold;
+  width: 60px;
+  font-family: 'CMU Serif Local Bold', 'CMU Serif', serif;
+}
+
+.scoreboard-v .cell-scores {
+  width: 80px;
+}
+
+.scoreboard-v .score-main {
+  font-size: 1.3rem;
+  font-weight: bold;
+  font-family: 'CMU Serif Local Bold', 'CMU Serif', serif;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 1px solid #333;
+}
+
+.scoreboard-v .score-sub {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #000;
+  font-family: 'CMU Serif Local Bold', 'CMU Serif', serif;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scoreboard-v .cell-judge {
+  font-weight: bold;
+  font-size: 1.1rem;
+  background: #fafafa;
+  width: 120px;
+}
+
+.sub-label {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: inherit;
+  border-top: 1px solid #333;
+  margin-top: 2px;
+  padding-top: 2px;
+}
