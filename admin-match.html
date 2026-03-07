@@ -103,7 +103,7 @@
     <div id="acceptingListContainer">
       <table>
         <thead>
-          <tr><th>会場</th><th>試合コード</th><th>epoch</th><th>e3_reached</th><th>accepting_since</th></tr>
+          <tr><th>会場</th><th>TL</th><th>試合コード</th><th>試合名</th><th>紅</th><th>白</th><th>epoch</th><th>最終E5</th></tr>
         </thead>
         <tbody id="acceptingListBody"></tbody>
       </table>
@@ -186,7 +186,7 @@
 
         // 受付中(state)の情報も取得
         const states = await fetchJson('state', {
-          select: 'current_match_id,venue_id,epoch,accepting,e3_reached,accepting_since',
+          select: 'current_match_id,venue_id,epoch,accepting',
         });
         const stateByMatch = new Map();
         for (const s of states) {
@@ -236,18 +236,61 @@
       const tbody = $('#acceptingListBody');
       tbody.innerHTML = '';
       const accepting = states.filter(s => s.accepting);
-      for (const s of accepting) {
-        const m = matchById.get(s.current_match_id);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
-          <td>${esc(m?.code || '-')}</td>
-          <td>${s.epoch}</td>
-          <td>${s.e3_reached ? 'YES' : 'no'}</td>
-          <td>${s.accepting_since ? new Date(s.accepting_since).toLocaleString('ja-JP') : '-'}</td>
-        `;
-        tbody.appendChild(tr);
+      if (accepting.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="color:#888;text-align:center;">なし</td></tr>';
+        return;
       }
+      // match_snapshots を取得して最終E5判定
+      const acceptingMatchIds = accepting.map(s => s.current_match_id).filter(Boolean);
+      fetchJson('match_snapshots', {
+        select: 'match_id,epoch',
+        'match_id': 'in.(' + acceptingMatchIds.join(',') + ')',
+      }).then(snaps => {
+        // match_id → 確定済み最大epoch
+        const confirmedMax = new Map();
+        for (const snap of (snaps || [])) {
+          const cur = confirmedMax.get(snap.match_id) ?? 0;
+          if (snap.epoch > cur) confirmedMax.set(snap.match_id, snap.epoch);
+        }
+        for (const s of accepting) {
+          const m = matchById.get(s.current_match_id);
+          const numBouts = m?.num_bouts ?? 5;
+          const maxEp = confirmedMax.get(s.current_match_id) ?? 0;
+          const e5Done = maxEp >= numBouts;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
+            <td>${m?.timeline ?? '-'}</td>
+            <td>${esc(m?.code || '-')}</td>
+            <td>${esc(m?.name || '-')}</td>
+            <td>${esc(m?.red_team_name || '-')}</td>
+            <td>${esc(m?.white_team_name || '-')}</td>
+            <td>${s.epoch}</td>
+            <td>${e5Done
+              ? '<span class="tag tag-green">完了</span>'
+              : '<span class="tag tag-grey">' + maxEp + '/' + numBouts + '</span>'}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }).catch(err => {
+        console.error('match_snapshots fetch error', err);
+        // fallback: snapshotsなしで表示
+        for (const s of accepting) {
+          const m = matchById.get(s.current_match_id);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
+            <td>${m?.timeline ?? '-'}</td>
+            <td>${esc(m?.code || '-')}</td>
+            <td>${esc(m?.name || '-')}</td>
+            <td>${esc(m?.red_team_name || '-')}</td>
+            <td>${esc(m?.white_team_name || '-')}</td>
+            <td>${s.epoch}</td>
+            <td>-</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      });
     }
 
     function loadMatchForEdit(m) {

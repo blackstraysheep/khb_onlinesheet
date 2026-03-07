@@ -111,7 +111,6 @@ serve(async (req) => {
         epoch,
         accepting: true,
         e3_reached: false,
-        accepting_since: nowIso,
        
         // ★変更：常に0ではなく、既存記録があれば再計算値を入れる
         red_wins,

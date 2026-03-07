@@ -90,7 +90,6 @@ serve(async (req) => {
         epoch: nextEpoch,
         accepting: true,
         e3_reached: false,
-        accepting_since: nowIso,
         updated_at: nowIso,
       })
       .eq("venue_id", venueId);

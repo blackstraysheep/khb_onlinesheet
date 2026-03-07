@@ -84,7 +84,7 @@ serve(async (req)=>{
 
     // 2. タイムライン方式で担当試合を特定
     //    accepting=true の state を全取得 → expected_judges で自分が含まれるものに絞る
-    //    → 最終epoch E5確定済みを除外 → timeline昇順 → accepting_since昇順
+    //    → 最終epoch E5確定済みを除外 → timeline昇順
     const { data: activeStates, error: statesErr } = await supabase
       .from("state")
       .select("*")
@@ -170,14 +170,11 @@ serve(async (req)=>{
       return json({ error: "no active match for this judge" }, 409);
     }
 
-    // timeline 昇順 → accepting_since 昇順でソート
+    // timeline 昇順でソート
     candidates.sort((a, b) => {
       const tA = a.matchRow.timeline ?? 0;
       const tB = b.matchRow.timeline ?? 0;
-      if (tA !== tB) return tA - tB;
-      const asA = a.stateRow.accepting_since ? new Date(a.stateRow.accepting_since).getTime() : 0;
-      const asB = b.stateRow.accepting_since ? new Date(b.stateRow.accepting_since).getTime() : 0;
-      return asA - asB;
+      return tA - tB;
     });
 
     const chosen = candidates[0];
