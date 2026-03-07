@@ -38,109 +38,54 @@
     </div>
 
     <div class="layout-right">
-      <!-- 対戦/epoch指定 + state操作 -->
+      <!-- 認証 -->
       <section class="card">
         <div class="row">
           <div>
-            <label for="venueCode">会場コード</label>
-            <input id="venueCode" placeholder="例: A（未入力時は default）" value="default" class="input-code" />
-          </div>
-          <div>
-            <label for="matchCode">対戦コード（matches.code）</label>
-            <input id="matchCode" placeholder="例: demo-match" />
-          </div>
-          <div>
-            <label for="epoch">epoch</label>
-            <input id="epoch" type="number" value="1" min="1" class="input-epoch" />
-          </div>
-          <div>
-            <button id="loadBtn">読み込み</button>
+            <label for="adminSecret">管理用シークレット</label>
+            <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET" />
           </div>
         </div>
+      </section>
 
-        <div class="row mt-6 row-spread">
-          <button id="toggleAcceptingBtn" class="small-btn">受付状態を確認中…</button>
-          <button id="nextMatchSetupBtn" class="small-btn">次試合作成（期待審査員設定）</button>
+      <!-- 会場・試合選択 -->
+      <section class="card">
+        <div class="row">
+          <div>
+            <label for="venueSelect">会場</label>
+            <select id="venueSelect"><option value="">-- 読込中 --</option></select>
+          </div>
+          <div>
+            <label for="matchSelect">試合</label>
+            <select id="matchSelect"><option value="">-- 会場を選択 --</option></select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button id="btnStartMatch" class="small-btn btn-blue-grey">この試合を開始</button>
+          </div>
         </div>
         <div class="msg" id="topMsg"></div>
       </section>
 
-      <!-- 次の試合の期待審査員選択カード -->
-      <section class="card hidden" id="judgeSelectSection">
-        <h2 class="card-header small">
-          次の試合の期待審査員を設定
-        </h2>
-
-        <!-- 試合情報入力フォーム -->
-        <div class="row mb-8">
-          <div>
-            <label for="newMatchSetupCode">試合コード</label>
-            <input id="newMatchSetupCode" placeholder="例: A-1" class="input-code" />
-          </div>
-          <div>
-            <label for="newMatchSetupName">試合名</label>
-            <input id="newMatchSetupName" placeholder="試合名" class="input-match-name" />
-          </div>
-          <div>
-            <label for="newMatchSetupRed">紅チーム</label>
-            <input id="newMatchSetupRed" placeholder="紅チーム名" class="input-team" />
-          </div>
-          <div>
-            <label for="newMatchSetupWhite">白チーム</label>
-            <input id="newMatchSetupWhite" placeholder="白チーム名" class="input-team" />
-          </div>
-          <div>
-            <label for="newMatchSetupBouts">対戦数</label>
-            <input id="newMatchSetupBouts" type="number" placeholder="5" class="input-bouts" />
-          </div>
-        </div>
-
-        <hr class="card-separator" />
-
-        <!-- 審査員マスタへの追加フォーム -->
-        <div class="row mb-8">
-          <div>
-            <label for="newJudgeName">審査員を追加</label>
-            <input id="newJudgeName" placeholder="審査員名を入力" />
-          </div>
-          <div>
-            <label for="newJudgeVoiceKey">Voice Key</label>
-            <input id="newJudgeVoiceKey" placeholder="例: sato" class="input-voice-key" />
-          </div>
-          <div>
-            <button id="addJudgeBtn" class="small-btn">審査員を追加</button>
-          </div>
-        </div>
-
-        <div class="small mb-8" id="judgeSelectInfo">
-          <!-- JSで文言を入れる -->
-        </div>
-        <div id="judgeSelectList" class="judge-select-list">
-          <!-- JSでチェックボックスを描画 -->
-        </div>
-        <div class="control-group">
-          <button id="judgeSelectAllBtn" class="small-btn">全員選択</button>
-          <button id="judgeSelectClearBtn" class="small-btn">全て解除</button>
-          <button id="judgeSelectConfirmBtn" class="small-btn btn-green">この審査員で試合作成</button>
-          <button id="judgeSelectCancelBtn" class="small-btn btn-grey">キャンセル</button>
-        </div>
-      </section>
-
-      <!-- E5 / E6 操作 -->
+      <!-- 受付・確定操作 -->
       <section class="card">
-        <h2 class="card-header">確定／次対戦操作（E5 / E6）</h2>
-        <div class="row">
-          <div>
-            <label for="adminSecret">管理用シークレット</label>
-            <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET と同じ値" />
-          </div>
-        </div>
         <div class="control-group">
-          <button id="btnSetMatch" class="small-btn btn-blue-grey">現在の試合に設定（current_match_id 更新）</button>
+          <button id="toggleAcceptingBtn" class="small-btn">受付状態を確認中…</button>
           <button id="btnE5" class="small-btn btn-red">E5 確定（スナップショット保存＆受付停止）</button>
           <button id="btnE6" class="small-btn btn-green">E6 次の対戦へ（epoch+1 &amp; 受付再開）</button>
         </div>
         <div class="msg" id="e5e6Status"></div>
+      </section>
+
+      <!-- 審査員の並び替え -->
+      <section class="card">
+        <h2 class="card-header small">審査員の並び替え</h2>
+        <div id="judgeReorderList" class="judge-select-list">
+          <div class="small" style="color:#aaa;">(試合を選択してください)</div>
+        </div>
+        <div class="control-group">
+          <button id="btnSaveJudgeOrder" class="small-btn btn-green">並び順を保存</button>
+        </div>
+        <div class="msg" id="judgeReorderStatus"></div>
       </section>
 
       <!-- 得点読み上げパネル（Zundamon） -->

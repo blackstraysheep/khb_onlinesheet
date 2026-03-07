@@ -428,6 +428,46 @@ button:disabled {
   flex: 1;
 }
 
+.judge-reorder-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 0.92rem;
+  cursor: grab;
+  padding: 4px 8px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.judge-reorder-item::before {
+  content: '⠿';
+  font-size: 1.1rem;
+  color: #aaa;
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.judge-reorder-item.dragging {
+  opacity: 0.6;
+  cursor: grabbing;
+}
+
+.judge-reorder-item.dragging::before {
+  cursor: grabbing;
+}
+
+select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: .9rem;
+  min-width: 120px;
+  background: #fff;
+}
+
 /* Match Setup & Zunda UI */
 .input-code {
   width: 210px;
