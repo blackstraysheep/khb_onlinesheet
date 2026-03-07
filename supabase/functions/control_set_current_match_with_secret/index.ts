@@ -108,6 +108,24 @@ serve(async (req) => {
     const red_wins = (snaps ?? []).filter((r: any) => r.winner === "red").length;
     const white_wins = (snaps ?? []).filter((r: any) => r.winner === "white").length;
 
+    // ★ E3 判定: 当該 epoch で全期待審査員が提出済みか確認
+    let e3_reached = false;
+    const { data: expectedRows } = await supabase
+      .from("expected_judges")
+      .select("judge_id")
+      .eq("match_id", match_id);
+    const expectedIds = (expectedRows ?? []).map((r: any) => r.judge_id as string);
+
+    if (expectedIds.length > 0) {
+      const { data: subRows } = await supabase
+        .from("submissions")
+        .select("judge_id")
+        .eq("match_id", match_id)
+        .eq("epoch", epoch);
+      const submittedIds = new Set((subRows ?? []).map((r: any) => r.judge_id as string));
+      e3_reached = expectedIds.every((id: string) => submittedIds.has(id));
+    }
+
     // 2. state を更新（current_match_id, epoch, accepting, e3_reached）
     const { error: updErr } = await supabase
       .from("state")
@@ -115,7 +133,7 @@ serve(async (req) => {
         current_match_id: match_id,
         epoch,
         accepting: true,
-        e3_reached: false,
+        e3_reached,
        
         // ★変更：常に0ではなく、既存記録があれば再計算値を入れる
         red_wins,
