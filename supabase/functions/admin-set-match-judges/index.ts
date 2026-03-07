@@ -41,6 +41,7 @@ serve(async (req) => {
       red_team_name?: string | null;
       white_team_name?: string | null;
       num_bouts?: number;
+      timeline?: number;
       judge_ids?: string[]; // 順序つき uuid 配列
     } | null;
 
@@ -92,10 +93,10 @@ serve(async (req) => {
       if (body?.red_team_name !== undefined) patchFields.red_team_name = body.red_team_name;
       if (body?.white_team_name !== undefined) patchFields.white_team_name = body.white_team_name;
       if (body?.num_bouts !== undefined) patchFields.num_bouts = body.num_bouts;
+      if (body?.timeline !== undefined) patchFields.timeline = body.timeline;
 
       if (existing) {
         matchId = existing.id as string;
-        patchFields.venue_id = venueId;
         if (Object.keys(patchFields).length > 0) {
           const { error: updErr } = await supabase
             .from("matches")

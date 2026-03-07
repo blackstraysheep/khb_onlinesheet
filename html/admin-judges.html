@@ -143,6 +143,7 @@
     let allMatches = [];
     let allExpectedJudges = [];
     let allTokens = [];
+    let allVenues = [];
 
     // ============================
     // REST helper
@@ -191,11 +192,12 @@
     // ============================
     async function refreshAll() {
       try {
-        [allJudges, allMatches, allExpectedJudges, allTokens] = await Promise.all([
+        [allJudges, allMatches, allExpectedJudges, allTokens, allVenues] = await Promise.all([
           fetchJson('judges', { select: 'id,name,voice_key', order: 'name.asc' }),
-          fetchJson('matches', { select: 'id,code,name,timeline,num_bouts', order: 'timeline.asc,code.asc' }),
+          fetchJson('matches', { select: 'id,code,name,timeline,num_bouts,venue_id', order: 'timeline.asc,code.asc' }),
           fetchJson('expected_judges', { select: 'match_id,judge_id' }),
           fetchJson('access_tokens', { select: 'judge_id,token', role: 'eq.judge' }),
+          fetchJson('venues', { select: 'id,code' }),
         ]);
         renderJudgeList();
         renderMatchSelect();
@@ -365,12 +367,17 @@
       const checkedJudges = Array.from($('#assignCheckboxes').querySelectorAll('input:checked'))
         .map(cb => ({ name: cb.dataset.judgeName }));
 
+      // venue_code を試合の venue_id から取得
+      const venue = allVenues.find(v => v.id === match.venue_id);
+      const venueCode = venue ? venue.code : 'default';
+
       try {
         const res = await fetch(ADMIN_SETUP_MATCH_URL, {
           method: 'POST',
           headers,
           body: JSON.stringify({
             admin_secret: secret,
+            venue_code: venueCode,
             match_code: match.code,
             match_name: match.name,
             timeline: match.timeline,

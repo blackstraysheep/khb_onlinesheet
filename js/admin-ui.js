@@ -71,6 +71,7 @@ async function populateMatches() {
       return;
     }
 
+    const previousSelection = matchSelect.value;
     let currentMatchCode = null;
     matches.forEach(m => {
       const opt = document.createElement('option');
@@ -82,7 +83,10 @@ async function populateMatches() {
       matchSelect.appendChild(opt);
     });
 
-    if (currentMatchCode) {
+    // ユーザーが手動選択していた場合はその選択を維持
+    if (previousSelection && matches.some(m => m.code === previousSelection)) {
+      matchSelect.value = previousSelection;
+    } else if (currentMatchCode) {
       matchSelect.value = currentMatchCode;
     }
     await onMatchChange();
@@ -204,15 +208,10 @@ async function saveJudgeOrder() {
   }
   try {
     setJudgeReorderStatus('保存中…');
-    const match = matchesCache.find(m => m.code === matchCode);
     await callControlFunction(ADMIN_SET_MATCH_JUDGES_URL, {
       admin_secret: adminSec,
       venue_code: currentVenueCode || 'default',
       match_code: matchCode,
-      match_name: match ? match.name : null,
-      red_team_name: match ? match.red_team_name : null,
-      white_team_name: match ? match.white_team_name : null,
-      num_bouts: match ? match.num_bouts : 5,
       judge_ids: judgeIds,
     });
     setJudgeReorderStatus('並び順を保存しました。', 'ok');

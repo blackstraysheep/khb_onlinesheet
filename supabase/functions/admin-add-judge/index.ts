@@ -132,7 +132,6 @@ serve(async (req) => {
       judge_id: judgeId,
       judge_name: name,
       token,
-      venue_code: venueCode,
     });
   } catch (e) {
     console.error(e);

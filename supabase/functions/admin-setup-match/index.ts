@@ -171,6 +171,8 @@ serve(async (req) => {
       role: "judge";
     }[] = [];
 
+    const processedJudgeIds: string[] = [];
+
     for (const j of (judges ?? [])) {
       const name = (j?.name || "").trim();
       if (!name) continue;
@@ -280,6 +282,28 @@ serve(async (req) => {
         token,
         role: "judge",
       });
+      processedJudgeIds.push(judge_id);
+    }
+
+    // 今回のリクエストに含まれなかった審査員を expected_judges から削除
+    if (judges && judges.length > 0 && processedJudgeIds.length > 0) {
+      const { error: cleanupErr } = await supabase
+        .from("expected_judges")
+        .delete()
+        .eq("match_id", match_id)
+        .not("judge_id", "in", `(${processedJudgeIds.join(",")})`);
+      if (cleanupErr) {
+        console.error("expected_judges cleanup error", cleanupErr);
+      }
+    } else if (judges && judges.length === 0) {
+      // 空配列が明示的に渡された場合、全員削除
+      const { error: cleanupErr } = await supabase
+        .from("expected_judges")
+        .delete()
+        .eq("match_id", match_id);
+      if (cleanupErr) {
+        console.error("expected_judges cleanup error", cleanupErr);
+      }
     }
 
     return json({
