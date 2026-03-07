@@ -91,7 +91,7 @@ serve(async (req) => {
     // 1. 対戦取得
     const { data: matchRow, error: matchErr } = await supabase
       .from("matches")
-      .select("id, code, name")
+      .select("id, code, name, red_team_name, white_team_name")
       .eq("code", match_code)
       .maybeSingle();
 
@@ -136,10 +136,10 @@ serve(async (req) => {
       console.error("match_bouts lookup failed", e);
     }
 
-    // 3. 期待審査員一覧
+    // 3. 期待審査員一覧（sort_order 付き）
     const { data: expectedJudges, error: expErr } = await supabase
       .from("expected_judges")
-      .select("judge_id")
+      .select("judge_id, sort_order")
       .eq("match_id", match_id);
 
     if (expErr) {
@@ -195,15 +195,18 @@ serve(async (req) => {
       judgeNameById.set(String(j.id), j.name);
     });
 
+    // sort_order マップ構築
+    const judgeSortOrderById = new Map<string, number>();
+    (expectedJudges ?? []).forEach((ej: any) => {
+      judgeSortOrderById.set(String(ej.judge_id), ej.sort_order ?? 0);
+    });
+
     const snapshotItems = (submitted ?? []).map((row: any) => {
       const judgeId = String(row.judge_id);
       return {
         judge_id: judgeId,
         judge_name: judgeNameById.get(judgeId) ?? null,
-        match_id,
-        match_code: matchRow.code,
-        match_name: matchRow.name,
-        epoch,
+        sort_order: judgeSortOrderById.get(judgeId) ?? 0,
         revision: row.revision,
         red: {
           work_point: row.red_work,
@@ -220,19 +223,34 @@ serve(async (req) => {
       };
     });
 
+    // sort_order 昇順でソート
+    snapshotItems.sort((a: any, b: any) => a.sort_order - b.sort_order);
+
     const nowIso = new Date().toISOString();
 
     const snapshot = {
-      spec_version: "v2.8-bout", // ★ slot 情報付きのバージョン
+      spec_version: "v3.0",
+      venue: {
+        id: venueId,
+        code: venueCode,
+      },
       match: {
         id: match_id,
         code: matchRow.code,
         name: matchRow.name,
       },
+      teams: {
+        red: matchRow.red_team_name ?? null,
+        white: matchRow.white_team_name ?? null,
+      },
       epoch,
       bout: {
         slot,
         label: slot_label,
+      },
+      haiku: {
+        red: null,
+        white: null,
       },
       saved_at: nowIso,
       items: snapshotItems,
