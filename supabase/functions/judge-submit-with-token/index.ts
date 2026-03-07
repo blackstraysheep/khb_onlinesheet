@@ -198,6 +198,12 @@ serve(async (req)=>{
     if (infoMode) {
       // judges テーブルから審査員名を取得（失敗しても致命ではない）
       const { data: judgeRow } = await supabase.from("judges").select("id, name").eq("id", judge_id).maybeSingle();
+
+      // 会場情報を取得
+      const { data: venueRow } = await supabase.from("venues").select("id, code, name").eq("id", venue_id).maybeSingle();
+      // 複数会場があるかどうか
+      const { count: venueCount } = await supabase.from("venues").select("id", { count: "exact", head: true });
+
       // 既に送信済みの得点があれば submissions から取得する
       let submission = null;
       const { data: submissionRow, error: submissionErr } = await supabase.from("submissions").select("red_work, red_app, red_total, red_flag, white_work, white_app, white_total, white_flag, revision").eq("match_id", match_id).eq("judge_id", judge_id).eq("epoch", epoch).order("revision", {
@@ -231,6 +237,8 @@ serve(async (req)=>{
           white_team_name: matchRow.white_team_name,
           num_bouts: matchRow.num_bouts
         },
+        venue: venueRow ? { code: venueRow.code, name: venueRow.name } : null,
+        multiple_venues: (venueCount ?? 0) > 1,
         epoch,
         accepting,
         judge_id,

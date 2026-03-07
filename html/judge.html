@@ -388,6 +388,8 @@
           const bout = data.bout || null;
           const judgeName = data.judge_name || null;
           const submission = data.submission || null;
+          const venue = data.venue || null;
+          const multipleVenues = data.multiple_venues || false;
 
           const newMatchId = match.id || null;
 
@@ -413,6 +415,10 @@
           }
 
           const parts = [];
+
+          if (multipleVenues && venue && venue.name) {
+            parts.push(venue.name);
+          }
 
           if (match.name) {
             parts.push(match.name);
@@ -484,13 +490,17 @@
           // 技術情報（表の下）
           if (boutLabelEl) {
             const segs = [];
-            if (match.code) {
-              segs.push(`試合コード: ${match.code}`);
+            if (multipleVenues && venue) {
+              segs.push(`会場: ${venue.name || ''} (venue_code=${venue.code || ''})`);
+            }
+            if (match.code || match.name) {
+              const matchDisp = match.name || match.code;
+              segs.push(`試合: ${matchDisp} (match_code=${match.code || ''})`);
             }
             if (typeof epoch === 'number') {
-              segs.push(`第${epoch}対戦`);
+              const boutDisp = (bout && bout.label) ? bout.label : `第${epoch}対戦`;
+              segs.push(`対戦: ${boutDisp} (epoch=${epoch})`);
             }
-            // ポジションはここには表示しない
 
             if (segs.length > 0) {
               boutLabelEl.textContent = '［技術情報］' + segs.join(' ／ ');
