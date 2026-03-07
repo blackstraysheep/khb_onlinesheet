@@ -137,24 +137,48 @@
 
 **ユニーク制約**: `match_snapshots_match_epoch_unique` ON `(match_id, epoch)`
 
-**snapshot JSON 構造**:
+**snapshot JSON 構造** (spec_version `v3.0`):
 ```json
 {
-  "spec_version": "v2.8-bout",
-  "match": { "id": "uuid", "code": "string", "name": "string" },
+  "spec_version": "v3.0",
+  "venue": {
+    "id": "uuid",
+    "code": "A"
+  },
+  "match": {
+    "id": "uuid",
+    "code": "A-1",
+    "name": "予選A 1試合目"
+  },
+  "teams": {
+    "red": "紅チーム名",
+    "white": "白チーム名"
+  },
   "epoch": 1,
   "bout": { "slot": 1, "label": "先鋒戦" },
+  "haiku": {
+    "red": null,
+    "white": null
+  },
   "saved_at": "ISO 8601",
   "items": [
     {
       "judge_id": "uuid",
       "judge_name": "string",
-      "red": { "work": 7, "app": 1, "total": 8, "flag": true },
-      "white": { "work": 6, "app": 0, "total": 6, "flag": false }
+      "sort_order": 0,
+      "revision": 1,
+      "red": { "work_point": 7, "app_point": 1, "total": 8, "flag": true },
+      "white": { "work_point": 6, "app_point": 0, "total": 6, "flag": false }
     }
   ]
 }
 ```
+
+- `venue`: 会場情報（id, code）
+- `teams`: 紅白チーム名（`{ red, white }` 構造）
+- `haiku`: 句情報プレースホルダ（将来のソフトウェア連携用、現在は `null`）
+- `items[]`: `sort_order` 昇順でソート済み。`revision` は提出修正回数
+- 旧バージョン (`v2.8-bout`) にあった items 内の `match_id`, `match_code`, `match_name`, `epoch` の重複は廃止
 
 ### 2.9 access_tokens
 
@@ -356,8 +380,9 @@ Body:
 1. `venues` → `venue_id`、`matches` → `match_id` 解決
 2. **会場チェック**: `matchRow.venue_id !== venueId` → **403 エラー**（「この試合は別の会場に所属」）
 3. **勝数復元**: `match_snapshots` から `match_id` の `winner` を集計 → `red_wins`, `white_wins`
-4. `state` を UPDATE: `current_match_id`, `epoch`, `accepting=true`, `e3_reached=false`, `red_wins`, `white_wins`
-5. `event_log` に `SET_MATCH` 記録
+4. **E3 再判定**: `expected_judges` と `submissions` を比較し、当該 epoch で全審査員提出済みなら `e3_reached=true`、そうでなければ `false`
+5. `state` を UPDATE: `current_match_id`, `epoch`, `accepting=true`, `e3_reached`（再判定結果）, `red_wins`, `white_wins`
+6. `event_log` に `SET_MATCH` 記録
 
 **レスポンス**: `{ ok, match: { id, code, name }, epoch, accepting: true }`
 
@@ -379,9 +404,9 @@ Body:
 **処理**:
 1. `venues` → `venue_id`、`matches` → `match_id` 解決
 2. `state` から `epoch` 取得
-3. `expected_judges` → 全期待審査員 ID
+3. `expected_judges` → 全期待審査員 ID + `sort_order`
 4. `submissions` → `match_id` + `epoch` の提出データ取得（**全員未提出なら 400**）
-5. スナップショット JSON を構築（`spec_version: "v2.8-bout"`）
+5. スナップショット JSON を構築（`spec_version: "v3.0"`、`sort_order` 昇順ソート）
 6. **Winner 判定**: `decideWinnerFromSnapshotItems()` で旗数カウント → `"red"` / `"white"` / `"draw"`
 7. `match_snapshots` に UPSERT（`onConflict: "match_id,epoch"`）
 8. **累計勝数再集計**: `match_snapshots` WHERE `match_id` の全 `winner` を COUNT
