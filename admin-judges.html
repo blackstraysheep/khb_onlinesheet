@@ -93,6 +93,17 @@
     </table>
   </div>
 
+  <!-- 試合ごとの審査員一覧 -->
+  <div class="card">
+    <h2 class="card-header">試合ごとの審査員</h2>
+    <table>
+      <thead>
+        <tr><th>TL</th><th>コード</th><th>試合名</th><th>審査員</th></tr>
+      </thead>
+      <tbody id="matchJudgeListBody"></tbody>
+    </table>
+  </div>
+
   <!-- 期待審査員アサイン -->
   <div class="card">
     <h2 class="card-header">期待審査員をアサイン</h2>
@@ -102,7 +113,6 @@
           <label for="assignMatch">試合を選択</label>
           <select id="assignMatch" class="input-lg"></select>
         </div>
-        <div><button id="btnLoadAssign" class="btn-blue">読み込み</button></div>
       </div>
       <div id="assignCheckboxes" class="checkbox-grid"></div>
       <div id="assignConflictWarn" class="conflict-warn mb-8"></div>
@@ -189,6 +199,7 @@
         ]);
         renderJudgeList();
         renderMatchSelect();
+        renderMatchJudgeList();
       } catch (e) {
         console.error('refreshAll error', e);
       }
@@ -205,6 +216,10 @@
         if (!matchesByJudge.has(ej.judge_id)) matchesByJudge.set(ej.judge_id, []);
         const m = matchById.get(ej.match_id);
         if (m) matchesByJudge.get(ej.judge_id).push(m);
+      }
+      // timeline順にソート
+      for (const [, matches] of matchesByJudge) {
+        matches.sort((a, b) => (a.timeline ?? 0) - (b.timeline ?? 0));
       }
 
       const tbody = $('#judgeListBody');
@@ -240,6 +255,30 @@
     }
 
     // ============================
+    // 試合ごとの審査員一覧
+    // ============================
+    function renderMatchJudgeList() {
+      const judgeById = new Map(allJudges.map(j => [j.id, j]));
+      const tbody = $('#matchJudgeListBody');
+      tbody.innerHTML = '';
+      for (const m of allMatches) {
+        const judges = allExpectedJudges
+          .filter(e => e.match_id === m.id)
+          .map(e => judgeById.get(e.judge_id))
+          .filter(Boolean)
+          .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${m.timeline ?? '-'}</td>
+          <td>${esc(m.code)}</td>
+          <td>${esc(m.name || '')}</td>
+          <td>${judges.length ? judges.map(j => esc(j.name)).join(', ') : '<span style="color:#888">未設定</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ============================
     // 期待審査員アサイン
     // ============================
     function renderMatchSelect() {
@@ -256,9 +295,15 @@
     let selectedMatchId = null;
     let selectedMatchTimeline = null;
 
-    $('#btnLoadAssign').addEventListener('click', () => {
+    $('#assignMatch').addEventListener('change', loadAssignForMatch);
+
+    function loadAssignForMatch() {
       selectedMatchId = $('#assignMatch').value;
-      if (!selectedMatchId) return;
+      if (!selectedMatchId) {
+        $('#assignCheckboxes').innerHTML = '';
+        $('#assignConflictWarn').textContent = '';
+        return;
+      }
       const match = allMatches.find(m => m.id === selectedMatchId);
       selectedMatchTimeline = match?.timeline;
 
@@ -280,7 +325,7 @@
         container.appendChild(lbl);
       }
       checkConflicts();
-    });
+    }
 
     function checkConflicts() {
       if (!selectedMatchId || selectedMatchTimeline == null) return;
