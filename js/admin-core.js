@@ -221,11 +221,27 @@ if (btnStartMatch) {
         match_code: matchCode,
         epoch: 1,
       });
-      setE5E6Status(`試合を開始しました: ${data.match?.code || matchCode}, epoch=${data.epoch}`, true);
+      let statusMsg = `試合を開始しました: ${data.match?.code || matchCode}, epoch=${data.epoch}`;
+      if (data.warnings && data.warnings.length > 0) {
+        const names = [...new Set(data.warnings.map(w => w.judge_name || w.judge_id))];
+        const matches = [...new Set(data.warnings.map(w => w.other_match_name || w.other_match_code))];
+        statusMsg += `\n⚠ 警告: ${names.join(', ')} は別の試合 (${matches.join(', ')}) を審査中です`;
+      }
+      setE5E6Status(statusMsg, true);
       await populateMatches();
     } catch (err) {
       console.error(err);
-      setE5E6Status('試合開始に失敗しました: ' + (err.message || String(err)), false);
+      if (err.responseData?.error === 'same_timeline_conflict') {
+        const conflicts = err.responseData.conflicts || [];
+        const names = [...new Set(conflicts.map(c => c.judge_name || c.judge_id))];
+        const matches = [...new Set(conflicts.map(c => c.other_match_name || c.other_match_code))];
+        setE5E6Status(
+          `試合を開始できません: ${names.join(', ')} が同一タイムラインの試合 (${matches.join(', ')}) を審査中です`,
+          false
+        );
+      } else {
+        setE5E6Status('試合開始に失敗しました: ' + (err.message || String(err)), false);
+      }
     }
   });
 }

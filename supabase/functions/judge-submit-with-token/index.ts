@@ -170,11 +170,12 @@ serve(async (req)=>{
       return json({ error: "no active match for this judge" }, 409);
     }
 
-    // timeline 昇順でソート
+    // timeline 昇順でソート（同値時は match code 辞書順で決定的に）
     candidates.sort((a, b) => {
       const tA = a.matchRow.timeline ?? 0;
       const tB = b.matchRow.timeline ?? 0;
-      return tA - tB;
+      if (tA !== tB) return tA - tB;
+      return (a.matchRow.code ?? '').localeCompare(b.matchRow.code ?? '');
     });
 
     const chosen = candidates[0];

@@ -40,7 +40,9 @@ async function callControlFunction(url, body) {
 
   if (!res.ok || data.error) {
     const msg = data.error || res.status;
-    throw new Error(String(msg));
+    const err = new Error(String(msg));
+    err.responseData = data;
+    throw err;
   }
   return data;
 }
