@@ -127,6 +127,10 @@ async function loadData(isAuto = false) {
       parts.push(`<span class="tag ${st.accepting ? 'ok' : 'danger'}">accepting: ${st.accepting}</span>`);
       parts.push(`<span class="tag outline ${st.e3_reached ? 'ok' : 'warn'}">e3_reached: ${st.e3_reached}</span>`);
 
+      // epoch入力欄を現在値で更新（未入力時のみ）
+      if (epochInput && !epochInput.matches(':focus')) {
+        epochInput.value = st.epoch;
+      }
       if (st.current_match_id) {
         parts.push(st.current_match_id === matchId
           ? '<span class="tag ok">current_match_id: true</span>'
@@ -179,25 +183,25 @@ async function loadData(isAuto = false) {
 
 toggleAcceptingBtn.addEventListener('click', async () => {
   if (!lastState) {
-    setMsg('状態が読み込まれていません。', 'err');
+    setE5E6Status('状態が読み込まれていません。', 'err');
     return;
   }
   const nextVal = !lastState.accepting;
   const label = nextVal ? '受付開始' : '受付締切';
   try {
-    setMsg(`${label}処理中…`, '');
+    setE5E6Status(`${label}処理中…`, '');
     setControlsDisabled(true);
     const patch = { accepting: nextVal };
     if (nextVal && lastState.epoch) patch.epoch = lastState.epoch;
     await patchState(patch);
-    setMsg(`${label}しました（accepting=${nextVal}）。`, 'ok');
+    setE5E6Status(`${label}しました（accepting=${nextVal}）。`, 'ok');
     await loadData();
   } catch (err) {
     console.error(err);
-    setMsg(`${label}に失敗しました: ` + err.message, 'err');
+    setE5E6Status(`${label}に失敗しました: ` + err.message, 'err');
     setControlsDisabled(false);
   }
-});
+})
 
 if (venueSelect) {
   venueSelect.addEventListener('change', onVenueChange);
@@ -210,10 +214,10 @@ if (btnStartMatch) {
   btnStartMatch.addEventListener('click', async () => {
     const adminSecret = adminSecretInput ? adminSecretInput.value.trim() : '';
     const matchCode = matchSelect ? matchSelect.value : '';
-    if (!adminSecret) { setE5E6Status('管理用シークレットを入力してください。', false); return; }
-    if (!matchCode) { setE5E6Status('試合を選択してください。', false); return; }
+    if (!adminSecret) { setMsg('管理用シークレットを入力してください。', 'err'); return; }
+    if (!matchCode) { setMsg('試合を選択してください。', 'err'); return; }
 
-    setE5E6Status('現在の試合を設定中…', true);
+    setMsg('現在の試合を設定中…', '');
     try {
       const data = await callControlFunction(CONTROL_SET_MATCH_URL, {
         admin_secret: adminSecret,
@@ -222,12 +226,13 @@ if (btnStartMatch) {
         epoch: 1,
       });
       let statusMsg = `試合を開始しました: ${data.match?.code || matchCode}, epoch=${data.epoch}`;
-      if (data.warnings && data.warnings.length > 0) {
+      const hasWarnings = data.warnings && data.warnings.length > 0;
+      if (hasWarnings) {
         const names = [...new Set(data.warnings.map(w => w.judge_name || w.judge_id))];
         const matches = [...new Set(data.warnings.map(w => w.other_match_name || w.other_match_code))];
         statusMsg += `\n⚠ 警告: ${names.join(', ')} は別の試合 (${matches.join(', ')}) を審査中です`;
       }
-      setE5E6Status(statusMsg, true);
+      setMsg(statusMsg, hasWarnings ? 'warn' : 'ok');
       await populateMatches();
     } catch (err) {
       console.error(err);
@@ -235,12 +240,12 @@ if (btnStartMatch) {
         const conflicts = err.responseData.conflicts || [];
         const names = [...new Set(conflicts.map(c => c.judge_name || c.judge_id))];
         const matches = [...new Set(conflicts.map(c => c.other_match_name || c.other_match_code))];
-        setE5E6Status(
+        setMsg(
           `試合を開始できません: ${names.join(', ')} が同一タイムラインの試合 (${matches.join(', ')}) を審査中です`,
-          false
+          'err'
         );
       } else {
-        setE5E6Status('試合開始に失敗しました: ' + (err.message || String(err)), false);
+        setMsg('試合開始に失敗しました: ' + (err.message || String(err)), 'err');
       }
     }
   });
@@ -248,56 +253,128 @@ if (btnStartMatch) {
 
 // --- E5 / E6 ---
 
-function setE5E6Status(message, isOk) {
+function setE5E6Status(message, type) {
   if (!e5e6StatusEl) return;
   e5e6StatusEl.textContent = message;
   e5e6StatusEl.className = 'msg';
-  if (isOk === true)  e5e6StatusEl.classList.add('ok');
-  if (isOk === false) e5e6StatusEl.classList.add('err');
+  if (type === 'ok')   e5e6StatusEl.classList.add('ok');
+  if (type === 'warn') e5e6StatusEl.classList.add('warn');
+  if (type === 'err')  e5e6StatusEl.classList.add('err');
 }
 
 async function onClickE5() {
   const adminSecret = adminSecretInput ? adminSecretInput.value.trim() : '';
   const matchCode   = matchSelect ? matchSelect.value : '';
 
-  if (!adminSecret) { setE5E6Status('管理用シークレットを入力してください。', false); return; }
-  if (!matchCode)   { setE5E6Status('試合を選択してください。', false); return; }
+  if (!adminSecret) { setE5E6Status('管理用シークレットを入力してください。', 'err'); return; }
+  if (!matchCode)   { setE5E6Status('試合を選択してください。', 'err'); return; }
 
-  setE5E6Status('E5 実行中…（スナップショット保存と受付停止）', true);
+  setE5E6Status('E5 実行中…（スナップショット保存と受付停止）', '');
   try {
     const data = await callControlFunction(CONTROL_CONFIRM_URL, {
       admin_secret: adminSecret,
       venue_code: currentVenueCode || 'default',
       match_code: matchCode,
     });
-    setE5E6Status(`E5 完了: match=${matchCode}, epoch=${data.epoch}（スナップショット件数: ${data.snapshot_count}）`, true);
+    setE5E6Status(`E5 完了: match=${matchCode}, epoch=${data.epoch}（スナップショット件数: ${data.snapshot_count}）`, 'ok');
     await loadData();
   } catch (err) {
     console.error(err);
-    setE5E6Status('E5 失敗: ' + (err.message || String(err)), false);
+    setE5E6Status('E5 失敗: ' + (err.message || String(err)), 'err');
   }
 }
 
 async function onClickE6() {
   const adminSecret = adminSecretInput ? adminSecretInput.value.trim() : '';
-  if (!adminSecret) { setE5E6Status('管理用シークレットを入力してください。', false); return; }
+  if (!adminSecret) { setE5E6Status('管理用シークレットを入力してください。', 'err'); return; }
 
-  setE5E6Status('E6 実行中…（epoch を進めて受付再開）', true);
+  // E5チェック: スナップショットの存在と鮮度を確認
+  const matchCode = matchSelect ? matchSelect.value : '';
+  const match = matchesCache.find(m => m.code === matchCode);
+  const epoch = lastState ? lastState.epoch : null;
+
+  if (match && epoch) {
+    try {
+      // match_snapshots を確認
+      const snapshots = await fetchJson('match_snapshots', {
+        select: 'id,created_at',
+        match_id: 'eq.' + match.id,
+        epoch: 'eq.' + epoch,
+        order: 'created_at.desc',
+        limit: '1',
+      });
+
+      if (!snapshots.length) {
+        // E5未実行
+        if (!confirm(`⚠ E5が未実行です（epoch=${epoch}）。\nスナップショットを保存せずに次の対戦へ進みますか？`)) {
+          setE5E6Status('E6 をキャンセルしました。', '');
+          return;
+        }
+      } else {
+        // E5実行済み → 最終スナップショット以降に提出の修正がないか確認
+        const snapshotTime = snapshots[0].created_at;
+        const newerSubs = await fetchJson('submissions', {
+          select: 'id',
+          match_id: 'eq.' + match.id,
+          epoch: 'eq.' + epoch,
+          updated_at: 'gt.' + snapshotTime,
+          limit: '1',
+        });
+
+        if (newerSubs.length > 0) {
+          if (!confirm(`⚠ E5確定後に提出の修正があります（epoch=${epoch}）。\n再度E5を実行してから進むことを推奨します。このまま次の対戦へ進みますか？`)) {
+            setE5E6Status('E6 をキャンセルしました。', '');
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('E5チェック中にエラー:', err);
+      if (!confirm('⚠ E5の状態を確認できませんでした。このまま次の対戦へ進みますか？')) {
+        setE5E6Status('E6 をキャンセルしました。', '');
+        return;
+      }
+    }
+  }
+
+  setE5E6Status('E6 実行中…（epoch を進めて受付再開）', '');
   try {
     const data = await callControlFunction(CONTROL_ADVANCE_URL, {
       admin_secret: adminSecret,
       venue_code: currentVenueCode || 'default',
     });
-    setE5E6Status(`E6 完了: epoch ${data.from_epoch} → ${data.to_epoch} に進めました（受付再開）`, true);
+    setE5E6Status(`E6 完了: epoch ${data.from_epoch} → ${data.to_epoch} に進めました（受付再開）`, 'ok');
     await loadData();
   } catch (err) {
     console.error(err);
-    setE5E6Status('E6 失敗: ' + (err.message || String(err)), false);
+    setE5E6Status('E6 失敗: ' + (err.message || String(err)), 'err');
   }
 }
 
 if (btnE5) btnE5.addEventListener('click', onClickE5);
 if (btnE6) btnE6.addEventListener('click', onClickE6);
+
+if (btnSetEpoch) {
+  btnSetEpoch.addEventListener('click', async () => {
+    const val = epochInput ? parseInt(epochInput.value, 10) : NaN;
+    if (!val || val < 1) {
+      setE5E6Status('Epochに1以上の整数を入力してください。', 'err');
+      return;
+    }
+    if (!confirm(`Epochを ${val} に設定します（accepting=true, e3_reachedは提出状況から自動判定されます）。よろしいですか？`)) {
+      return;
+    }
+    try {
+      setE5E6Status(`Epoch を ${val} に設定中…`, '');
+      await patchState({ epoch: val, accepting: true });
+      setE5E6Status(`Epoch を ${val} に設定しました（accepting=true, e3_reachedは自動判定）。`, 'ok');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      setE5E6Status('Epoch設定に失敗しました: ' + (err.message || String(err)), 'err');
+    }
+  });
+}
 
 if (btnSaveJudgeOrder) {
   btnSaveJudgeOrder.addEventListener('click', saveJudgeOrder);

@@ -269,6 +269,7 @@ serve(async (req) => {
           epoch,
           snapshot,
           winner,
+          created_at: nowIso,
         },
         {
           onConflict: "match_id,epoch",

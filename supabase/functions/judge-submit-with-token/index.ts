@@ -342,7 +342,7 @@ serve(async (req)=>{
           const allSubmitted = expectedIds.every((id)=>submittedIds.includes(id));
           if (allSubmitted) {
             const { data: stateRow2 } = await supabase.from("state").select("*").eq("venue_id", venue_id).maybeSingle();
-            if (stateRow2 && !stateRow2.e3_reached && stateRow2.epoch === epoch) {
+            if (stateRow2 && !stateRow2.e3_reached) {
               await supabase.from("state").update({
                 e3_reached: true,
                 updated_at: nowIso

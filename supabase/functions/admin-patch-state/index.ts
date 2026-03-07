@@ -71,7 +71,6 @@ serve(async (req) => {
     ) {
       safePatch.epoch = rawPatch.epoch;
     }
-
     if (Object.keys(safePatch).length === 0) {
       return json({ error: "patch must contain at least one of: accepting, scoreboard_visible, epoch" }, 400);
     }
@@ -95,12 +94,46 @@ serve(async (req) => {
       .from("state")
       .update(safePatch)
       .eq("venue_id", venueId)
-      .select("accepting, scoreboard_visible, epoch, venue_id")
+      .select("accepting, scoreboard_visible, epoch, e3_reached, venue_id, current_match_id")
       .maybeSingle();
 
     if (updErr) {
       console.error("state patch error", updErr);
       return json({ error: "failed to patch state" }, 500);
+    }
+
+    // 4.5. epoch変更時はe3_reachedを自動判定
+    if (typeof safePatch.epoch === "number" && updated?.current_match_id) {
+      const targetEpoch = safePatch.epoch as number;
+      const matchId = updated.current_match_id as string;
+
+      const { data: expectedAll } = await supabase
+        .from("expected_judges")
+        .select("judge_id")
+        .eq("match_id", matchId);
+
+      let e3 = false;
+      if (expectedAll && expectedAll.length > 0) {
+        const expectedIds = expectedAll.map((r: any) => String(r.judge_id));
+        const { data: submittedAll } = await supabase
+          .from("submissions")
+          .select("judge_id")
+          .eq("match_id", matchId)
+          .eq("epoch", targetEpoch);
+
+        if (submittedAll) {
+          const submittedIds = new Set(submittedAll.map((r: any) => String(r.judge_id)));
+          e3 = expectedIds.every((id: string) => submittedIds.has(id));
+        }
+      }
+
+      if (e3 !== updated.e3_reached) {
+        await supabase
+          .from("state")
+          .update({ e3_reached: e3, updated_at: new Date().toISOString() })
+          .eq("venue_id", venueId);
+        updated.e3_reached = e3;
+      }
     }
 
     return json({

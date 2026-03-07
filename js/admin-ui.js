@@ -148,13 +148,47 @@ async function loadJudgeOrder() {
     });
     const judgesMap_local = Object.fromEntries(judges.map(j => [String(j.id), j.name || '(名前未設定)']));
 
+    // TL重複検出: 全会場横断で同一タイムラインの他試合を検索
+    const currentTimeline = match.timeline;
+    let tlConflicts = {}; // judgeId -> [conflicting match codes]
+    if (currentTimeline != null) {
+      // 全会場から同じtimelineの他試合を取得
+      const sameTimelineMatches = await fetchJson('matches', {
+        select: 'id,code',
+        timeline: 'eq.' + currentTimeline,
+        id: 'neq.' + match.id,
+      });
+      if (sameTimelineMatches.length > 0) {
+        const allExpected = await fetchJson('expected_judges', {
+          select: 'judge_id,match_id',
+          match_id: 'in.(' + sameTimelineMatches.map(m => m.id).join(',') + ')',
+        });
+        const matchIdToCode = Object.fromEntries(sameTimelineMatches.map(m => [m.id, m.code]));
+        allExpected.forEach(e => {
+          const jid = String(e.judge_id);
+          if (judgeIds.includes(jid)) {
+            if (!tlConflicts[jid]) tlConflicts[jid] = [];
+            tlConflicts[jid].push(matchIdToCode[e.match_id] || e.match_id);
+          }
+        });
+      }
+    }
+
     judgeReorderList.innerHTML = '';
     judgeIds.forEach(jid => {
       const div = document.createElement('div');
       div.className = 'judge-reorder-item';
       div.dataset.judgeId = jid;
       div.draggable = true;
-      div.textContent = judgesMap_local[jid] || jid;
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = judgesMap_local[jid] || jid;
+      div.appendChild(nameSpan);
+      if (tlConflicts[jid]) {
+        const badge = document.createElement('span');
+        badge.className = 'tag tag-warn';
+        badge.textContent = `TL${currentTimeline}重複: ${tlConflicts[jid].join(',')}`;
+        div.appendChild(badge);
+      }
       div.addEventListener('dragstart', e => {
         div.classList.add('dragging');
         if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
@@ -185,8 +219,9 @@ function setJudgeReorderStatus(text, type) {
   if (!judgeReorderStatus) return;
   judgeReorderStatus.textContent = text || '';
   judgeReorderStatus.className = 'msg';
-  if (type === 'ok') judgeReorderStatus.classList.add('ok');
-  if (type === 'err') judgeReorderStatus.classList.add('err');
+  if (type === 'ok')   judgeReorderStatus.classList.add('ok');
+  if (type === 'warn') judgeReorderStatus.classList.add('warn');
+  if (type === 'err')  judgeReorderStatus.classList.add('err');
 }
 
 async function saveJudgeOrder() {

@@ -48,7 +48,7 @@
         </div>
       </section>
 
-      <!-- 会場・試合選択 -->
+      <!-- 会場・試合選択 + 受付・確定操作 -->
       <section class="card">
         <div class="row">
           <div>
@@ -64,10 +64,12 @@
           </div>
         </div>
         <div class="msg" id="topMsg"></div>
-      </section>
-
-      <!-- 受付・確定操作 -->
-      <section class="card">
+        <div class="control-group">
+          <label for="epochInput" style="margin:0;display:flex;align-items:center;font-size:.8rem;color:var(--muted);">Epoch手動設定:</label>
+          <input id="epochInput" type="number" min="1" class="input-epoch" placeholder="epoch" />
+          <button id="btnSetEpoch" class="small-btn btn-blue-grey">Epoch設定</button>
+        </div>
+        <hr class="card-separator">
         <div class="control-group">
           <button id="toggleAcceptingBtn" class="small-btn">受付状態を確認中…</button>
           <button id="btnE5" class="small-btn btn-red">E5 確定（スナップショット保存＆受付停止）</button>
@@ -91,7 +93,7 @@
       <!-- 得点読み上げパネル -->
       <section class="card">
         <h2 class="card-header">得点読み上げパネル</h2>
-        <div class="small" id="audioStatus">
+        <div class="msg" id="audioStatus">
           E3未到達のため、得点読み上げはまだ準備されていません。
         </div>
         <div id="audioQueueList" class="small audio-queue-list">

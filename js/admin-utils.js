@@ -19,8 +19,9 @@ function setMsg(text, type) {
   if (!topMsg) return;
   topMsg.textContent = text || '';
   topMsg.className = 'msg';
-  if (type === 'ok') topMsg.classList.add('ok');
-  if (type === 'err') topMsg.classList.add('err');
+  if (type === 'ok')   topMsg.classList.add('ok');
+  if (type === 'warn') topMsg.classList.add('warn');
+  if (type === 'err')  topMsg.classList.add('err');
 }
 
 function setControlsDisabled(disabled) {

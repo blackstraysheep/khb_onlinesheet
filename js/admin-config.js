@@ -45,6 +45,8 @@ const adminSecretInput    = $('#adminSecret');
 const btnE5               = $('#btnE5');
 const btnE6               = $('#btnE6');
 const e5e6StatusEl        = $('#e5e6Status');
+const epochInput          = $('#epochInput');
+const btnSetEpoch         = $('#btnSetEpoch');
 
 // 内部状態
 let lastState       = null;

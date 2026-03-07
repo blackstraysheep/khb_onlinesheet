@@ -51,8 +51,7 @@ async function callControlFunction(url, body) {
 async function patchState(patch) {
   const adminSec = adminSecretInput ? adminSecretInput.value.trim() : '';
   if (!adminSec) {
-    console.warn('patchState: 管理用シークレット未入力のためスキップ');
-    return;
+    throw new Error('管理用シークレットを入力してください。');
   }
   const venueCode = currentVenueCode || 'default';
   const data = await callControlFunction(ADMIN_PATCH_STATE_URL, {
