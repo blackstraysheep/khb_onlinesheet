@@ -595,7 +595,7 @@ function getBoutLabel(epoch: number, numBouts: number): string {
 | ファイル | 用途 |
 |----------|------|
 | `config.js` | Supabase URL・anon key・Edge Function URL の定義 |
-| `admin.html` + `admin.js` + `admin.css` | 管理パネル（試合進行・スコアボード・Zundamon） |
+| `admin.html` + `admin.js` + `admin.css` | 管理パネル（試合進行・スコアボード・音声読み上げ） |
 | `admin-match.html` | 試合管理（CRUD） |
 | `admin-judges.html` | 審査員管理（CRUD＋トークン発行） |
 | `judge.html` + `judge.css` | 審査員入力画面 |
@@ -637,7 +637,7 @@ window.JUDGE_APP_CONFIG = {
 | `populateMatches()` | 選択中会場の試合一覧取得 |
 | `onVenueChange()` | 会場変更ハンドラ |
 | `onMatchChange()` | 試合変更ハンドラ |
-| `loadData(isAuto)` | 全データ取得＋スコアボード描画＋Zundamon キュー構築 |
+| `loadData(isAuto)` | 全データ取得＋スコアボード描画＋音声キュー構築 |
 | `patchState(patch)` | admin-patch-state 呼び出し |
 | `onClickE5()` | E5 確定処理 |
 | `onClickE6()` | E6 次対戦へ |
@@ -645,7 +645,7 @@ window.JUDGE_APP_CONFIG = {
 | `saveJudgeOrder()` | 審査員並び順の保存 |
 | `buildScoreboard_horizontal()` | 横型スコアボード描画 |
 | `buildScoreboard_vertical()` | 縦型スコアボード描画 |
-| `buildZundaAudioSuite()` | Zundamon 音声キュー構築 |
+| `buildAudioSuite()` | 音声キュー構築 |
 
 ### 8.4 scoreboard.js
 
@@ -685,7 +685,7 @@ function updateFlagsAuto() {
 
 **ポーリング**: 5 秒間隔、`document.visibilityState === 'visible'` のときのみ実行。試合/epoch の変化を検知して自動リセット。
 
-### 8.6 Zundamon 音声
+### 8.6 音声読み上げ
 
 審査員ごとの音声クリップ配列:
 ```

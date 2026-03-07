@@ -106,8 +106,8 @@ async function loadData(isAuto = false) {
       buildScoreboard_horizontal(displayIds, judgesMap, subMap, meta);
     }
 
-    // Zundamon
-    scheduleZundaAudioRefresh({ match, epoch, boutLabelFull, expectedIds, judgesMap, subMap });
+    // 音声読み上げ
+    scheduleAudioRefresh({ match, epoch, boutLabelFull, expectedIds, judgesMap, subMap });
 
     // 7. 状態サマリ
     const submittedIds  = new Set(subs.map(s => String(s.judge_id)));
@@ -296,20 +296,20 @@ setInterval(() => {
 // 音声再生ボタン
 if (btnAudioPlayAll) {
   btnAudioPlayAll.addEventListener('click', () => {
-    if (!zundaQueue.length) {
+    if (!audioQueue.length) {
       setAudioStatus('再生キューが空です。先に読み込みを行ってください。');
       return;
     }
-    if (zundaPlaying) {
+    if (audioPlaying) {
       setAudioStatus('すでに再生中です。');
       return;
     }
-    zundaQueueIndex = 0;
-    playZundaQueue();
+    audioQueueIndex = 0;
+    playAudioQueue();
   });
 }
 if (btnAudioStop) {
-  btnAudioStop.addEventListener('click', stopZunda);
+  btnAudioStop.addEventListener('click', stopAudio);
 }
 
 // 初期化: 会場ドロップダウンを読み込み

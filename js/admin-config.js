@@ -37,7 +37,7 @@ const btnSaveJudgeOrder   = $('#btnSaveJudgeOrder');
 const judgeReorderStatus  = $('#judgeReorderStatus');
 
 const audioStatusEl       = $('#audioStatus');
-const zundaQueueListEl    = $('#zundaQueueList');
+const audioQueueListEl    = $('#audioQueueList');
 const btnAudioPlayAll     = $('#btnAudioPlayAll');
 const btnAudioStop        = $('#btnAudioStop');
 

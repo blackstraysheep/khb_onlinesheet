@@ -428,7 +428,7 @@ button:disabled {
   flex: 1;
 }
 
-/* Match Setup & Zunda UI */
+/* Match Setup & Audio UI */
 .input-code {
   width: 210px;
   min-width: 0;
@@ -465,7 +465,7 @@ button:disabled {
   border-top: 1px solid var(--border);
 }
 
-.zunda-queue-list {
+.audio-queue-list {
   margin-top: 8px;
   max-height: 150px;
   overflow-y: auto;
@@ -475,11 +475,11 @@ button:disabled {
   position: relative;
 }
 
-.zunda-empty {
+.audio-empty {
   color: #aaa;
 }
 
-.zunda-item.current {
+.audio-item.current {
   font-weight: bold;
   color: blue;
 }
