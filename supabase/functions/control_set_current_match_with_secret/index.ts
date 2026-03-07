@@ -78,12 +78,17 @@ serve(async (req) => {
     // 1. 対戦取得
     const { data: matchRow, error: matchErr } = await supabase
       .from("matches")
-      .select("id, code, name")
+      .select("id, code, name, venue_id")
       .eq("code", match_code)
       .maybeSingle();
 
     if (matchErr || !matchRow) {
       return json({ error: "match not found" }, 404);
+    }
+
+    // 試合の会場と指定会場が一致するか検証
+    if (String(matchRow.venue_id) !== venueId) {
+      return json({ error: `match '${match_code}' belongs to a different venue` }, 403);
     }
 
     const match_id: string = matchRow.id as string;

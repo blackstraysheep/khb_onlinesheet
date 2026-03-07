@@ -1118,6 +1118,7 @@
 
       await callControlFunction(ADMIN_SET_MATCH_JUDGES_URL, {
         admin_secret: adminSec,
+        venue_code: venueCode,
         match_code: nextCode,
         match_name: matchName,
         red_team_name: redTeam,

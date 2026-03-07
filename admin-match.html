@@ -90,7 +90,7 @@
     <div id="matchListContainer">
       <table>
         <thead>
-          <tr><th>TL</th><th>コード</th><th>試合名</th><th>紅</th><th>白</th><th>対戦数</th><th>状態</th><th>操作</th></tr>
+          <tr><th>会場</th><th>TL</th><th>コード</th><th>試合名</th><th>紅</th><th>白</th><th>対戦数</th><th>状態</th><th>操作</th></tr>
         </thead>
         <tbody id="matchListBody"></tbody>
       </table>
@@ -157,6 +157,7 @@
           headers,
           body: JSON.stringify({
             admin_secret: secret,
+            venue_code: $('#venueCode').value.trim() || 'default',
             match_code: matchCode,
             match_name: matchName,
             timeline,
@@ -180,7 +181,7 @@
     async function refreshMatches() {
       try {
         const matches = await fetchJson('matches', {
-          select: 'id,code,name,timeline,num_bouts,red_team_name,white_team_name',
+          select: 'id,code,name,timeline,num_bouts,red_team_name,white_team_name,venue_id',
           order: 'timeline.asc,code.asc',
         });
 
@@ -211,6 +212,7 @@
           }
           const tr = document.createElement('tr');
           tr.innerHTML = `
+            <td>${esc(venueCodeById.get(m.venue_id) || '-')}</td>
             <td>${m.timeline ?? '-'}</td>
             <td>${esc(m.code)}</td>
             <td>${esc(m.name)}</td>

@@ -66,7 +66,7 @@ serve(async (req) => {
     }
     const venueCode = (body?.venue_code ?? "default").trim();
 
-    // 3. 会場を解決（venue_code は match には不使用だが将来の拡張に備えて検証）
+    // 3. 会場を解決
     const { data: venueRow, error: venueErr } = await supabase
       .from("venues")
       .select("id")
@@ -76,6 +76,7 @@ serve(async (req) => {
     if (venueErr || !venueRow) {
       return json({ error: `venue not found: ${venueCode}` }, 404);
     }
+    const venueId = venueRow.id as string;
 
     // 4. matches を upsert（code で一意）
     let matchId: string;
@@ -94,6 +95,7 @@ serve(async (req) => {
 
       if (existing) {
         matchId = existing.id as string;
+        patchFields.venue_id = venueId;
         if (Object.keys(patchFields).length > 0) {
           const { error: updErr } = await supabase
             .from("matches")
@@ -105,7 +107,7 @@ serve(async (req) => {
           }
         }
       } else {
-        const insertPayload: Record<string, unknown> = { code: matchCode, ...patchFields };
+        const insertPayload: Record<string, unknown> = { code: matchCode, venue_id: venueId, ...patchFields };
         const { data: inserted, error: insErr } = await supabase
           .from("matches")
           .insert(insertPayload)

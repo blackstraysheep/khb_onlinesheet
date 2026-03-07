@@ -22,6 +22,7 @@ type JudgeInput = { name: string };
 
 type RequestBody = {
   admin_secret?: string;
+  venue_code?: string;
   match_code?: string;
   match_name?: string;
   timeline?: number;
@@ -65,6 +66,7 @@ serve(async (req) => {
 
     const {
       admin_secret,
+      venue_code,
       match_code,
       match_name,
       timeline,
@@ -104,6 +106,15 @@ serve(async (req) => {
     const numBouts = (typeof num_bouts === "number" && Number.isInteger(num_bouts) && num_bouts >= 1)
       ? num_bouts : 5;
 
+    // 2b. 会場を解決
+    const venueCode = (venue_code ?? "default").trim();
+    const { data: venueRow, error: venueErr } = await supabase
+      .from("venues").select("id").eq("code", venueCode).maybeSingle();
+    if (venueErr || !venueRow) {
+      return json({ error: `venue not found: ${venueCode}` }, 404);
+    }
+    const venueId = venueRow.id as string;
+
     // 3. 対戦を取得 or 作成（code で一意とみなす）
     let match_id: string;
 
@@ -123,6 +134,7 @@ serve(async (req) => {
         name: match_name,
         timeline,
         num_bouts: numBouts,
+        venue_id: venueId,
       };
       if (red_team_name !== undefined) matchPayload.red_team_name = red_team_name;
       if (white_team_name !== undefined) matchPayload.white_team_name = white_team_name;
