@@ -83,12 +83,11 @@ serve(async (req)=>{
     const judge_id = String(tokenRow.judge_id);
 
     // 2. タイムライン方式で担当試合を特定
-    //    accepting=true の state を全取得 → expected_judges で自分が含まれるものに絞る
-    //    → 最終epoch E5確定済みを除外 → timeline昇順
+    //    全 state を取得 → expected_judges で自分が含まれるものに絞る
+    //    → 優先度: active未完了 > inactive未完了 > 完了済み → timeline昇順
     const { data: activeStates, error: statesErr } = await supabase
       .from("state")
-      .select("*")
-      .eq("accepting", true);
+      .select("*");
     if (statesErr) {
       return json({ error: "failed to load states" }, 500);
     }
@@ -149,7 +148,7 @@ serve(async (req)=>{
     }
 
     // 候補をフィルタ
-    type Candidate = { stateRow: any; matchRow: any };
+    type Candidate = { stateRow: any; matchRow: any; isComplete: boolean };
     const candidates: Candidate[] = [];
     for (const st of activeStates) {
       const mid = String(st.current_match_id);
@@ -158,8 +157,8 @@ serve(async (req)=>{
       if (!m) continue;
       const numBouts = typeof m.num_bouts === "number" ? m.num_bouts : 5;
       const maxConfirmed = confirmedMaxEpoch.get(mid) ?? 0;
-      if (maxConfirmed >= numBouts) continue; // 最終epoch確定済み = 試合完了
-      candidates.push({ stateRow: st, matchRow: m });
+      const isComplete = maxConfirmed >= numBouts; // 最終epoch確定済み = 試合完了
+      candidates.push({ stateRow: st, matchRow: m, isComplete });
     }
 
     if (candidates.length === 0) {
@@ -170,8 +169,15 @@ serve(async (req)=>{
       return json({ error: "no active match for this judge" }, 409);
     }
 
-    // timeline 昇順でソート（同値時は match code 辞書順で決定的に）
+    // 優先度付きソート: 0=active未完了, 1=inactive未完了, 2=完了済み → timeline昇順 → code辞書順
+    const candidatePriority = (c: Candidate): number => {
+      if (c.isComplete) return 2;
+      if (c.stateRow.accepting) return 0;
+      return 1;
+    };
     candidates.sort((a, b) => {
+      const pA = candidatePriority(a), pB = candidatePriority(b);
+      if (pA !== pB) return pA - pB;
       const tA = a.matchRow.timeline ?? 0;
       const tB = b.matchRow.timeline ?? 0;
       if (tA !== tB) return tA - tB;
@@ -241,6 +247,7 @@ serve(async (req)=>{
         multiple_venues: (venueCount ?? 0) > 1,
         epoch,
         accepting,
+        match_complete: chosen.isComplete,
         judge_id,
         judge_name: judgeRow?.name ?? null,
         bout,
@@ -248,7 +255,7 @@ serve(async (req)=>{
       });
     }
     // 5. 受付中チェック（送信時のみ）
-    if (!accepting) {
+    if (!accepting || chosen.isComplete) {
       return json({
         error: "not accepting"
       }, 409);

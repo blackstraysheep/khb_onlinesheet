@@ -241,6 +241,7 @@
       let currentMatchId = null; // ★ 追加：現在の試合 ID
       let currentEpoch = null;
       let hasLoadedSubmission = false;
+      let currentMatchComplete = false; // 試合完了（講評中）フラグ
 
       function setInputsEditable(editable) {
         $$('.ipt').forEach(i => { i.disabled = !editable; });
@@ -286,6 +287,7 @@
         inEdit = true;
         editCount = 0;
         hasLoadedSubmission = false; // ★ 新しい試合/epoch では再読み込みを許可
+        currentMatchComplete = false;
         if (submitBtn) submitBtn.textContent = '送信';
 
         if (result) {
@@ -385,6 +387,7 @@
           const match = data.match || {};
           const epoch = data.epoch;
           const accepting = data.accepting;
+          const matchComplete = data.match_complete || false;
           const bout = data.bout || null;
           const judgeName = data.judge_name || null;
           const submission = data.submission || null;
@@ -438,8 +441,15 @@
           // 受付停止情報はメイン見出しではなく専用エリアへ
           const statusEl = document.getElementById('match-status');
           if (statusEl) {
-            statusEl.textContent = (accepting === false) ? '現在は受付停止中です' : '';
+            if (matchComplete) {
+              statusEl.textContent = '試合終了（講評中）';
+            } else if (accepting === false) {
+              statusEl.textContent = '現在は受付停止中です';
+            } else {
+              statusEl.textContent = '';
+            }
           }
+          currentMatchComplete = matchComplete;
 
           labelEl.textContent = parts.join(' ／ ');
 
@@ -513,6 +523,11 @@
           if (submission && !hasLoadedSubmission) {
             applySubmissionFromServer(submission);
             hasLoadedSubmission = true;
+          }
+
+          // 試合完了時は送信ボタンを無効化
+          if (submitBtn && !isSubmitting) {
+            submitBtn.disabled = !!matchComplete;
           }
 
         } catch (err) {
@@ -600,7 +615,7 @@
       // ボタンクリックで送信／修正モード切り替え
       if (submitBtn) {
         submitBtn.addEventListener('click', async () => {
-          if (isSubmitting) return;
+          if (isSubmitting || currentMatchComplete) return;
 
           // まだ一度も送信していない → 初回送信
           if (!initialSent) {
