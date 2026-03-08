@@ -402,16 +402,17 @@ Body:
 ```
 
 **処理**:
-1. `venues` → `venue_id`、`matches` → `match_id` 解決
+1. `venues` → `venue_id`、`matches` → `match_id`・`num_bouts` 解決
 2. `state` から `epoch` 取得
-3. `expected_judges` → 全期待審査員 ID + `sort_order`
-4. `submissions` → `match_id` + `epoch` の提出データ取得（**全員未提出なら 400**）
-5. スナップショット JSON を構築（`spec_version: "v3.0"`、`sort_order` 昇順ソート）
-6. **Winner 判定**: `decideWinnerFromSnapshotItems()` で旗数カウント → `"red"` / `"white"` / `"draw"`
-7. `match_snapshots` に UPSERT（`onConflict: "match_id,epoch"`）
-8. **累計勝数再集計**: `match_snapshots` WHERE `match_id` の全 `winner` を COUNT
-9. `state` UPDATE: `accepting=false`, `red_wins`, `white_wins`, `wins_updated_at`
-10. `event_log` に `E5` 記録
+3. `slot = getSlot(epoch, num_bouts)`、`slot_label = getBoutLabel(epoch, num_bouts)` を計算（DB 参照なし）
+4. `expected_judges` → 全期待審査員 ID + `sort_order`
+5. `submissions` → `match_id` + `epoch` の提出データ取得（**全員未提出なら 400**）
+6. スナップショット JSON を構築（`spec_version: "v3.0"`、`sort_order` 昇順ソート）
+7. **Winner 判定**: `decideWinnerFromSnapshotItems()` で旗数カウント → `"red"` / `"white"` / `"draw"`
+8. `match_snapshots` に UPSERT（`onConflict: "match_id,epoch"`）
+9. **累計勝数再集計**: `match_snapshots` WHERE `match_id` の全 `winner` を COUNT
+10. `state` UPDATE: `accepting=false`, `red_wins`, `white_wins`, `wins_updated_at`
+11. `event_log` に `E5` 記録
 
 **Winner 判定アルゴリズム**:
 ```typescript
@@ -586,7 +587,9 @@ REAL 型のため `1.5` のような中間値も可能。
 
 ---
 
-## 7. 対戦ラベル（getBoutLabel）
+## 7. 対戦ラベル・スロット番号（getBoutLabel / getSlot）
+
+**`getBoutLabel(epoch, numBouts)`**: epoch と対戦数から対戦名ラベルを計算。
 
 ```typescript
 function getBoutLabel(epoch: number, numBouts: number): string {
@@ -600,6 +603,21 @@ function getBoutLabel(epoch: number, numBouts: number): string {
 }
 ```
 
+**`getSlot(epoch, numBouts)`**: epoch から「ポジション番号」（先鋒=1, 次鋒=2, 中堅=3, 副将=4, 大将=5）を計算。
+
+```typescript
+function getSlot(epoch: number, numBouts: number): number {
+  if (numBouts === 3) {
+    // 3番勝負: 先鋒(epoch1)→slot1, 中堅(epoch2)→slot3, 大将(epoch3)→slot5
+    return { 1: 1, 2: 3, 3: 5 }[epoch] ?? epoch;
+  }
+  return epoch; // 5番勝負・その他: slot と epoch は一致
+}
+```
+
+> **注意**: `epoch` は「何対戦目か」を表す通し番号（1, 2, 3…）であり、`slot` は先鋒〜大将のポジション番号（1〜5 固定）。  
+> 3 番勝負では `epoch=3, slot=5`（大将戦）のようにズレが生じる。
+
 ---
 
 ## 8. フロントエンド
@@ -608,12 +626,21 @@ function getBoutLabel(epoch: number, numBouts: number): string {
 
 | ファイル | 用途 |
 |----------|------|
-| `config.js` | Supabase URL・anon key・Edge Function URL の定義 |
-| `admin.html` + `admin.js` + `admin.css` | 管理パネル（試合進行・スコアボード・音声読み上げ） |
+| ファイル | 用途 |
+|----------|------|
+| `config.js` | 審査員画面用: Supabase anon key・Edge Function URL の定義 |
+| `admin-config.js` | 管理画面用: 定数・DOM 参照・内部状態変数の定義 |
+| `admin-api.js` | 管理画面用: REST API / Edge Function 呼び出しヘルパー |
+| `admin-utils.js` | 管理画面用: UI ユーティリティ（setMsg, setControlsDisabled 等） |
+| `admin-ui.js` | 管理画面用: 会場・試合ドロップダウン・審査員並び替え |
+| `admin-audio.js` | 管理画面用: 得点読み上げ音声キュー管理 |
+| `admin-scoreboard.js` | 管理画面用: スコアボード描画（横型・縦型） |
+| `admin-core.js` | 管理画面用: データ読み込み・イベントリスナー・初期化 |
+| `admin.html` + `admin.css` | 管理パネル（試合進行・スコアボード・音声読み上げ） |
 | `admin-match.html` | 試合管理（CRUD） |
 | `admin-judges.html` | 審査員管理（CRUD＋トークン発行） |
 | `judge.html` + `judge.css` | 審査員入力画面 |
-| `scoreboard.js` | OBS 用スコアボード共通ロジック |
+| `scoreboard.js` | OBS 用スコアボード共通ロジック（`reorderIdsForScoreboard`・`getBoutLabel`） |
 | `obs-scoreboard.html` | OBS スコアボード（横型） |
 | `obs-scoreboard-vertical.html` | OBS スコアボード（縦型） |
 | `winnum_obs_overlay.html` | OBS 勝数オーバーレイ |
@@ -627,14 +654,13 @@ window.JUDGE_APP_CONFIG = {
 };
 ```
 
-### 8.3 admin.js 主要構造
+### 8.3 admin（分割 JS）主要構造
 
-**内部状態**:
+**内部状態**（`admin-config.js` で定義）:
 | 変数 | 型 | 説明 |
 |------|------|------|
 | `lastState` | object | 最新の state 行 |
 | `autoLoading` | boolean | 自動更新中フラグ |
-| `lastExpectedIds` | string[] | 期待審査員 ID 配列 |
 | `scoreboardMode` | string | `'horizontal'` / `'vertical'` |
 | `currentVenueId` | string | 選択中の会場 UUID |
 | `currentVenueCode` | string | 選択中の会場コード |
