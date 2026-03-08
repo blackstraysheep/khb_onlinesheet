@@ -480,12 +480,17 @@ Body:
 
 ```
 1. access_tokens → judge_id を取得
-2. state WHERE accepting=true の全行取得
+2. state の全行取得（accepting 問わず）
 3. 各行の current_match_id について:
    - expected_judges に自分の judge_id があるか確認
 4. match_snapshots で確定済み最大 epoch を取得
-5. maxConfirmed >= num_bouts → 試合完了、除外
-6. 残った候補を matches.timeline 昇順ソート → 先頭を選択
+5. maxConfirmed >= num_bouts → isComplete=true（除外せず保持）
+6. 候補を優先度付きソート:
+   priority 0 = accepting=true  かつ 未完了   （アクティブ受付中）
+   priority 1 = accepting=false かつ 未完了   （受付停止中）
+   priority 2 =                      完了済み （試合終了・講評中）
+   同優先度内: timeline 昇順 → match.code 辞書順
+7. 先頭を選択
 ```
 
 #### info モード
@@ -498,11 +503,15 @@ Body:
   "ok": true, "mode": "info",
   "match": { "id", "code", "name", "red_team_name", "white_team_name", "num_bouts" },
   "epoch": 1, "accepting": true,
+  "match_complete": false,
   "judge_id", "judge_name",
   "bout": { "slot": 1, "label": "先鋒戦" },
   "submission": { "red": {...}, "white": {...}, "revision": 1 } | null
 }
 ```
+
+- `match_complete: true` の場合: 全対戦スナップショットが保存済み（試合終了・講評中）
+- 候補なし（全試合完了 or 割り当てなし）の場合: `{ waiting: true }`
 
 #### 提出モード
 
@@ -512,7 +521,7 @@ Body:
 - `total === work + app`
 
 **処理**:
-1. `accepting` チェック → false なら **409**
+1. `accepting=false` または `match_complete=true` → **409**
 2. `submissions` を `(match_id, judge_id, epoch)` で検索:
    - なし → INSERT（**E1**）
    - あり → `revision+1` で UPDATE（**E2**）
@@ -565,7 +574,12 @@ SET_MATCH: 試合開始 (epoch=1, accepting=true)
 
 - **同一 timeline 値** → 同時進行（並行試合）
 - **小さい値** → 先に進行
-- 審査員が複数試合に割り当てられている場合、**timeline 昇順で最初の未完了試合**に自動ルーティング
+- 審査員が複数試合に割り当てられている場合、以下の優先度で候補試合を選択:
+  1. `accepting=true` かつ未完了（優先度 0）
+  2. `accepting=false` かつ未完了（優先度 1）
+  3. 試合完了済み（優先度 2）
+  - 同優先度内: timeline 昇順 → match.code 辞書順
+- **試合完了後も画面を保持**: 優先度 2 の場合は `match_complete: true` を返し、審査員画面に最終採点内訳を講評終了まで表示し続ける（送信ボタンは無効化）
 - 試合完了判定: `match_snapshots` の確定済み epoch 数 ≥ `matches.num_bouts`
 
 REAL 型のため `1.5` のような中間値も可能。
@@ -684,6 +698,27 @@ function updateFlagsAuto() {
 **鑑賞点の排他制御**: `enforceAppExclusion(changedSide)` — 鑑賞点は紅白の一方のみに付与。片方に入力すると他方は 0 にリセット。
 
 **ポーリング**: 5 秒間隔、`document.visibilityState === 'visible'` のときのみ実行。試合/epoch の変化を検知して自動リセット。
+
+**状態変数**:
+
+| 変数 | 型 | 説明 |
+|------|------|------|
+| `currentMatchId` | string\|null | 現在表示中の試合 ID |
+| `currentEpoch` | number\|null | 現在の epoch |
+| `currentMatchComplete` | boolean | 試合完了（講評中）フラグ |
+| `hasLoadedSubmission` | boolean | 提出済みデータを読み込んだか |
+| `initialSent` | boolean | 初回送信済みか |
+| `inEdit` | boolean | 現在編集モードか |
+
+**ステータス表示** (`#match-status`):
+
+| 状態 | 表示テキスト |
+|------|----------|
+| `match_complete: true` | `試合終了（講評中）` |
+| `accepting: false`（未完了） | `現在は受付停止中です` |
+| 通常受付中 | （空白） |
+
+`match_complete: true` のときは送信ボタンを `disabled` にし、最終採点内訳を画面に保持する。
 
 ### 8.6 音声読み上げ
 
