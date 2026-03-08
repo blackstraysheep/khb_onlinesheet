@@ -181,27 +181,29 @@ async function loadData(isAuto = false) {
 // イベントリスナー
 // ============================
 
-toggleAcceptingBtn.addEventListener('click', async () => {
-  if (!lastState) {
-    setE5E6Status('状態が読み込まれていません。', 'err');
-    return;
-  }
-  const nextVal = !lastState.accepting;
-  const label = nextVal ? '受付開始' : '受付締切';
-  try {
-    setE5E6Status(`${label}処理中…`, '');
-    setControlsDisabled(true);
-    const patch = { accepting: nextVal };
-    if (nextVal && lastState.epoch) patch.epoch = lastState.epoch;
-    await patchState(patch);
-    setE5E6Status(`${label}しました（accepting=${nextVal}）。`, 'ok');
-    await loadData();
-  } catch (err) {
-    console.error(err);
-    setE5E6Status(`${label}に失敗しました: ` + err.message, 'err');
-    setControlsDisabled(false);
-  }
-})
+if (toggleAcceptingBtn) {
+  toggleAcceptingBtn.addEventListener('click', async () => {
+    if (!lastState) {
+      setE5E6Status('状態が読み込まれていません。', 'err');
+      return;
+    }
+    const nextVal = !lastState.accepting;
+    const label = nextVal ? '受付開始' : '受付締切';
+    try {
+      setE5E6Status(`${label}処理中…`, '');
+      setControlsDisabled(true);
+      const patch = { accepting: nextVal };
+      if (nextVal && lastState.epoch) patch.epoch = lastState.epoch;
+      await patchState(patch);
+      setE5E6Status(`${label}しました（accepting=${nextVal}）。`, 'ok');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      setE5E6Status(`${label}に失敗しました: ` + err.message, 'err');
+      setControlsDisabled(false);
+    }
+  });
+}
 
 if (venueSelect) {
   venueSelect.addEventListener('change', onVenueChange);

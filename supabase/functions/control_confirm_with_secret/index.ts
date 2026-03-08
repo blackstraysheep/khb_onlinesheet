@@ -24,6 +24,36 @@ function json(body: unknown, status = 200) {
 }
 
 /**
+ * epoch と num_bouts から slot（ポジション番号）を返す
+ * 5番勝負: epoch と slot は同じ (1→1, 2→2, ... 5→5)
+ * 3番勝負: 先鋒=1, 中堅=3, 大将=5 にマップ (epoch1→1, epoch2→3, epoch3→5)
+ */
+function getSlot(epoch: number, numBouts: number): number {
+  if (numBouts === 3) {
+    const map: Record<number, number> = { 1: 1, 2: 3, 3: 5 };
+    return map[epoch] ?? epoch;
+  }
+  return epoch;
+}
+
+/**
+ * epoch と num_bouts から対戦ラベルを返す
+ */
+function getBoutLabel(epoch: number, numBouts: number): string {
+  if (numBouts === 5) {
+    const labels = ["先鋒", "次鋒", "中堅", "副将", "大将"];
+    const base = labels[epoch - 1];
+    return base ? `${base}戦` : `第${epoch}対戦`;
+  }
+  if (numBouts === 3) {
+    const labels = ["先鋒", "中堅", "大将"];
+    const base = labels[epoch - 1];
+    return base ? `${base}戦` : `第${epoch}対戦`;
+  }
+  return `第${epoch}対戦`;
+}
+
+/**
  * snapshotItems から winner を決める（暫定ルール：旗数の多い方。同数は draw）
  * - flag は boolean / number / null 等が混在しうるため、真なら1とみなす
  * - 同点時のタイブレ（作品点など）を入れたくなったらここに追加する
@@ -39,10 +69,8 @@ function decideWinnerFromSnapshotItems(
     const wf = it?.white?.flag;
 
     if (rf === true) redFlags += 1;
-    else if (typeof rf === "number") redFlags += rf ? 1 : 0;
 
     if (wf === true) whiteFlags += 1;
-    else if (typeof wf === "number") whiteFlags += wf ? 1 : 0;
   }
 
   if (redFlags > whiteFlags) return "red";
@@ -91,7 +119,7 @@ serve(async (req) => {
     // 1. 対戦取得
     const { data: matchRow, error: matchErr } = await supabase
       .from("matches")
-      .select("id, code, name, red_team_name, white_team_name")
+      .select("id, code, name, red_team_name, white_team_name, num_bouts")
       .eq("code", match_code)
       .maybeSingle();
 
@@ -99,6 +127,7 @@ serve(async (req) => {
       return json({ error: "match not found" }, 404);
     }
     const match_id = matchRow.id;
+    const numBouts: number = typeof matchRow.num_bouts === "number" ? matchRow.num_bouts : 5;
 
     // 2. state から現在の epoch / accepting を取得
     const { data: stateRow, error: stateErr } = await supabase
@@ -118,23 +147,9 @@ serve(async (req) => {
       return json({ error: "invalid state.epoch" }, 500);
     }
 
-    // 2.5. 現在の epoch に対応するポジション情報（先鋒/中堅/大将など）を取得
-    let slot: number | null = null;
-    let slot_label: string | null = null;
-    try {
-      const { data: boutRow, error: boutErr } = await supabase
-        .from("match_bouts")
-        .select("slot, label")
-        .eq("match_id", match_id)
-        .eq("epoch", epoch)
-        .maybeSingle();
-      if (!boutErr && boutRow) {
-        slot = boutRow.slot;
-        slot_label = boutRow.label;
-      }
-    } catch (e) {
-      console.error("match_bouts lookup failed", e);
-    }
+    // 2.5. epoch と num_bouts からポジション情報（先鋒/中堅/大将など）を計算
+    const slot: number = getSlot(epoch, numBouts);
+    const slot_label: string = getBoutLabel(epoch, numBouts);
 
     // 3. 期待審査員一覧（sort_order 付き）
     const { data: expectedJudges, error: expErr } = await supabase

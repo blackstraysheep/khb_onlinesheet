@@ -51,7 +51,6 @@ const btnSetEpoch         = $('#btnSetEpoch');
 // 内部状態
 let lastState       = null;
 let autoLoading     = false;
-let lastExpectedIds = [];
 let scoreboardMode  = 'horizontal'; // 'horizontal' | 'vertical'
 let currentVenueId  = null;
 let currentVenueCode = null;

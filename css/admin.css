@@ -188,6 +188,7 @@ button:disabled {
   font-size: .85rem;
   min-height: 1em;
   margin-top: 4px;
+  white-space: pre-wrap;
 }
 
 .msg.ok {

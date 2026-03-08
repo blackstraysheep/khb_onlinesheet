@@ -286,7 +286,6 @@ function scheduleAudioRefresh(data) {
     setAudioStatus('再生キューが空です。');
     return;
   }
-  lastExpectedIds = data.expectedIds.slice();
   if (audioPlaying) {
     pendingAudioRefresh = data;
     return;
