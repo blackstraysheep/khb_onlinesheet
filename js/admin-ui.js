@@ -65,13 +65,12 @@ async function populateMatches() {
     const st = stateRows[0] || null;
     lastState = st;
 
+    const previousSelection = matchSelect.value;
     matchSelect.innerHTML = '';
     if (!matches.length) {
       matchSelect.innerHTML = '<option value="">-- 試合なし --</option>';
       return;
     }
-
-    const previousSelection = matchSelect.value;
     let currentMatchCode = null;
     matches.forEach(m => {
       const opt = document.createElement('option');

@@ -22,11 +22,6 @@
   - 内容: `numToAudioIds(1)`→`['num_1']`だが、`ensureAudioClip`は`n >= 5 && n <= 12`しか対応しない。スコア1〜4の音声が常にスキップされる。
   - 修正案: `ensureAudioClip`を`n >= 1`に拡張するか、1〜4用の音声ファイルを追加。
 
-- [ ] **C5: `previousSelection`が常に空 — 試合選択が2秒毎にリセット**
-  - ファイル: `js/admin-ui.js` (L68-88)
-  - 内容: `matchSelect.innerHTML = ''`でオプションをクリアした後に`matchSelect.value`を取得しているため、常に空文字。ユーザーの選択が保持されない。
-  - 修正案: `const previousSelection = matchSelect.value;`をクリア前に移動する。
-
 ## 🟠 High
 
 - [ ] **H1: XSS脆弱性 — DB由来データが`innerHTML`で無サニタイズ挿入**
