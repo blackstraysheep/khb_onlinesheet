@@ -241,7 +241,8 @@ serve(async (req)=>{
           name: matchRow.name,
           red_team_name: matchRow.red_team_name,
           white_team_name: matchRow.white_team_name,
-          num_bouts: matchRow.num_bouts
+          num_bouts: matchRow.num_bouts,
+          timeline: matchRow.timeline
         },
         venue: venueRow ? { code: venueRow.code, name: venueRow.name } : null,
         multiple_venues: (venueCount ?? 0) > 1,

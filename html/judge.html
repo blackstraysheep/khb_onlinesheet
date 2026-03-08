@@ -511,6 +511,9 @@
               const boutDisp = (bout && bout.label) ? bout.label : `第${epoch}対戦`;
               segs.push(`対戦: ${boutDisp} (epoch=${epoch})`);
             }
+            if (match.timeline != null) {
+              segs.push(`タイムライン: ${match.timeline} (timeline=${match.timeline})`);
+            }
 
             if (segs.length > 0) {
               boutLabelEl.textContent = '［技術情報］' + segs.join(' ／ ');
