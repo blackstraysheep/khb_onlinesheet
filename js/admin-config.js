@@ -2,8 +2,13 @@
 // admin-config.js — 設定・定数・DOM参照・内部状態
 // ============================
 
-const SUPABASE_URL = 'http://127.0.0.1:54321'; // ローカルテスト用
-const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+const ADMIN_CONFIG = window.KHB_APP_CONFIG || {};
+const SUPABASE_URL = ADMIN_CONFIG.SUPABASE_URL;
+const SUPABASE_ANON_KEY = ADMIN_CONFIG.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
+}
 
 const CONTROL_CONFIRM_URL    = SUPABASE_URL + '/functions/v1/control_confirm_with_secret';
 const CONTROL_ADVANCE_URL    = SUPABASE_URL + '/functions/v1/control_advance_with_secret';

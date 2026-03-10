@@ -126,8 +126,8 @@
       const $ = (sel, root = document) => root.querySelector(sel);
       const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-      const CONFIG = window.JUDGE_APP_CONFIG || {};
-      const FUNCTION_URL = CONFIG.FUNCTION_URL;
+      const CONFIG = window.KHB_APP_CONFIG || {};
+      const FUNCTION_URL = CONFIG.JUDGE_FUNCTION_URL;
       const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
       const CONFIG_ERROR = '設定ファイル(config.js)の読み込みに失敗しました。';
       const FLAG_SYMBOL = '◆';
