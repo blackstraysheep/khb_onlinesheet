@@ -50,7 +50,7 @@ function ensureAudioClip(id) {
   if (id.startsWith('num_')) {
     const n = Number(id.slice(4));
     let file;
-    if (n >= 5 && n <= 12) {
+    if (n >= 1 && n <= 12) {
       file = `${n}.mp3`;
     } else {
       console.warn('Audio: 未定義の数字クリップです:', n);
@@ -131,10 +131,7 @@ function numToAudioIds(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v < 0) return [];
 
-  if (v === 1) return ['num_1'];
-  if (v === 2) return ['num_2'];
-
-  if (v >= 5 && v <= 12) return [`num_${v}`];
+  if (v >= 1 && v <= 12) return [`num_${v}`];
 
   console.warn('Audio: 対応していない点数です:', v);
   return [];

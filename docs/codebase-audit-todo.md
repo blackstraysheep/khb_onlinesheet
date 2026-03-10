@@ -17,10 +17,11 @@
   - 内容: `ADMIN_SETUP_SECRET=local-test-secret`がコミット済み。
   - 修正案: `.gitignore`に追加し、`.env.example`をプレースホルダーで作成する。
 
-- [ ] **C4: スコア1〜4の音声が再生されない**
+- [x] **C4: スコア1〜4の音声が再生されない**
   - ファイル: `js/admin-audio.js` (L130-141 vs L50-58)
   - 内容: `numToAudioIds(1)`→`['num_1']`だが、`ensureAudioClip`は`n >= 5 && n <= 12`しか対応しない。スコア1〜4の音声が常にスキップされる。
-  - 修正案: `ensureAudioClip`を`n >= 1`に拡張するか、1〜4用の音声ファイルを追加。
+  - 修正案: `ensureAudioClip`を`n >= 1`に拡張し、`numToAudioIds`のロジックを簡素化。
+  - **済: 2026-03-10 修正完了**
 
 ## 🟠 High
 
