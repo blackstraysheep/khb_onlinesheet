@@ -133,7 +133,8 @@
 - [ ] **L5: 重複HTMLコメント**（`obs-scoreboard.html`）
 - [ ] **L6: `select:focus`スタイル不一致**（`admin-judges.html` vs `admin-match.html`）
 - [ ] **L7: `$`/`$$`ヘルパーがjQuery規約をシャドウ**（`admin-config.js`）
-- [ ] **L8: `buildAudioSegments`の未使用パラメータ**（`admin-audio.js`）
+- [x] **L8: `buildAudioSegments`の未使用パラメータ**（`admin-audio.js`）
+  - **済: 2026-03-10 修正完了**
 - [ ] **L9: 死んだコード — `'戦'`サフィックス追加条件が常にfalse**（`admin-core.js`）
 - [ ] **L10: 審判名トランケーション長の不一致** — `slice(0,4)` vs `slice(0,8)`（`scoreboard.js` vs `admin-scoreboard.js`）
 - [ ] **L11: ロールバックスクリプトが`CREATE POLICY IF NOT EXISTS`使用**（PG14以前で失敗）

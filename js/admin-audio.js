@@ -143,7 +143,7 @@ function getJudgeVoiceKey(judgeId, judgesMap) {
   return judgeId;
 }
 
-function buildAudioSegments(match, epoch, boutLabelFull, expectedIds, judgesMap, subMap) {
+function buildAudioSegments(expectedIds, judgesMap, subMap) {
   audioJudgeSegments = {};
   if (!expectedIds || !expectedIds.length) return;
 
@@ -186,7 +186,7 @@ function buildAudioSegments(match, epoch, boutLabelFull, expectedIds, judgesMap,
     }
 
     const isDrawTotal = (redTotal === whiteTotal);
-    let winnerSideForTotal = 'red';
+    let winnerSideForTotal;
     if (!isDrawTotal) {
       winnerSideForTotal = (redTotal > whiteTotal) ? 'red' : 'white';
     } else {
@@ -210,10 +210,10 @@ function buildAudioSegments(match, epoch, boutLabelFull, expectedIds, judgesMap,
   });
 }
 
-function rebuildAudioQueue(match, epoch, boutLabelFull) {
+function rebuildAudioQueue() {
   const queue = [];
   queue.push('start');
-  Object.entries(audioJudgeSegments).forEach(([jid, seg]) => {
+  Object.entries(audioJudgeSegments).forEach(([_, seg]) => {
     seg.clips.forEach(id => queue.push(id));
   });
   queue.push('end');
@@ -270,9 +270,9 @@ function renderAudioQueue(forceScroll = false) {
   }
 }
 
-function buildAudioSuite({ match, epoch, boutLabelFull, expectedIds, judgesMap, subMap }) {
-  buildAudioSegments(match, epoch, boutLabelFull, expectedIds, judgesMap, subMap);
-  rebuildAudioQueue(match, epoch, boutLabelFull);
+function buildAudioSuite({ expectedIds, judgesMap, subMap }) {
+  buildAudioSegments(expectedIds, judgesMap, subMap);
+  rebuildAudioQueue();
 }
 
 function scheduleAudioRefresh(data) {
