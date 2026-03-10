@@ -128,6 +128,7 @@
     const SUPABASE_URL = 'http://127.0.0.1:54321';
     const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
     const ADMIN_ADD_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-add-judge';
+    const ADMIN_LIST_JUDGE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-judge-tokens';
     const ADMIN_SETUP_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-setup-match';
 
     const headers = {
@@ -192,13 +193,28 @@
     // ============================
     async function refreshAll() {
       try {
-        [allJudges, allMatches, allExpectedJudges, allTokens, allVenues] = await Promise.all([
+        const secret = $('#adminSecret').value.trim();
+
+        // judges, matches, expected_judges, venues は公開テーブル（REST直接）
+        // access_tokens は admin_secret 認証の Edge Function 経由で取得
+        const [judges, matches, expectedJudges, tokensResult, venues] = await Promise.all([
           fetchJson('judges', { select: 'id,name,voice_key', order: 'name.asc' }),
           fetchJson('matches', { select: 'id,code,name,timeline,num_bouts,venue_id', order: 'timeline.asc,code.asc' }),
           fetchJson('expected_judges', { select: 'match_id,judge_id' }),
-          fetchJson('access_tokens', { select: 'judge_id,token', role: 'eq.judge' }),
+          secret
+            ? fetch(ADMIN_LIST_JUDGE_TOKENS_URL, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ admin_secret: secret }),
+              }).then(r => r.json()).then(d => d.tokens ?? [])
+            : Promise.resolve([]),
           fetchJson('venues', { select: 'id,code' }),
         ]);
+        allJudges = judges;
+        allMatches = matches;
+        allExpectedJudges = expectedJudges;
+        allTokens = tokensResult;
+        allVenues = venues;
         renderJudgeList();
         renderMatchSelect();
         renderMatchJudgeList();
