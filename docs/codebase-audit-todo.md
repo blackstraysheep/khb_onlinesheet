@@ -2,15 +2,17 @@
 
 ## 🔴 Critical（即座に修正すべき）
 
-- [ ] **C1: `match_snapshots`のCHECK制約が`'draw'`を許可していない**
+- [x] **C1: `match_snapshots`のCHECK制約が`'draw'`を許可していない**
   - ファイル: `supabase/migrations/20260208041306_remote_schema.sql` (L129), `supabase/functions/control_confirm_with_secret/index.ts` (L275)
   - 内容: `decideWinnerFromSnapshotItems()`が`'draw'`を返すが、CHECK制約が`['red','white']`のみ許可。引き分け時にE5確認がDB制約違反でクラッシュする。
   - 修正案: CHECK制約に`'draw'`を追加するか、引き分けは`NULL`で保存する。
+  - **済: `supabase/migrations/20260308000001_allow_draw_winner.sql` で制約更新済み**
 
-- [ ] **C2: `access_tokens`テーブルが匿名ユーザーに全公開**
+- [x] **C2: `access_tokens`テーブルが匿名ユーザーに全公開**
   - ファイル: `supabase/migrations/20260306000004_access_tokens_select_policy.sql` (L5-9)
   - 内容: `anon_select_access_tokens`ポリシーが`USING (true)`で全トークンを匿名公開。誰でもトークンを取得して審判になりすませる。
   - 修正案: このポリシーを削除し、admin_secret経由の管理用Edge Functionからのみトークンを提供する。
+  - **済: `supabase/migrations/20260310000001_drop_anon_access_tokens_policy.sql` で削除済み**
 
 - [ ] **C3: `.env`ファイル（シークレット入り）がGitにコミットされている**
   - ファイル: `supabase/functions/.env`
@@ -25,10 +27,11 @@
 
 ## 🟠 High
 
-- [ ] **H1: XSS脆弱性 — DB由来データが`innerHTML`で無サニタイズ挿入**
+- [x] **H1: XSS脆弱性 — DB由来データが`innerHTML`で無サニタイズ挿入**
   - ファイル: `js/admin-core.js` (L118,161), `js/admin-scoreboard.js` (L243), `js/admin-audio.js` (L236,249)
   - 内容: `match.code`や`match.name`等がそのまま`innerHTML`に挿入される。
   - 修正案: `textContent`を使用するか、`escapeHtml()`でサニタイズする。
+  - **済: 2026-03-10 `innerHTML` 依存を DOM API ベースへ置換**
 
 - [ ] **H2: 5つのHTMLファイルにlocalhost URLがハードコード**
   - ファイル: `admin-judges.html` (L128), `admin-match.html` (L115), `obs-scoreboard.html` (L79), `obs-scoreboard-vertical.html` (L74), `winnum_obs_overlay.html` (L86)

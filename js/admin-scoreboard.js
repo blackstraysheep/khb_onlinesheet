@@ -2,6 +2,15 @@
 // admin-scoreboard.js — スコアボード描画
 // ============================
 
+function setCellMultilineText(cell, text) {
+  cell.replaceChildren();
+  const lines = String(text ?? '').split(/[　\n]/);
+  lines.forEach((line, idx) => {
+    if (idx > 0) cell.appendChild(document.createElement('br'));
+    cell.appendChild(document.createTextNode(line));
+  });
+}
+
 function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
   if (!scoreboardContainer) return;
   scoreboardContainer.innerHTML = '';
@@ -240,7 +249,7 @@ function buildScoreboard_vertical(expectedIds, judgesMap, subMap, meta) {
   const trTop = document.createElement('tr');
   trTop.appendChild(createCell('紅', 'header-team-red', 1, 3));
   const tdMatch = createCell('', 'header-match-info', 1, 1);
-  tdMatch.innerHTML = (matchLabel || '').replace(/　/g, '<br>');
+  setCellMultilineText(tdMatch, matchLabel);
   trTop.appendChild(tdMatch);
   trTop.appendChild(createCell('白', 'header-team-white', 1, 3));
   tbody.appendChild(trTop);

@@ -226,11 +226,16 @@ function rebuildAudioQueue() {
 
 function renderAudioQueue(forceScroll = false) {
   if (!audioQueueListEl) return;
+  audioQueueListEl.replaceChildren();
   if (!audioQueue.length) {
-    audioQueueListEl.innerHTML = '<div class="audio-empty">(キューは空です)</div>';
+    const emptyEl = document.createElement('div');
+    emptyEl.className = 'audio-empty';
+    emptyEl.textContent = '(キューは空です)';
+    audioQueueListEl.appendChild(emptyEl);
     return;
   }
-  audioQueueListEl.innerHTML = audioQueue.map((id, idx) => {
+
+  audioQueue.forEach((id, idx) => {
     let label = id;
     if (audioPhraseFiles[id]) {
       label = `[定型] ${id}`;
@@ -242,9 +247,12 @@ function renderAudioQueue(forceScroll = false) {
     const isCurrent = (idx === audioQueueIndex);
     const cls = isCurrent ? 'audio-item current' : 'audio-item';
     const marker = isCurrent ? '▶ ' : '';
-    const divId = isCurrent ? 'currentAudioItem' : '';
-    return `<div id="${divId}" class="${cls}">${marker}${idx + 1}. ${label}</div>`;
-  }).join('');
+    const item = document.createElement('div');
+    item.className = cls;
+    if (isCurrent) item.id = 'currentAudioItem';
+    item.textContent = `${marker}${idx + 1}. ${label}`;
+    audioQueueListEl.appendChild(item);
+  });
 
   const currentEl = document.getElementById('currentAudioItem');
   if (currentEl) {

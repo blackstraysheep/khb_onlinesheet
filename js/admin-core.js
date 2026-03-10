@@ -2,6 +2,82 @@
 // admin-core.js — データ読み込み、イベントリスナー、初期化
 // ============================
 
+function setStateSummaryMessage(message) {
+  if (!stateSummary) return;
+  stateSummary.replaceChildren();
+  const span = document.createElement('span');
+  span.className = 'small';
+  span.textContent = message || '';
+  stateSummary.appendChild(span);
+}
+
+function appendTextAndStrong(parent, prefix, strongText, suffix = '') {
+  parent.appendChild(document.createTextNode(prefix));
+  const strong = document.createElement('strong');
+  strong.textContent = strongText ?? '';
+  parent.appendChild(strong);
+  if (suffix) parent.appendChild(document.createTextNode(suffix));
+}
+
+function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expectedCount, submittedCount }) {
+  if (!stateSummary) return;
+
+  const nodes = [];
+
+  const matchSpan = document.createElement('span');
+  appendTextAndStrong(matchSpan, '試合: ', match.code ?? '', ` (${match.name || ''})`);
+  nodes.push(matchSpan);
+
+  const boutSpan = document.createElement('span');
+  boutSpan.textContent = boutLabelFull
+    ? `第${epoch}対戦（${boutLabelFull}）`
+    : `第${epoch}対戦`;
+  nodes.push(boutSpan);
+
+  if (st) {
+    const epochSpan = document.createElement('span');
+    appendTextAndStrong(epochSpan, 'state.epoch: ', st.epoch ?? '');
+    nodes.push(epochSpan);
+
+    const acceptingTag = document.createElement('span');
+    acceptingTag.className = `tag ${st.accepting ? 'ok' : 'danger'}`;
+    acceptingTag.textContent = `accepting: ${st.accepting}`;
+    nodes.push(acceptingTag);
+
+    const e3Tag = document.createElement('span');
+    e3Tag.className = `tag outline ${st.e3_reached ? 'ok' : 'warn'}`;
+    e3Tag.textContent = `e3_reached: ${st.e3_reached}`;
+    nodes.push(e3Tag);
+
+    const currentMatchTag = document.createElement('span');
+    if (st.current_match_id) {
+      currentMatchTag.className = st.current_match_id === matchId ? 'tag ok' : 'tag warn';
+      currentMatchTag.textContent = st.current_match_id === matchId
+        ? 'current_match_id: true'
+        : 'current_match_id: false';
+    } else {
+      currentMatchTag.className = 'tag warn';
+      currentMatchTag.textContent = 'current_match_id: 未設定';
+    }
+    nodes.push(currentMatchTag);
+  } else {
+    const stateMissingTag = document.createElement('span');
+    stateMissingTag.className = 'tag warn';
+    stateMissingTag.textContent = 'state が取得できません';
+    nodes.push(stateMissingTag);
+  }
+
+  const expectedSpan = document.createElement('span');
+  appendTextAndStrong(expectedSpan, '期待審査員: ', expectedCount, ' 人');
+  nodes.push(expectedSpan);
+
+  const submittedSpan = document.createElement('span');
+  appendTextAndStrong(submittedSpan, '提出済み: ', submittedCount, ' 人');
+  nodes.push(submittedSpan);
+
+  stateSummary.replaceChildren(...nodes);
+}
+
 async function loadData(isAuto = false) {
   if (isAuto && autoLoading) return;
   if (isAuto) {
@@ -10,7 +86,7 @@ async function loadData(isAuto = false) {
     setMsg('読み込み中…', '');
     setControlsDisabled(true);
     if (scoreboardContainer) scoreboardContainer.innerHTML = '';
-    stateSummary.innerHTML = '<span class="small">読み込み中…</span>';
+    setStateSummaryMessage('読み込み中…');
   }
 
   const matchCode = matchSelect ? matchSelect.value : '';
@@ -34,7 +110,7 @@ async function loadData(isAuto = false) {
     if (!matches.length) {
       if (!isAuto) {
         setMsg(`matches.code = "${matchCode}" の対戦が見つかりません。`, 'err');
-        stateSummary.innerHTML = '<span class="small">対戦が見つかりません。</span>';
+        setStateSummaryMessage('対戦が見つかりません。');
       }
       if (isAuto) autoLoading = false;
       return;
@@ -114,29 +190,10 @@ async function loadData(isAuto = false) {
     const submittedCount = submittedIds.size;
     const expectedCount  = expectedIds.length;
 
-    const parts = [];
-    parts.push(`<span>試合: <strong>${match.code}</strong> (${match.name || ''})</span>`);
-    if (boutLabelFull) {
-      parts.push(`<span>第${epoch}対戦（${boutLabelFull}）</span>`);
-    } else {
-      parts.push(`<span>第${epoch}対戦</span>`);
-    }
-
     if (st) {
-      parts.push(`<span>state.epoch: <strong>${st.epoch}</strong></span>`);
-      parts.push(`<span class="tag ${st.accepting ? 'ok' : 'danger'}">accepting: ${st.accepting}</span>`);
-      parts.push(`<span class="tag outline ${st.e3_reached ? 'ok' : 'warn'}">e3_reached: ${st.e3_reached}</span>`);
-
       // epoch入力欄を現在値で更新（未入力時のみ）
       if (epochInput && !epochInput.matches(':focus')) {
         epochInput.value = st.epoch;
-      }
-      if (st.current_match_id) {
-        parts.push(st.current_match_id === matchId
-          ? '<span class="tag ok">current_match_id: true</span>'
-          : '<span class="tag warn">current_match_id: false</span>');
-      } else {
-        parts.push('<span class="tag warn">current_match_id: 未設定</span>');
       }
 
       if (toggleAcceptingBtn) {
@@ -149,16 +206,21 @@ async function loadData(isAuto = false) {
         }
       }
     } else {
-      parts.push('<span class="tag warn">state が取得できません</span>');
       if (toggleAcceptingBtn) {
         toggleAcceptingBtn.textContent = 'state 不明';
         toggleAcceptingBtn.className = 'small-btn btn-grey';
       }
     }
 
-    parts.push(`<span>期待審査員: <strong>${expectedCount}</strong> 人</span>`);
-    parts.push(`<span>提出済み: <strong>${submittedCount}</strong> 人</span>`);
-    stateSummary.innerHTML = parts.join('');
+    renderStateSummary({
+      match,
+      boutLabelFull,
+      epoch,
+      st,
+      matchId,
+      expectedCount,
+      submittedCount,
+    });
 
     if (!isAuto) setMsg('読み込み完了', 'ok');
 
@@ -166,7 +228,7 @@ async function loadData(isAuto = false) {
     console.error(err);
     if (!isAuto) {
       setMsg('読み込み中にエラーが発生しました: ' + err.message, 'err');
-      stateSummary.innerHTML = '<span class="small">エラーが発生しました。</span>';
+      setStateSummaryMessage('エラーが発生しました。');
     }
   } finally {
     if (isAuto) {
