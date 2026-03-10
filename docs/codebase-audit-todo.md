@@ -54,7 +54,7 @@
   - 内容: ほぼ同一のスコアボード描画ロジックが重複。
   - 修正案: 共通ロジックをパラメータ化した共有関数に抽出する。
 
-- [ ] **H7: `fetchJson`がHTTPエラーステータスをチェックしていない**
+- [x] **H7: `fetchJson`がHTTPエラーステータスをチェックしていない**
   - ファイル: `html/admin-judges.html` (L155), `html/admin-match.html` (L135)
   - 内容: `res.ok`をチェックせずに`res.json()`を呼び出し。エラー応答が正常データとして処理される。
   - 修正案: `if (!res.ok) throw new Error(...)`を追加する。
