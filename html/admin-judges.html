@@ -13,42 +13,38 @@
     label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 2px; }
     input, select { background: #0f3460; color: #fff; border: 1px solid #334; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; }
     input:focus { outline: none; border-color: #e94560; }
-    .input-sm { width: 80px; }
+
     .input-md { width: 160px; }
     .input-lg { width: 240px; }
     button { cursor: pointer; border: none; border-radius: 4px; padding: 6px 14px; font-size: 0.82rem; color: #fff; background: #0f3460; }
     button:hover { opacity: 0.85; }
     .btn-green { background: #1b998b; }
-    .btn-red { background: #e94560; }
-    .btn-grey { background: #555; }
+
     .btn-blue { background: #3a86ff; }
     .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-    .mt-8 { margin-top: 8px; }
+
     .mb-8 { margin-bottom: 8px; }
     .msg { font-size: 0.8rem; margin-top: 6px; min-height: 1.2em; }
-    .msg.ok { color: #1b998b; }
-    .msg.err { color: #e94560; }
+
     table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
     th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #223; }
     th { color: #aaa; font-weight: 600; font-size: 0.75rem; }
     td { color: #ddd; }
     tr:hover td { background: #1a2744; }
     .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
-    .tag-green { background: #1b998b33; color: #1b998b; }
-    .tag-red { background: #e9456033; color: #e94560; }
+
     .tag-warn { background: #f0ad4e33; color: #f0ad4e; }
-    .tag-grey { background: #55555533; color: #999; }
-    .hidden { display: none !important; }
+
     .back-link { display: inline-block; margin-bottom: 10px; color: #3a86ff; text-decoration: none; font-size: 0.85rem; }
     .back-link:hover { text-decoration: underline; }
     .token-text { font-family: monospace; font-size: 0.75rem; color: #ccc; word-break: break-all; }
-    .judge-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #223; }
+
     .judge-row label { display: inline; font-size: 0.85rem; color: #ddd; margin: 0; }
     .conflict-warn { color: #f0ad4e; font-size: 0.75rem; }
 
     /* 期待審査員アサイン */
     .assign-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #334; }
-    .match-select { margin-bottom: 8px; }
+
     .checkbox-grid { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
     .checkbox-grid label { font-size: 0.82rem; color: #ddd; display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: #0f3460; border-radius: 4px; cursor: pointer; }
     .checkbox-grid label:hover { background: #1a2744; }
@@ -165,8 +161,10 @@
     // ============================
     $('#btnAddJudge').addEventListener('click', async () => {
       const secret = $('#adminSecret').value.trim();
-      const name = $('#judgeName').value.trim();
-      const voiceKey = $('#voiceKey').value.trim();
+      const judgeNameInput = $('#judgeName');
+      const voiceKeyInput = $('#voiceKey');
+      const name = judgeNameInput.value.trim();
+      const voiceKey = voiceKeyInput.value.trim();
 
       if (!secret) return showMsg('#addMsg', '管理用シークレットを入力', true);
       if (!name) return showMsg('#addMsg', '審査員名を入力', true);
@@ -184,9 +182,9 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || res.statusText);
         showMsg('#addMsg', `追加完了: ${data.judge_name} (token: ${data.token})`, false);
-        $('#judgeName').value = '';
-        $('#voiceKey').value = '';
-        refreshAll();
+        judgeNameInput.value = '';
+        voiceKeyInput.value = '';
+        await refreshAll();
       } catch (e) {
         showMsg('#addMsg', e.message, true);
       }
@@ -300,29 +298,31 @@
       }
     }
 
+    const assignMatchSelect = $('#assignMatch');
+    const assignCheckboxes = $('#assignCheckboxes');
+
     // ============================
     // 期待審査員アサイン
     // ============================
     function renderMatchSelect() {
-      const sel = $('#assignMatch');
-      sel.innerHTML = '<option value="">-- 試合を選択 --</option>';
+      assignMatchSelect.innerHTML = '<option value="">-- 試合を選択 --</option>';
       for (const m of allMatches) {
         const opt = document.createElement('option');
         opt.value = m.id;
         opt.textContent = `[TL${m.timeline}] ${m.code} - ${m.name}`;
-        sel.appendChild(opt);
+        assignMatchSelect.appendChild(opt);
       }
     }
 
     let selectedMatchId = null;
     let selectedMatchTimeline = null;
 
-    $('#assignMatch').addEventListener('change', loadAssignForMatch);
+    assignMatchSelect.addEventListener('change', loadAssignForMatch);
 
     function loadAssignForMatch() {
-      selectedMatchId = $('#assignMatch').value;
+      selectedMatchId = assignMatchSelect.value;
       if (!selectedMatchId) {
-        $('#assignCheckboxes').innerHTML = '';
+        assignCheckboxes.innerHTML = '';
         $('#assignConflictWarn').textContent = '';
         return;
       }
@@ -332,7 +332,7 @@
       // 現在のアサイン状況
       const assigned = new Set(allExpectedJudges.filter(e => e.match_id === selectedMatchId).map(e => e.judge_id));
 
-      const container = $('#assignCheckboxes');
+      const container = assignCheckboxes;
       container.innerHTML = '';
       for (const j of allJudges) {
         const lbl = document.createElement('label');
@@ -384,7 +384,7 @@
       const match = allMatches.find(m => m.id === selectedMatchId);
       if (!match) return;
 
-      const checkedJudges = Array.from($('#assignCheckboxes').querySelectorAll('input:checked'))
+      const checkedJudges = Array.from(assignCheckboxes.querySelectorAll('input:checked'))
         .map(cb => ({ name: cb.dataset.judgeName }));
 
       // venue_code を試合の venue_id から取得
@@ -408,7 +408,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || res.statusText);
         showMsg('#assignMsg', `アサイン保存完了 (${checkedJudges.length}名)`, false);
-        refreshAll();
+        await refreshAll();
       } catch (e) {
         showMsg('#assignMsg', e.message, true);
       }
