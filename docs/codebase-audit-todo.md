@@ -34,15 +34,17 @@
   - 修正案: `textContent`を使用するか、`escapeHtml()`でサニタイズする。
   - **済: 2026-03-10 `innerHTML` 依存を DOM API ベースへ置換**
 
-- [ ] **H2: 5つのHTMLファイルにlocalhost URLがハードコード**
+- [x] **H2: 5つのHTMLファイルにlocalhost URLがハードコード**
   - ファイル: `admin-judges.html` (L128), `admin-match.html` (L115), `obs-scoreboard.html` (L79), `obs-scoreboard-vertical.html` (L74), `winnum_obs_overlay.html` (L86)
   - 内容: `SUPABASE_URL = 'http://127.0.0.1:54321'`がハードコード。デプロイ時に動かない。
   - 修正案: `config.js`から読み込む形に統一する。
+  - **済: 2026-03-10 `js/config.js` の共通設定を参照する形に統一（`admin-config.js` も追従）**
 
-- [ ] **H3: タイミング攻撃に脆弱なシークレット比較**
+- [x] **H3: タイミング攻撃に脆弱なシークレット比較**
   - ファイル: 全7つのEdge Function `index.ts`
   - 内容: `clientSecret !== adminSecret`で文字列比較。タイミングサイドチャネル攻撃に脆弱。
   - 修正案: `timingSafeEqual`等の定数時間比較を使用する。
+  - **済: 2026-03-10 `supabase/functions/_shared/secret.ts` の共通ヘルパーへ置換**
 
 - [ ] **H4: CORS `*`が管理エンドポイントに設定**
   - ファイル: 全Edge Function

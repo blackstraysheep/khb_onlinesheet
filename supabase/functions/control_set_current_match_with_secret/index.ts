@@ -1,6 +1,7 @@
 // supabase/functions/control_set_current_match_with_secret/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/secret.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,7 +53,7 @@ serve(async (req) => {
         500,
       );
     }
-    if (!clientSecret || clientSecret !== adminSecret) {
+    if (!timingSafeEqual(clientSecret, adminSecret)) {
       return json({ error: "unauthorized" }, 401);
     }
 

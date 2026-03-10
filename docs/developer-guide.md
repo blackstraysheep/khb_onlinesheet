@@ -648,8 +648,9 @@ function getSlot(epoch: number, numBouts: number): number {
 ### 8.2 config.js
 
 ```javascript
-window.JUDGE_APP_CONFIG = {
-  FUNCTION_URL: 'http://127.0.0.1:54321/functions/v1/judge-submit-with-token',
+window.KHB_APP_CONFIG = {
+  SUPABASE_URL: 'http://127.0.0.1:54321',
+  JUDGE_FUNCTION_URL: 'http://127.0.0.1:54321/functions/v1/judge-submit-with-token',
   SUPABASE_ANON_KEY: '...'
 };
 ```

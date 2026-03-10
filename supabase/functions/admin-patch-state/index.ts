@@ -3,6 +3,7 @@
 // admin_secret 認証 + venue_code で対象会場を特定
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/secret.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,7 +51,7 @@ serve(async (req) => {
     const clientSecret = typeof body?.admin_secret === "string"
       ? body.admin_secret.trim()
       : "";
-    if (!clientSecret || clientSecret !== adminSecret) {
+    if (!timingSafeEqual(clientSecret, adminSecret)) {
       return json({ error: "unauthorized" }, 401);
     }
 
