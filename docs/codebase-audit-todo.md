@@ -14,10 +14,11 @@
   - 修正案: このポリシーを削除し、admin_secret経由の管理用Edge Functionからのみトークンを提供する。
   - **済: `supabase/migrations/20260310000001_drop_anon_access_tokens_policy.sql` で削除済み**
 
-- [ ] **C3: `.env`ファイル（シークレット入り）がGitにコミットされている**
+- [x] **C3: `.env`ファイル（シークレット入り）がGitにコミットされている**
   - ファイル: `supabase/functions/.env`
   - 内容: `ADMIN_SETUP_SECRET=local-test-secret`がコミット済み。
   - 修正案: `.gitignore`に追加し、`.env.example`をプレースホルダーで作成する。
+  - **済: 2026-03-10 ルート `.gitignore` に除外を明記し、`supabase/functions/.env.example` を追加**
 
 - [x] **C4: スコア1〜4の音声が再生されない**
   - ファイル: `js/admin-audio.js` (L130-141 vs L50-58)

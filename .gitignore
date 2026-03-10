@@ -1,1 +1,5 @@
 .idea/
+
+# Local secrets
+supabase/.env.local
+supabase/functions/.env
