@@ -19,7 +19,7 @@
 - **バックエンド**: Supabase Edge Functions（Deno / TypeScript）
 - **データベース**: PostgreSQL（Supabase ホスティング）
 - **認証モデル**: anon は SELECT のみ。書き込みは全て Edge Functions（`service_role`）経由
-- **管理者認証**: 環境変数 `ADMIN_SETUP_SECRET` との文字列一致
+- **管理者認証**: 環境変数 `ADMIN_SETUP_SECRET` との定数時間比較
 - **審査員認証**: `access_tokens` テーブルでトークン照合
 
 ---
@@ -236,7 +236,7 @@
 | `judges` | `judges_select` | SELECT | anon, authenticated | `USING (true)` |
 | `expected_judges` | `expected_judges_select` | SELECT | anon, authenticated | `USING (true)` |
 | `venues` | `venues_select` | SELECT | anon, authenticated | `USING (true)` |
-| `access_tokens` | `anon_select_access_tokens` | SELECT | anon | `USING (true)` |
+| `access_tokens` | （なし） | SELECT | anon | アクセス不可。管理用 Edge Function 経由のみ |
 
 **書き込みなし**: anon/authenticated からの INSERT/UPDATE/DELETE はすべて拒否（Edge Functions の `service_role` のみ）。  
 **event_log**: anon/authenticated からの全操作を拒否。
@@ -247,9 +247,9 @@
 
 全関数共通仕様:
 - **HTTP メソッド**: POST のみ（他は 405）
-- **CORS**: `Access-Control-Allow-Origin: *`、OPTIONS で preflight 対応
+- **CORS**: 許可オリジンのみ許可、OPTIONS で preflight 対応
 - **DB 接続**: `service_role` キーで Supabase クライアント作成（RLS バイパス）
-- **認証**: リクエストボディの `admin_secret` を環境変数 `ADMIN_SETUP_SECRET` と照合
+- **認証**: リクエストボディの `admin_secret` を環境変数 `ADMIN_SETUP_SECRET` と定数時間比較
 
 ### 4.1 admin-setup-match
 
@@ -628,8 +628,8 @@ function getSlot(epoch: number, numBouts: number): number {
 |----------|------|
 | ファイル | 用途 |
 |----------|------|
-| `config.js` | 審査員画面用: Supabase anon key・Edge Function URL の定義 |
-| `admin-config.js` | 管理画面用: 定数・DOM 参照・内部状態変数の定義 |
+| `config.js` | 全画面共通: Supabase URL・anon key・judge 用 Function URL の定義 |
+| `admin-config.js` | 管理画面用: `config.js` を参照しつつ、DOM 参照・内部状態変数を定義 |
 | `admin-api.js` | 管理画面用: REST API / Edge Function 呼び出しヘルパー |
 | `admin-utils.js` | 管理画面用: UI ユーティリティ（setMsg, setControlsDisabled 等） |
 | `admin-ui.js` | 管理画面用: 会場・試合ドロップダウン・審査員並び替え |
@@ -654,6 +654,8 @@ window.KHB_APP_CONFIG = {
   SUPABASE_ANON_KEY: '...'
 };
 ```
+
+`judge.html`、`admin.html`、`admin-match.html`、`admin-judges.html`、OBS 用 HTML はすべて `window.KHB_APP_CONFIG` を参照する。
 
 ### 8.3 admin（分割 JS）主要構造
 
@@ -849,5 +851,44 @@ supabase functions serve
 
 ### フロントエンドの URL 切り替え
 
-`admin.js` 内の `SUPABASE_URL` と `SUPABASE_ANON_KEY` をローカル/本番で切り替え。  
-`config.js` の `FUNCTION_URL` も同様。
+`config.js` の `KHB_APP_CONFIG` をローカル/本番で切り替える。  
+`admin-config.js` は個別に URL を持たず、`config.js` を参照する。
+
+### IDE / 型解決
+
+`supabase/functions` は Deno / Edge Functions 前提であり、IDE の通常 TypeScript 設定では誤検出が出やすい。
+
+- `supabase/functions/deno.json`: Deno 用設定
+- `supabase/functions/tsconfig.json`: IDE 補助用 TypeScript 設定
+- `supabase/functions/global.d.ts`: `Deno` と URL import の型シム
+
+IntelliJ / VS Code で赤線が残る場合は、`supabase/functions` を Deno プロジェクトとして再読込する。
+
+### ブラウザ確認
+
+`file://` 直開きではなく、静的サーバー経由で確認する。
+
+```bash
+python -m http.server 8080
+```
+
+- `http://127.0.0.1:8080/html/admin.html`
+- `http://127.0.0.1:8080/html/judge.html`
+
+### CORS メモ
+
+管理系 / 審査員系 Edge Function では `supabase/functions/_shared/cors.ts` で許可オリジンを検証する。
+
+既定許可:
+- `http://127.0.0.1:3000`
+- `http://127.0.0.1:8080`
+- `http://localhost:3000`
+- `http://localhost:8080`
+- `https://blackstraysheep.github.io`
+
+追加許可が必要な場合は `ALLOWED_ORIGINS` 環境変数にカンマ区切りで設定する。
+
+補足:
+- ローカル Supabase の Kong は `functions-v1` ルートに `cors` プラグインを持つ
+- そのため、最終レスポンスヘッダの `Access-Control-Allow-Origin` は Kong 側で `*` になる場合がある
+- ただし Function 本体では未知の `Origin` に対して `403 forbidden origin` を返すため、アクセス制御自体は Function 側で有効

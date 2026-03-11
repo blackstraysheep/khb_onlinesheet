@@ -17,6 +17,8 @@
 | スコアボード（縦型） | OBS 配信 | `obs-scoreboard-vertical.html?venue=<会場コード>` |
 | 勝数オーバーレイ | OBS 配信 | `winnum_obs_overlay.html?venue=<会場コード>` |
 
+> ローカル確認時は `file://` 直開きではなく、`http://127.0.0.1:8080/...` のように静的サーバー経由で開いてください。
+
 ---
 
 ## 2. 事前準備（管理者）
