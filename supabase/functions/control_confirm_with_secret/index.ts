@@ -9,8 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const adminSecret = (Deno.env.get("ADMIN_SETUP_SECRET") ?? "").trim();
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -142,7 +142,6 @@ serve(async (req) => {
     }
 
     const epoch = stateRow.epoch;
-    const accepting = stateRow.accepting;
 
     if (typeof epoch !== "number" || !Number.isInteger(epoch) || epoch < 1) {
       return json({ error: "invalid state.epoch" }, 500);
@@ -164,7 +163,7 @@ serve(async (req) => {
     if (!expectedJudges || expectedJudges.length === 0) {
       return json({ error: "no expected judges registered" }, 400);
     }
-    const expectedIds = expectedJudges.map((r) => String(r.judge_id));
+    const expectedIds = expectedJudges.map((r: any) => String(r.judge_id));
 
     // 4. submissions から、この match_id & epoch の提出状況を取得
     const { data: submitted, error: subErr } = await supabase
@@ -180,9 +179,9 @@ serve(async (req) => {
     }
 
     const submittedIds = Array.from(
-      new Set((submitted ?? []).map((r) => String(r.judge_id))),
+      new Set((submitted ?? []).map((r: any) => String(r.judge_id))),
     );
-    const allArrived = expectedIds.every((id) => submittedIds.includes(id));
+    const allArrived = expectedIds.every((id: string) => submittedIds.includes(id));
 
     if (!allArrived) {
       return json(
