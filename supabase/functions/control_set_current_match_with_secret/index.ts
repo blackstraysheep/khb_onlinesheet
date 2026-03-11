@@ -10,11 +10,30 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const adminSecret = (Deno.env.get("ADMIN_SETUP_SECRET") ?? "").trim();
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+type MatchRow = {
+  id: string;
+  code: string;
+  name: string | null;
+  venue_id: string;
+};
+
+type MatchTimelineRow = {
+  timeline: number | null;
+};
+
+type OtherMatchRow = {
+  id: string;
+  code: string;
+  name: string | null;
+  num_bouts: number | null;
+  timeline: number | null;
+};
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -82,17 +101,18 @@ serve(async (req) => {
       .select("id, code, name, venue_id")
       .eq("code", match_code)
       .maybeSingle();
+    const resolvedMatchRow = matchRow as MatchRow | null;
 
-    if (matchErr || !matchRow) {
+    if (matchErr || !resolvedMatchRow) {
       return json({ error: "match not found" }, 404);
     }
 
     // 試合の会場と指定会場が一致するか検証
-    if (String(matchRow.venue_id) !== venueId) {
+    if (String(resolvedMatchRow.venue_id) !== venueId) {
       return json({ error: `match '${match_code}' belongs to a different venue` }, 403);
     }
 
-    const match_id: string = matchRow.id as string;
+    const match_id: string = resolvedMatchRow.id;
     const nowIso = new Date().toISOString();
 
     // ★ 競合チェック: この試合の期待審査員が他のアクティブ試合にも登録されていないか
@@ -109,7 +129,7 @@ serve(async (req) => {
       .select("timeline")
       .eq("id", match_id)
       .maybeSingle();
-    const targetTimeline = targetMatchFull?.timeline ?? null;
+    const targetTimeline = (targetMatchFull as MatchTimelineRow | null)?.timeline ?? null;
 
     type Conflict = {
       judge_id: string;
@@ -147,8 +167,10 @@ serve(async (req) => {
           const { data: otherMatches } = await supabase
             .from("matches")
             .select("id, code, name, num_bouts, timeline")
-            .in("id", otherMatchIdSet);
-          const otherMatchMap = new Map((otherMatches ?? []).map((m: any) => [String(m.id), m]));
+            .in("id", otherMatchIdSet) as { data: OtherMatchRow[] | null; error: any };
+          const otherMatchMap = new Map<string, OtherMatchRow>(
+            ((otherMatches ?? []) as OtherMatchRow[]).map((m) => [String(m.id), m]),
+          );
 
           // 他試合のスナップショットで完了判定
           const { data: otherSnaps } = await supabase
@@ -168,7 +190,9 @@ serve(async (req) => {
             .from("judges")
             .select("id, name")
             .in("id", conflictJudgeIds);
-          const judgeNameMap = new Map((judgeRows ?? []).map((j: any) => [String(j.id), j.name ?? null]));
+          const judgeNameMap = new Map<string, string | null>(
+            (judgeRows ?? []).map((j: any) => [String(j.id), j.name ?? null]),
+          );
 
           for (const row of otherExpected) {
             const omid = String(row.match_id);
@@ -281,8 +305,8 @@ serve(async (req) => {
       ok: true,
       match: {
         id: match_id,
-        code: matchRow.code,
-        name: matchRow.name,
+        code: resolvedMatchRow.code,
+        name: resolvedMatchRow.name,
       },
       epoch,
       accepting: true,
