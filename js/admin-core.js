@@ -221,10 +221,7 @@ async function runLoadData(isAuto = false) {
     subs.forEach(s => { subMap[String(s.judge_id)] = s; });
 
     const matchLabel = (match.name || match.code).replace(/　/g, '\n');
-    let boutLabelForBoard = boutLabelFull || '対戦名';
-    if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦')) {
-      boutLabelForBoard = boutLabelForBoard + '戦';
-    }
+    const boutLabelForBoard = boutLabelFull || '対戦名';
 
     const meta = {
       matchLabel:    matchLabel,

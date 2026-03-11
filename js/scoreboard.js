@@ -203,7 +203,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
   addOuterCells(tr, rowIndex, 'left');
   tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
   displayIds.forEach(id => {
-    let name = id.slice(0, 4);
+    let name = id.slice(0, 8);
     const j = judgesMap[id];
     if (j) {
       if (typeof j === 'string') {

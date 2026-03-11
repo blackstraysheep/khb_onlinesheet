@@ -143,15 +143,24 @@
 
 - [ ] **L1: 全関数・変数がグローバルスコープ**（全admin-*.js）
 - [ ] **L2: マジックナンバー多数**（`admin-audio.js`等）
-- [ ] **L3: 死んだCSSルール `[v-cloak]`**（`obs-scoreboard.html`, `obs-scoreboard-vertical.html`）
-- [ ] **L4: `zoom: 1.0`はno-op**（`obs-scoreboard-vertical.html`）
-- [ ] **L5: 重複HTMLコメント**（`obs-scoreboard.html`）
-- [ ] **L6: `select:focus`スタイル不一致**（`admin-judges.html` vs `admin-match.html`）
+- [x] **L3: 死んだCSSルール `[v-cloak]`**（`obs-scoreboard.html`, `obs-scoreboard-vertical.html`）
+  - **済: 2026-03-10 未使用ルールを削除**
+- [x] **L4: `zoom: 1.0`はno-op**（`obs-scoreboard-vertical.html`）
+  - **済: 2026-03-10 no-op スタイルを削除**
+- [x] **L5: 重複HTMLコメント**（`obs-scoreboard.html`）
+  - **済: 2026-03-10 重複コメントを削除**
+- [x] **L6: `select:focus`スタイル不一致**（`admin-judges.html` vs `admin-match.html`）
+  - **済: 2026-03-10 `admin-judges.html` に `select:focus` を追加**
 - [ ] **L7: `$`/`$$`ヘルパーがjQuery規約をシャドウ**（`admin-config.js`）
 - [x] **L8: `buildAudioSegments`の未使用パラメータ**（`admin-audio.js`）
   - **済: 2026-03-10 修正完了**
-- [ ] **L9: 死んだコード — `'戦'`サフィックス追加条件が常にfalse**（`admin-core.js`）
-- [ ] **L10: 審判名トランケーション長の不一致** — `slice(0,4)` vs `slice(0,8)`（`scoreboard.js` vs `admin-scoreboard.js`）
-- [ ] **L11: ロールバックスクリプトが`CREATE POLICY IF NOT EXISTS`使用**（PG14以前で失敗）
-- [ ] **L12: `admin-setup-match`がmatch更新エラーを握りつぶす**（`index.ts` L149）
-- [ ] **L13: Edge Functionのモジュールレベルでのクライアント生成にnullチェックなし**
+- [x] **L9: 死んだコード — `'戦'`サフィックス追加条件が常にfalse**（`admin-core.js`）
+  - **済: 2026-03-10 死んだ条件分岐を削除**
+- [x] **L10: 審判名トランケーション長の不一致** — `slice(0,4)` vs `slice(0,8)`（`scoreboard.js` vs `admin-scoreboard.js`）
+  - **済: 2026-03-10 `scoreboard.js` を 8 文字に統一**
+- [x] **L11: ロールバックスクリプトが`CREATE POLICY IF NOT EXISTS`使用**（PG14以前で失敗）
+  - **済: 2026-03-10 `_backup/rollback_20260304000003_tighten_rls.sql` を `DO $$` ガードへ変更**
+- [x] **L12: `admin-setup-match`がmatch更新エラーを握りつぶす**（`index.ts` L149）
+  - **済: 2026-03-10 更新失敗時に 500 を返すよう修正**
+- [x] **L13: Edge Functionのモジュールレベルでのクライアント生成にnullチェックなし**
+  - **済: 2026-03-10 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` の取得を `?? \"\"` に統一**

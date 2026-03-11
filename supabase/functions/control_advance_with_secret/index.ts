@@ -4,8 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const adminSecret = (Deno.env.get("ADMIN_SETUP_SECRET") ?? "").trim();
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);

@@ -4,8 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 // ENV のシークレットは前後の空白を削っておく
 const adminSecret = (Deno.env.get("ADMIN_SETUP_SECRET") ?? "").trim();
@@ -143,6 +143,7 @@ serve(async (req) => {
           .eq("id", match_id);
         if (updErr) {
           console.error("matches update error", updErr);
+          return json({ error: "failed to update match" }, 500);
         }
       } else {
         const { data: inserted, error: insErr } = await supabase
