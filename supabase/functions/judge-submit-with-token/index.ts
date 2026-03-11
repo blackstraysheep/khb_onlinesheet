@@ -7,9 +7,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+type MatchRow = {
+  id: string;
+  code: string;
+  name: string | null;
+  num_bouts: number | null;
+  red_team_name: string | null;
+  white_team_name: string | null;
+  timeline: number | null;
+};
+
+type SubmissionInfo = {
+  red: {
+    work: any;
+    app: any;
+    total: any;
+    flag: boolean;
+  };
+  white: {
+    work: any;
+    app: any;
+    total: any;
+    flag: boolean;
+  };
+  revision: any;
+} | null;
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -129,7 +155,10 @@ serve(async (req)=>{
     if (matchesErr) {
       return json({ error: "failed to load matches" }, 500);
     }
-    const matchById = new Map((matchRows ?? []).map((m) => [String(m.id), m]));
+    const matchById = new Map<string, MatchRow>(((matchRows ?? []) as MatchRow[]).map((m)=>[
+        String(m.id),
+        m
+      ]));
 
     // 最終epoch E5確定済み（match_snapshots に最終epoch分が存在）を除外
     const { data: finalSnaps, error: snapsErr } = await supabase
@@ -211,7 +240,7 @@ serve(async (req)=>{
       const { count: venueCount } = await supabase.from("venues").select("id", { count: "exact", head: true });
 
       // 既に送信済みの得点があれば submissions から取得する
-      let submission = null;
+      let submission: SubmissionInfo = null;
       const { data: submissionRow, error: submissionErr } = await supabase.from("submissions").select("red_work, red_app, red_total, red_flag, white_work, white_app, white_total, white_flag, revision").eq("match_id", match_id).eq("judge_id", judge_id).eq("epoch", epoch).order("revision", {
         ascending: false
       }).limit(1).maybeSingle();
@@ -286,9 +315,9 @@ serve(async (req)=>{
     try {
       checkSide(red, "red");
       checkSide(white, "white");
-    } catch (e) {
+    } catch (e: any) {
       return json({
-        error: e.message
+        error: e?.message ?? "invalid payload"
       }, 400);
     }
     // 7. submissions に upsert（初回=E1, 修正=E2）
@@ -368,7 +397,7 @@ serve(async (req)=>{
           }
         }
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("E3 check failed", e);
     }
     return json({
