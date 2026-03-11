@@ -2,6 +2,11 @@
 // admin-audio.js — 得点読み上げ音声再生
 // ============================
 
+const adminAudioDom = window.KHBAdmin?.dom || {};
+const adminAudioApi = window.KHBAdmin?.api || {};
+const adminAudioConstants = window.KHBAdmin?.constants || {};
+const adminAudioHelpers = window.KHBAdmin?.helpers || {};
+
 const AUDIO_BASE = 'https://blackstraysheep.github.io/khb_onlinesheet/audio/';
 
 const audioPhraseFiles = {
@@ -27,8 +32,8 @@ let audioJudgeSegments = {};
 let pendingAudioRefresh = null;
 
 function setAudioStatus(text) {
-  if (!audioStatusEl) return;
-  audioStatusEl.textContent = text || '';
+  if (!adminAudioDom.audioStatusEl) return;
+  adminAudioDom.audioStatusEl.textContent = text || '';
 }
 
 function initAudio() {
@@ -50,7 +55,7 @@ function ensureAudioClip(id) {
   if (id.startsWith('num_')) {
     const n = Number(id.slice(4));
     let file;
-    if (n >= 1 && n <= AUDIO_NUMERIC_CLIP_MAX) {
+    if (n >= 1 && n <= adminAudioConstants.AUDIO_NUMERIC_CLIP_MAX) {
       file = `${n}.mp3`;
     } else {
       console.warn('Audio: 未定義の数字クリップです:', n);
@@ -95,7 +100,7 @@ async function playAudioQueue() {
     return;
   }
 
-  patchState({ scoreboard_visible: true }).catch(err => console.error(err));
+  adminAudioApi.patchState({ scoreboard_visible: true }).catch(err => console.error(err));
   setAudioStatus('再生中…');
   audioPlaying = true;
   renderAudioQueue(true);
@@ -113,7 +118,7 @@ async function playAudioQueue() {
     setAudioStatus('停止しました');
   }
   audioPlaying = false;
-  patchState({ scoreboard_visible: false }).catch(err => console.error(err));
+  adminAudioApi.patchState({ scoreboard_visible: false }).catch(err => console.error(err));
   applyPendingAudioRefresh();
 }
 
@@ -122,7 +127,7 @@ function stopAudio() {
   Object.values(audioClips).forEach(a => {
     try { a.pause(); } catch (e) { }
   });
-  patchState({ scoreboard_visible: false }).catch(err => console.error(err));
+  adminAudioApi.patchState({ scoreboard_visible: false }).catch(err => console.error(err));
   setAudioStatus('停止しました');
   applyPendingAudioRefresh();
 }
@@ -131,7 +136,7 @@ function numToAudioIds(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v < 0) return [];
 
-  if (v >= 1 && v <= AUDIO_NUMERIC_CLIP_MAX) return [`num_${v}`];
+  if (v >= 1 && v <= adminAudioConstants.AUDIO_NUMERIC_CLIP_MAX) return [`num_${v}`];
 
   console.warn('Audio: 対応していない点数です:', v);
   return [];
@@ -185,7 +190,7 @@ function buildAudioSegments(expectedIds, judgesMap, subMap) {
       clips.push(...numToAudioIds(whiteTotal));
     }
 
-    if (hasUndecidableWinner(sub)) {
+    if (adminAudioHelpers.hasUndecidableWinner(sub)) {
       console.warn('Audio: 勝敗判定不能のため勝者音声をスキップします:', jid);
       audioJudgeSegments[jid] = {
         revision: sub.revision || 1,
@@ -234,13 +239,13 @@ function rebuildAudioQueue() {
 }
 
 function renderAudioQueue(forceScroll = false) {
-  if (!audioQueueListEl) return;
-  audioQueueListEl.replaceChildren();
+  if (!adminAudioDom.audioQueueListEl) return;
+  adminAudioDom.audioQueueListEl.replaceChildren();
   if (!audioQueue.length) {
     const emptyEl = document.createElement('div');
     emptyEl.className = 'audio-empty';
     emptyEl.textContent = '(キューは空です)';
-    audioQueueListEl.appendChild(emptyEl);
+    adminAudioDom.audioQueueListEl.appendChild(emptyEl);
     return;
   }
 
@@ -260,7 +265,7 @@ function renderAudioQueue(forceScroll = false) {
     item.className = cls;
     if (isCurrent) item.id = 'currentAudioItem';
     item.textContent = `${marker}${idx + 1}. ${label}`;
-    audioQueueListEl.appendChild(item);
+    adminAudioDom.audioQueueListEl.appendChild(item);
   });
 
   const currentEl = document.getElementById('currentAudioItem');
@@ -268,20 +273,20 @@ function renderAudioQueue(forceScroll = false) {
     if (forceScroll) {
       const itemTop = currentEl.offsetTop;
       const itemHeight = currentEl.offsetHeight;
-      const containerHeight = audioQueueListEl.clientHeight;
-      const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + AUDIO_QUEUE_SCROLL_CENTER_OFFSET;
-      audioQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
+      const containerHeight = adminAudioDom.audioQueueListEl.clientHeight;
+      const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + adminAudioConstants.AUDIO_QUEUE_SCROLL_CENTER_OFFSET;
+      adminAudioDom.audioQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
     } else {
-      const cRect = audioQueueListEl.getBoundingClientRect();
+      const cRect = adminAudioDom.audioQueueListEl.getBoundingClientRect();
       const iRect = currentEl.getBoundingClientRect();
       const relativeTop = iRect.top - cRect.top;
       const containerHeight = cRect.height;
-      const margin = AUDIO_QUEUE_SCROLL_MARGIN;
+      const margin = adminAudioConstants.AUDIO_QUEUE_SCROLL_MARGIN;
       if (relativeTop > -margin && relativeTop < containerHeight + margin) {
         const itemTop = currentEl.offsetTop;
         const itemHeight = currentEl.offsetHeight;
-        const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + AUDIO_QUEUE_SCROLL_CENTER_OFFSET;
-        audioQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
+        const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + adminAudioConstants.AUDIO_QUEUE_SCROLL_CENTER_OFFSET;
+        adminAudioDom.audioQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
       }
     }
   }
@@ -314,3 +319,12 @@ function applyPendingAudioRefresh() {
   pendingAudioRefresh = null;
   buildAudioSuite(data);
 }
+
+window.KHBAdmin.audio = Object.assign(window.KHBAdmin.audio || {}, {
+  setAudioStatus,
+  playAudioQueue,
+  stopAudio,
+  buildAudioSuite,
+  scheduleAudioRefresh,
+  applyPendingAudioRefresh,
+});
