@@ -63,3 +63,4 @@ let loadDataInFlight = false;
 let pendingAutoReload = false;
 let pendingManualReload = false;
 let currentLoadPromise = null;
+let lastRenderedLoadSignature = null;

@@ -78,6 +78,54 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
   stateSummary.replaceChildren(...nodes);
 }
 
+function buildLoadSignature({ match, epoch, st, expectedIds, judgesMap, subs, scoreboardMode }) {
+  const normalizedSubs = subs
+    .map(s => ({
+      judge_id: String(s.judge_id),
+      revision: s.revision ?? null,
+      red_total: s.red_total ?? null,
+      white_total: s.white_total ?? null,
+      red_flag: !!s.red_flag,
+      white_flag: !!s.white_flag,
+    }))
+    .sort((a, b) => a.judge_id.localeCompare(b.judge_id));
+
+  const normalizedJudges = Object.entries(judgesMap)
+    .map(([judgeId, judge]) => [
+      judgeId,
+      {
+        name: judge?.name ?? '',
+        voice_key: judge?.voice_key ?? '',
+      },
+    ])
+    .sort(([a], [b]) => String(a).localeCompare(String(b)));
+
+  return JSON.stringify({
+    scoreboardMode,
+    match: {
+      id: match.id ?? null,
+      code: match.code ?? '',
+      name: match.name ?? '',
+      red_team_name: match.red_team_name ?? '',
+      white_team_name: match.white_team_name ?? '',
+      num_bouts: match.num_bouts ?? null,
+    },
+    epoch,
+    state: st
+      ? {
+          epoch: st.epoch ?? null,
+          accepting: !!st.accepting,
+          e3_reached: !!st.e3_reached,
+          current_match_id: st.current_match_id ?? null,
+          updated_at: st.updated_at ?? null,
+        }
+      : null,
+    expectedIds: expectedIds.slice(),
+    judges: normalizedJudges,
+    submissions: normalizedSubs,
+  });
+}
+
 async function runLoadData(isAuto = false) {
   if (!isAuto) {
     setMsg('読み込み中…', '');
@@ -152,6 +200,21 @@ async function runLoadData(isAuto = false) {
         judges.map(j => [String(j.id), { name: j.name, voice_key: j.voice_key }])
       );
     }
+
+    const loadSignature = buildLoadSignature({
+      match,
+      epoch,
+      st,
+      expectedIds,
+      judgesMap,
+      subs,
+      scoreboardMode,
+    });
+
+    if (isAuto && lastRenderedLoadSignature === loadSignature) {
+      return;
+    }
+    lastRenderedLoadSignature = loadSignature;
 
     // 6. スコアボード描画
     const subMap = {};
