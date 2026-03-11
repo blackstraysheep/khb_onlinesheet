@@ -16,6 +16,7 @@
 | スコアボード（横型） | OBS 配信 | `obs-scoreboard.html?venue=<会場コード>` |
 | スコアボード（縦型） | OBS 配信 | `obs-scoreboard-vertical.html?venue=<会場コード>` |
 | 勝数オーバーレイ | OBS 配信 | `winnum_obs_overlay.html?venue=<会場コード>` |
+| スナップショットビューア | 管理者・配信確認 | `snapshot_viewer.html` |
 
 > ローカル確認時は `file://` 直開きではなく、`http://127.0.0.1:8080/...` のように静的サーバー経由で開いてください。
 
@@ -225,6 +226,15 @@ winnum_obs_overlay.html?venue=<会場コード>
 
 - E5（確定）実行時に自動更新されます
 - 透過背景で OBS 上に重ねて使用します
+
+### 6.3 スナップショットビューア
+
+保存済みの `match_snapshots.snapshot` JSON を貼り付けると、縦型スコアボードとして復元表示できます。
+
+- 入力は `snapshot` 本体そのもの、`match_snapshots` の 1 行 JSON、またはその配列の先頭 1 件に対応
+- チーム名入力欄が空なら、JSON 内の `teams.red` / `teams.white` をそのまま使います
+- チーム名を入力した場合のみ、その値で表示名を上書きします
+- 審査員表示順は `items[].sort_order` 昇順です
 
 ---
 

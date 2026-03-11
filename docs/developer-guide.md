@@ -33,7 +33,7 @@
 | `venues` | 会場マスタ | `id` (uuid) |
 | `judges` | 審査員マスタ | `id` (uuid) |
 | `matches` | 試合マスタ | `id` (uuid) |
-| `state` | 会場ごとの進行状態（1行/会場） | `id` (integer) |
+| `state` | 会場ごとの進行状態（1行/会場） | `venue_id` (uuid) |
 | `expected_judges` | 試合×審査員の割り当て | (`match_id`, `judge_id`) 複合 |
 | `submissions` | 審査員の採点データ | `id` (uuid) |
 | `match_snapshots` | 対戦確定時のスナップショット | `id` (bigint) |
@@ -78,7 +78,6 @@
 
 | カラム | 型 | 制約 |
 |--------|------|------|
-| `id` | integer | PK, DEFAULT `1` |
 | `epoch` | integer | NOT NULL, DEFAULT `1` |
 | `accepting` | boolean | NOT NULL, DEFAULT `false` |
 | `e3_reached` | boolean | NOT NULL, DEFAULT `false` |
@@ -88,9 +87,9 @@
 | `red_wins` | integer | NOT NULL, DEFAULT `0` |
 | `white_wins` | integer | NOT NULL, DEFAULT `0` |
 | `wins_updated_at` | timestamptz | NOT NULL, DEFAULT `now()` |
-| `venue_id` | uuid | NOT NULL, UNIQUE, FK → `venues(id)` |
+| `venue_id` | uuid | PK, FK → `venues(id)` |
 
-`venue_id` の UNIQUE 制約により、1 会場につき state は 1 行。
+`venue_id` が主キーのため、1 会場につき state は 1 行。
 
 ### 2.6 expected_judges
 
@@ -133,7 +132,7 @@
 | `created_at` | timestamptz | NOT NULL, DEFAULT `now()` |
 | `github_path` | text | nullable |
 | `github_pushed_at` | timestamptz | nullable |
-| `winner` | text | CHECK (`'red'` or `'white'`), nullable |
+| `winner` | text | CHECK (`'red'` / `'white'` / `'draw'`), nullable |
 
 **ユニーク制約**: `match_snapshots_match_epoch_unique` ON `(match_id, epoch)`
 
@@ -165,7 +164,7 @@
     {
       "judge_id": "uuid",
       "judge_name": "string",
-      "sort_order": 0,
+      "sort_order": 1,
       "revision": 1,
       "red": { "work_point": 7, "app_point": 1, "total": 8, "flag": true },
       "white": { "work_point": 6, "app_point": 0, "total": 6, "flag": false }
@@ -276,9 +275,9 @@ Body:
 **処理フロー**:
 1. `venues` → `venue_code` で `venue_id` 解決（404 if not found）
 2. `matches` を `code` で検索 → 存在すれば UPDATE、なければ INSERT（`venue_id` 付き）
-3. 各審査員:
+3. 各審査員（入力配列順）:
    - `judges` を `name` で検索 → なければ INSERT
-   - `expected_judges` を DELETE → INSERT（`sort_order` 付き）
+   - `expected_judges` を DELETE → INSERT（`sort_order = judges[]` の順番）
    - `access_tokens` → 既存あれば再利用、なければ `crypto.getRandomValues(16)` で生成
 
 **レスポンス (200)**:
@@ -629,13 +628,13 @@ function getSlot(epoch: number, numBouts: number): number {
 | ファイル | 用途 |
 |----------|------|
 | `config.js` | 全画面共通: Supabase URL・anon key・judge 用 Function URL の定義 |
-| `admin-config.js` | 管理画面用: `config.js` を参照しつつ、DOM 参照・内部状態変数を定義 |
-| `admin-api.js` | 管理画面用: REST API / Edge Function 呼び出しヘルパー |
-| `admin-utils.js` | 管理画面用: UI ユーティリティ（setMsg, setControlsDisabled 等） |
-| `admin-ui.js` | 管理画面用: 会場・試合ドロップダウン・審査員並び替え |
-| `admin-audio.js` | 管理画面用: 得点読み上げ音声キュー管理 |
-| `admin-scoreboard.js` | 管理画面用: スコアボード描画（横型・縦型） |
-| `admin-core.js` | 管理画面用: データ読み込み・イベントリスナー・初期化 |
+| `admin-config.js` | 管理画面用: `KHBAdmin` 名前空間の初期化、DOM 参照・定数・共有 state |
+| `admin-api.js` | 管理画面用: `KHBAdmin.api` を構成する REST API / Edge Function 呼び出しヘルパー |
+| `admin-utils.js` | 管理画面用: `KHBAdmin.utils` を構成する UI ユーティリティ |
+| `admin-ui.js` | 管理画面用: `KHBAdmin.ui` を構成する会場・試合ドロップダウン・審査員並び替え |
+| `admin-audio.js` | 管理画面用: `KHBAdmin.audio` / `KHBAdmin.audioState` を構成する得点読み上げ制御 |
+| `admin-scoreboard.js` | 管理画面用: `KHBAdmin.scoreboard` を構成する横型・縦型 wrapper |
+| `admin-core.js` | 管理画面用: `KHBAdmin.core` を構成するデータ読み込み・イベントリスナー・初期化 |
 | `admin.html` + `admin.css` | 管理パネル（試合進行・スコアボード・音声読み上げ） |
 | `admin-match.html` | 試合管理（CRUD） |
 | `admin-judges.html` | 審査員管理（CRUD＋トークン発行） |
@@ -644,6 +643,7 @@ function getSlot(epoch: number, numBouts: number): number {
 | `obs-scoreboard.html` | OBS スコアボード（横型） |
 | `obs-scoreboard-vertical.html` | OBS スコアボード（縦型） |
 | `winnum_obs_overlay.html` | OBS 勝数オーバーレイ |
+| `snapshot_viewer.html` | 保存済み `match_snapshots.snapshot` JSON を縦型表示で確認するツール |
 
 ### 8.2 config.js
 
@@ -659,19 +659,29 @@ window.KHB_APP_CONFIG = {
 
 ### 8.3 admin（分割 JS）主要構造
 
-**内部状態**（`admin-config.js` で定義）:
+**共有名前空間**: `window.KHBAdmin`
+- `config`: Supabase URL / anon key
+- `constants`: Edge Function URL、ポーリング間隔、音声用定数
+- `dom`: 管理画面の主要 DOM 参照
+- `state`: 会場選択・試合キャッシュ・`loadData()` キュー状態
+- `audioState`: 音声キュー・再生状態
+- `helpers`, `api`, `utils`, `ui`, `audio`, `scoreboard`, `core`: 機能別 API
+
+**内部状態**（`KHBAdmin.state` で管理）:
 | 変数 | 型 | 説明 |
 |------|------|------|
 | `lastState` | object | 最新の state 行 |
-| `autoLoading` | boolean | 自動更新中フラグ |
 | `scoreboardMode` | string | `'horizontal'` / `'vertical'` |
 | `currentVenueId` | string | 選択中の会場 UUID |
 | `currentVenueCode` | string | 選択中の会場コード |
 | `matchesCache` | array | 試合一覧キャッシュ |
+| `loadDataInFlight` | boolean | `loadData()` 実行中フラグ |
+| `pendingAutoReload` | boolean | 自動再読込キュー |
+| `pendingManualReload` | boolean | 手動再読込キュー |
 
 **REST API 呼び出し**: `fetchJson(path, params)` → `SUPABASE_URL/rest/v1/{path}?{params}` GET（`apikey` + `Authorization: Bearer` ヘッダ）
 
-**自動更新**: `setInterval(() => loadData(true), 2000)` で 2 秒ポーリング
+**自動更新**: `KHBAdmin.constants.ADMIN_AUTO_REFRESH_MS` 間隔で 2 秒ポーリング
 
 **主要関数**:
 | 関数 | 説明 |
@@ -689,6 +699,10 @@ window.KHB_APP_CONFIG = {
 | `buildScoreboard_horizontal()` | 横型スコアボード描画 |
 | `buildScoreboard_vertical()` | 縦型スコアボード描画 |
 | `buildAudioSuite()` | 音声キュー構築 |
+
+**実装メモ**:
+- `admin-*.js` の主要ファイルは IIFE で閉じてあり、トップレベル関数を直接共有しない
+- 共有が必要なものだけ `KHBAdmin.*` に公開する
 
 ### 8.4 scoreboard.js
 
