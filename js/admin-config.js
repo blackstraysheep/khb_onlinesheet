@@ -55,8 +55,11 @@ const btnSetEpoch         = $('#btnSetEpoch');
 
 // 内部状態
 let lastState       = null;
-let autoLoading     = false;
 let scoreboardMode  = 'horizontal'; // 'horizontal' | 'vertical'
 let currentVenueId  = null;
 let currentVenueCode = null;
 let matchesCache    = [];
+let loadDataInFlight = false;
+let pendingAutoReload = false;
+let pendingManualReload = false;
+let currentLoadPromise = null;

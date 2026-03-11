@@ -78,11 +78,8 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
   stateSummary.replaceChildren(...nodes);
 }
 
-async function loadData(isAuto = false) {
-  if (isAuto && autoLoading) return;
-  if (isAuto) {
-    autoLoading = true;
-  } else {
+async function runLoadData(isAuto = false) {
+  if (!isAuto) {
     setMsg('読み込み中…', '');
     setControlsDisabled(true);
     if (scoreboardContainer) scoreboardContainer.innerHTML = '';
@@ -96,7 +93,6 @@ async function loadData(isAuto = false) {
       setMsg('試合を選択してください。', 'err');
       setControlsDisabled(false);
     }
-    if (isAuto) autoLoading = false;
     return;
   }
 
@@ -112,7 +108,6 @@ async function loadData(isAuto = false) {
         setMsg(`matches.code = "${matchCode}" の対戦が見つかりません。`, 'err');
         setStateSummaryMessage('対戦が見つかりません。');
       }
-      if (isAuto) autoLoading = false;
       return;
     }
     const match   = matches[0];
@@ -130,20 +125,20 @@ async function loadData(isAuto = false) {
     const numBouts = Number(match.num_bouts || 0);
     const boutLabelFull = getBoutLabel(epoch, numBouts);
 
-    // 3. expected_judges
-    const expected    = await fetchJson('expected_judges', {
-      select: 'judge_id, sort_order',
-      match_id: 'eq.' + matchId,
-      order: 'sort_order.asc',
-    });
+    // 3-4. expected_judges / submissions は独立しているので並列取得
+    const [expected, subs] = await Promise.all([
+      fetchJson('expected_judges', {
+        select: 'judge_id, sort_order',
+        match_id: 'eq.' + matchId,
+        order: 'sort_order.asc',
+      }),
+      fetchJson('submissions', {
+        select: 'judge_id,revision,red_work,red_app,red_total,red_flag,white_work,white_app,white_total,white_flag',
+        match_id: 'eq.' + matchId,
+        epoch: 'eq.' + epoch,
+      }),
+    ]);
     const expectedIds = expected.map(r => String(r.judge_id));
-
-    // 4. submissions
-    const subs = await fetchJson('submissions', {
-      select: 'judge_id,revision,red_work,red_app,red_total,red_flag,white_work,white_app,white_total,white_flag',
-      match_id: 'eq.' + matchId,
-      epoch: 'eq.' + epoch,
-    });
 
     // 5. judges
     let judgesMap = {};
@@ -231,12 +226,37 @@ async function loadData(isAuto = false) {
       setStateSummaryMessage('エラーが発生しました。');
     }
   } finally {
-    if (isAuto) {
-      autoLoading = false;
-    } else {
-      setControlsDisabled(false);
-    }
+    if (!isAuto) setControlsDisabled(false);
   }
+}
+
+async function loadData(isAuto = false) {
+  if (isAuto) {
+    pendingAutoReload = true;
+  } else {
+    pendingManualReload = true;
+  }
+
+  if (loadDataInFlight && currentLoadPromise) {
+    return currentLoadPromise;
+  }
+
+  currentLoadPromise = (async () => {
+    loadDataInFlight = true;
+    try {
+      while (pendingManualReload || pendingAutoReload) {
+        const runIsAuto = !pendingManualReload;
+        pendingManualReload = false;
+        pendingAutoReload = false;
+        await runLoadData(runIsAuto);
+      }
+    } finally {
+      loadDataInFlight = false;
+      currentLoadPromise = null;
+    }
+  })();
+
+  return currentLoadPromise;
 }
 
 // ============================

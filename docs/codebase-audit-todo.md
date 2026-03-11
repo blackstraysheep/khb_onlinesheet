@@ -75,19 +75,22 @@
   - 内容: `redTotal === whiteTotal`かつ`redWork === whiteWork`の場合、`winnerSideForTotal`がデフォルトで`'red'`に。
   - 修正案: 完全引き分けケースを明示的に処理する。
 
-- [ ] **M2: `loadData()`の手動/自動実行間にレースコンディション**
-  - ファイル: `js/admin-core.js` (L5-178, L386-389)
-  - 内容: `autoLoading`フラグは自動ロード同士を防ぐが、手動と自動の並行実行は防げない。
-  - 修正案: 単一のmutexフラグか`AbortController`を使用する。
+- [x] **M2: `loadData()`の手動/自動実行間にレースコンディション**
+    - ファイル: `js/admin-core.js` (L5-178, L386-389)
+    - 内容: `autoLoading`フラグは自動ロード同士を防ぐが、手動と自動の並行実行は防げない。
+    - 修正案: 単一のmutexフラグか`AbortController`を使用する。
+    - **済: 2026-03-10 単一キュー化し、手動/自動の並行実行を禁止**
 
-- [ ] **M3: `stateSummary`のnullチェック欠如**
-  - ファイル: `js/admin-core.js` (L13, L37, L161, L169)
-  - 内容: `stateSummary.innerHTML`にnullガードなし。DOM要素不在時にクラッシュ。
-  - 修正案: `if (stateSummary)`ガードを追加する。
+- [x] **M3: `stateSummary`のnullチェック欠如**
+    - ファイル: `js/admin-core.js` (L13, L37, L161, L169)
+    - 内容: `stateSummary.innerHTML`にnullガードなし。DOM要素不在時にクラッシュ。
+    - 修正案: `if (stateSummary)`ガードを追加する。
+    - **済: 2026-03-10 `setStateSummaryMessage()` / `renderStateSummary()` に集約済み**
 
-- [ ] **M4: `getBoutLabel`が3箇所以上に重複**
-  - ファイル: `judge-submit-with-token/index.ts` (L23), `control_confirm_with_secret/index.ts` (L42), `obs-scoreboard-vertical.html` (L234)
-  - 修正案: 共有モジュールに抽出する。
+- [x] **M4: `getBoutLabel`が3箇所以上に重複**
+    - ファイル: `judge-submit-with-token/index.ts` (L23), `control_confirm_with_secret/index.ts` (L42), `obs-scoreboard-vertical.html` (L234)
+    - 修正案: 共有モジュールに抽出する。
+    - **済: 2026-03-10 フロントは `js/scoreboard.js`、Edge Functions は `_shared/bout.ts` に集約**
 
 - [ ] **M5: 審判割り当てがUUIDでなく名前ベース**
   - ファイル: `html/admin-judges.html` (L367-368)
@@ -123,10 +126,11 @@
   - ファイル: `supabase/migrations/`
   - 修正案: PKを`venue_id`に移行する。
 
-- [ ] **M13: API呼び出しの直列ウォーターフォール**
-  - ファイル: `js/admin-core.js` (L28-83)
-  - 内容: `loadData()`の5つの`fetchJson`が直列。独立したものは`Promise.all`で並列化可能。
-  - 修正案: ステップ3,4を`Promise.all`で並列化する。
+- [x] **M13: API呼び出しの直列ウォーターフォール**
+    - ファイル: `js/admin-core.js` (L28-83)
+    - 内容: `loadData()`の5つの`fetchJson`が直列。独立したものは`Promise.all`で並列化可能。
+    - 修正案: ステップ3,4を`Promise.all`で並列化する。
+    - **済: 2026-03-10 `expected_judges` / `submissions` を `Promise.all()` 化**
 
 - [ ] **M14: 2秒ポーリングに変更検知なし**
   - ファイル: `js/admin-core.js` (L386-389)

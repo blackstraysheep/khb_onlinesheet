@@ -236,14 +236,6 @@
                 scoreboardContainer.appendChild(table);
             }
 
-            // Implementation of getBoutLabel:
-            function getBoutLabel(epoch, total) {
-                const map = ["先鋒戦", "次鋒戦", "中堅戦", "副将戦", "大将戦"];
-                if (total === 5 && epoch >= 1 && epoch <= 5) return map[epoch - 1];
-                if (total === 3 && epoch >= 1 && epoch <= 3) return ["先鋒戦", "中堅戦", "大将戦"][epoch - 1];
-                return `第${epoch}戦`;
-            }
-
             // Helper function to fetch JSON from Supabase
             async function fetchJson(tableName, params) {
                 let url = `${SUPABASE_URL}/rest/v1/${tableName}`;

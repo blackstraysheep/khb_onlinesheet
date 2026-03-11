@@ -1,6 +1,7 @@
 // supabase/functions/judge-submit-with-token/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getBoutLabel } from "../_shared/bout.ts";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -31,31 +32,6 @@ type SubmissionInfo = {
   };
   revision: any;
 } | null;
-// epoch と num_bouts から対戦名（先鋒戦・中堅戦など）を決め打ち
-function getBoutLabel(epoch, numBouts) {
-  const e = Number(epoch || 0);
-  if (numBouts === 5) {
-    const labels = [
-      "先鋒",
-      "次鋒",
-      "中堅",
-      "副将",
-      "大将"
-    ];
-    const base = labels[e - 1];
-    return base ? `${base}戦` : `第${e}対戦`;
-  }
-  if (numBouts === 3) {
-    const labels = [
-      "先鋒",
-      "中堅",
-      "大将"
-    ];
-    const base = labels[e - 1];
-    return base ? `${base}戦` : `第${e}対戦`;
-  }
-  return `第${e}対戦`;
-}
 serve(async (req)=>{
   const corsHeaders = buildCorsHeaders(req);
   const json = (body, status = 200)=>new Response(JSON.stringify(body), {

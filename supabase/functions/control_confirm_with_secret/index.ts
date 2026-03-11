@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
+import { getBoutLabel } from "../_shared/bout.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -20,23 +21,6 @@ function getSlot(epoch: number, numBouts: number): number {
     return map[epoch] ?? epoch;
   }
   return epoch;
-}
-
-/**
- * epoch と num_bouts から対戦ラベルを返す
- */
-function getBoutLabel(epoch: number, numBouts: number): string {
-  if (numBouts === 5) {
-    const labels = ["先鋒", "次鋒", "中堅", "副将", "大将"];
-    const base = labels[epoch - 1];
-    return base ? `${base}戦` : `第${epoch}対戦`;
-  }
-  if (numBouts === 3) {
-    const labels = ["先鋒", "中堅", "大将"];
-    const base = labels[epoch - 1];
-    return base ? `${base}戦` : `第${epoch}対戦`;
-  }
-  return `第${epoch}対戦`;
 }
 
 /**
