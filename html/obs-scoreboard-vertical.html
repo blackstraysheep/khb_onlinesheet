@@ -343,10 +343,9 @@
                     const matchLabel = (match.name || match.code || '').replace(/　/g, '\n');
 
                     // boutLabelFull を生成 (scoreboard.js の getBoutLabel を利用)
-                    const boutLabelBase = typeof getBoutLabel === 'function'
+                    let boutLabelForBoard = typeof getBoutLabel === 'function'
                         ? getBoutLabel(epoch, match.num_bouts)
                         : `第${epoch}戦`;
-                    let boutLabelForBoard = boutLabelBase;
                     if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦') && !boutLabelForBoard.includes('対戦')) {
                         boutLabelForBoard += '戦';
                     }
