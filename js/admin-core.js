@@ -2,6 +2,7 @@
 // admin-core.js — データ読み込み、イベントリスナー、初期化
 // ============================
 
+(() => {
 const adminCoreDom = window.KHBAdmin?.dom || {};
 const adminCoreApi = window.KHBAdmin?.api || {};
 const adminCoreUi = window.KHBAdmin?.ui || {};
@@ -578,3 +579,4 @@ window.KHBAdmin.core = Object.assign(window.KHBAdmin.core || {}, {
   onClickE5,
   onClickE6,
 });
+})();

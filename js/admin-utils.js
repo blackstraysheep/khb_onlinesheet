@@ -2,6 +2,7 @@
 // admin-utils.js — ユーティリティ + スコアボードモード切替
 // ============================
 
+(() => {
 const adminUtilsDom = window.KHBAdmin?.dom || {};
 const adminUtilsState = window.KHBAdmin?.state || {};
 
@@ -44,3 +45,4 @@ window.KHBAdmin.utils = Object.assign(window.KHBAdmin.utils || {}, {
   setMsg,
   setControlsDisabled,
 });
+})();

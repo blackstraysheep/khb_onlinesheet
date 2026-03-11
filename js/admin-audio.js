@@ -2,6 +2,7 @@
 // admin-audio.js — 得点読み上げ音声再生
 // ============================
 
+(() => {
 const adminAudioDom = window.KHBAdmin?.dom || {};
 const adminAudioApi = window.KHBAdmin?.api || {};
 const adminAudioConstants = window.KHBAdmin?.constants || {};
@@ -321,3 +322,4 @@ window.KHBAdmin.audio = Object.assign(window.KHBAdmin.audio || {}, {
   scheduleAudioRefresh,
   applyPendingAudioRefresh,
 });
+})();

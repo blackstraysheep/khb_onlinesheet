@@ -2,6 +2,7 @@
 // admin-api.js — REST API ヘルパー
 // ============================
 
+(() => {
 const adminApiConfig = window.KHBAdmin?.config || {};
 const adminApiConstants = window.KHBAdmin?.constants || {};
 const adminApiDom = window.KHBAdmin?.dom || {};
@@ -75,3 +76,4 @@ window.KHBAdmin.api = Object.assign(window.KHBAdmin.api || {}, {
   callControlFunction,
   patchState,
 });
+})();

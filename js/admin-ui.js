@@ -2,10 +2,14 @@
 // admin-ui.js — 会場・試合ドロップダウン、審査員並び替え
 // ============================
 
+(() => {
+const adminUiNamespace = window.KHBAdmin || (window.KHBAdmin = {});
+adminUiNamespace.core = adminUiNamespace.core || {};
 const adminUiDom = window.KHBAdmin?.dom || {};
 const adminUiApi = window.KHBAdmin?.api || {};
 const adminUiConstants = window.KHBAdmin?.constants || {};
 const adminUiState = window.KHBAdmin?.state || {};
+const adminUiCore = adminUiNamespace.core;
 
 async function populateVenues() {
   try {
@@ -103,7 +107,7 @@ async function populateMatches() {
 async function onMatchChange() {
   const matchCode = adminUiDom.matchSelect ? adminUiDom.matchSelect.value : '';
   if (!matchCode) return;
-  await loadData(false);
+  await adminUiCore.loadData(false);
   await loadJudgeOrder();
 }
 
@@ -254,7 +258,7 @@ async function saveJudgeOrder() {
       judge_ids: judgeIds,
     });
     setJudgeReorderStatus('並び順を保存しました。', 'ok');
-    await loadData(false);
+    await adminUiCore.loadData(false);
   } catch (err) {
     console.error('saveJudgeOrder error', err);
     setJudgeReorderStatus('保存に失敗しました: ' + (err.message || String(err)), 'err');
@@ -270,3 +274,4 @@ window.KHBAdmin.ui = Object.assign(window.KHBAdmin.ui || {}, {
   saveJudgeOrder,
   setJudgeReorderStatus,
 });
+})();
