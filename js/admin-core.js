@@ -10,6 +10,7 @@ const adminCoreAudio = window.KHBAdmin?.audio || {};
 const adminCoreAudioState = window.KHBAdmin?.audioState || {};
 const adminCoreConstants = window.KHBAdmin?.constants || {};
 const adminCoreHelpers = window.KHBAdmin?.helpers || {};
+const adminCoreScoreboard = window.KHBAdmin?.scoreboard || {};
 const adminCoreState = window.KHBAdmin?.state || {};
 const adminCoreUtils = window.KHBAdmin?.utils || {};
 
@@ -244,9 +245,9 @@ async function runLoadData(isAuto = false) {
     };
 
     if (adminCoreState.scoreboardMode === 'vertical') {
-      buildScoreboard_vertical(expectedIds, judgesMap, subMap, meta);
+      adminCoreScoreboard.buildScoreboard_vertical(expectedIds, judgesMap, subMap, meta);
     } else {
-      buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta);
+      adminCoreScoreboard.buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta);
     }
 
     // 音声読み上げ

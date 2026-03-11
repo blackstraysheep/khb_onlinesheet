@@ -2,6 +2,7 @@
 // admin-config.js — 設定・定数・DOM参照・内部状態
 // ============================
 
+(() => {
 const KHBAdmin = window.KHBAdmin || (window.KHBAdmin = {});
 KHBAdmin.config = KHBAdmin.config || {};
 KHBAdmin.constants = KHBAdmin.constants || {};
@@ -154,3 +155,4 @@ function hasUndecidableWinner(submission) {
 }
 
 KHBAdmin.helpers.hasUndecidableWinner = hasUndecidableWinner;
+})();

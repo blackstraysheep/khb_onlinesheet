@@ -149,7 +149,8 @@
 
 ## 🟢 Low
 
-- [ ] **L1: 全関数・変数がグローバルスコープ**（全admin-*.js）
+- [x] **L1: 全関数・変数がグローバルスコープ**（全admin-*.js）
+  - **済: 2026-03-10 `admin-*` の主要スクリプトを `KHBAdmin` 名前空間へ寄せ、IIFE で閉じる構成へ移行**
 - [x] **L2: マジックナンバー多数**（`admin-audio.js`等）
   - **済: 2026-03-10 ポーリング間隔、音声数字上限、音声キュー自動スクロール値を `admin-config.js` の定数へ集約**
 - [x] **L3: 死んだCSSルール `[v-cloak]`**（`obs-scoreboard.html`, `obs-scoreboard-vertical.html`）
