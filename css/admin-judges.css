@@ -1,0 +1,39 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
+h1 { font-size: 1.3rem; margin-bottom: 12px; }
+.card { background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid #334; padding-bottom: 6px; }
+label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 2px; }
+input,
+select { background: #0f3460; color: #fff; border: 1px solid #334; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; }
+input:focus,
+select:focus { outline: none; border-color: #e94560; }
+.input-md { width: 160px; }
+.input-lg { width: 240px; }
+button { cursor: pointer; border: none; border-radius: 4px; padding: 6px 14px; font-size: 0.82rem; color: #fff; background: #0f3460; }
+button:hover { opacity: 0.85; }
+.btn-green { background: #1b998b; }
+.btn-blue { background: #3a86ff; }
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.mb-8 { margin-bottom: 8px; }
+.msg { font-size: 0.8rem; margin-top: 6px; min-height: 1.2em; }
+.msg.ok { color: #1b998b; }
+.msg.err { color: #e94560; }
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th,
+td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #223; }
+th { color: #aaa; font-weight: 600; font-size: 0.75rem; }
+td { color: #ddd; }
+tr:hover td { background: #1a2744; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+.tag-warn { background: #f0ad4e33; color: #f0ad4e; }
+.back-link { display: inline-block; margin-bottom: 10px; color: #3a86ff; text-decoration: none; font-size: 0.85rem; }
+.back-link:hover { text-decoration: underline; }
+.token-text { font-family: monospace; font-size: 0.75rem; color: #ccc; word-break: break-all; }
+.judge-row label { display: inline; font-size: 0.85rem; color: #ddd; margin: 0; }
+.conflict-warn { color: #f0ad4e; font-size: 0.75rem; }
+.assign-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #334; }
+.checkbox-grid { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.checkbox-grid label { font-size: 0.82rem; color: #ddd; display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: #0f3460; border-radius: 4px; cursor: pointer; }
+.checkbox-grid label:hover { background: #1a2744; }
+.text-muted { color: #888; }

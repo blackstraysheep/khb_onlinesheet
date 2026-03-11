@@ -1,0 +1,60 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font-family: "CMU Serif", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+#scoreboard {
+  display: inline-flex;
+  align-items: center;
+  gap: 9.5em;
+  font-size: 64px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow:
+    0 0 6px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+.team.red {
+  color: #ff5a5a;
+}
+
+.team.white {
+  color: #ffffff;
+}
+
+.sep {
+  opacity: 0.85;
+}
+
+.count {
+  display: inline-block;
+  min-width: 1.2em;
+  text-align: center;
+}
+
+.pulse {
+  animation: pulse 0.55s ease-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.25);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}

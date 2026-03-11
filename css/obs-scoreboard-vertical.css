@@ -1,0 +1,40 @@
+html,
+body {
+  background-color: transparent !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.obs-scoreboard-vertical {
+  width: 100%;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.obs-scoreboard-vertical-container {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.95);
+  width: fit-content;
+}
+
+.obs-status-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 4px;
+  font-size: 12px;
+  display: none;
+}
+
+.obs-scoreboard-placeholder {
+  text-align: center;
+  padding: 100px;
+  color: #666;
+  display: none;
+}

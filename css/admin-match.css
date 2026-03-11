@@ -1,0 +1,41 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
+h1 { font-size: 1.3rem; margin-bottom: 12px; }
+.card { background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid #334; padding-bottom: 6px; }
+label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 2px; }
+input,
+select { background: #0f3460; color: #fff; border: 1px solid #334; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; }
+input:focus,
+select:focus { outline: none; border-color: #e94560; }
+.input-sm { width: 80px; }
+.input-md { width: 160px; }
+.input-lg { width: 240px; }
+button { cursor: pointer; border: none; border-radius: 4px; padding: 6px 14px; font-size: 0.82rem; color: #fff; background: #0f3460; }
+button:hover { opacity: 0.85; }
+.btn-green { background: #1b998b; }
+.btn-red { background: #e94560; }
+.btn-grey { background: #555; }
+.btn-blue { background: #3a86ff; }
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.mt-8 { margin-top: 8px; }
+.mb-8 { margin-bottom: 8px; }
+.msg { font-size: 0.8rem; margin-top: 6px; min-height: 1.2em; }
+.msg.ok { color: #1b998b; }
+.msg.err { color: #e94560; }
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th,
+td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #223; }
+th { color: #aaa; font-weight: 600; font-size: 0.75rem; }
+td { color: #ddd; }
+tr:hover td { background: #1a2744; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+.tag-green { background: #1b998b33; color: #1b998b; }
+.tag-red { background: #e9456033; color: #e94560; }
+.tag-grey { background: #55555533; color: #999; }
+.tag-blue { background: #3a86ff33; color: #3a86ff; }
+.link { color: #3a86ff; cursor: pointer; text-decoration: underline; }
+.hidden { display: none !important; }
+.back-link { display: inline-block; margin-bottom: 10px; color: #3a86ff; text-decoration: none; font-size: 0.85rem; }
+.back-link:hover { text-decoration: underline; }
+.table-empty { color: #888; text-align: center; }
