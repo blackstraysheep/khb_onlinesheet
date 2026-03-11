@@ -138,6 +138,10 @@
         return Number.isFinite(n) ? n : 0;
       }
 
+      function hasSelectedValue(el) {
+        return !!(el && el.value !== '');
+      }
+
       function getSideElems(side) {
         return {
           works: $(`.works[data-side="${side}"]`),
@@ -571,6 +575,10 @@
           isEdit: !!isEdit,
         };
 
+        if (!hasSelectedValue(red.works) || !hasSelectedValue(white.works)) {
+          setResult('作品点を両チームとも選択してください。', false);
+          return false;
+        }
         if (payload.red.work < 0 || payload.white.work < 0) {
           setResult('作品点は 0 以上で入力してください。', false);
           return false;
