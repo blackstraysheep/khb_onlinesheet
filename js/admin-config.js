@@ -2,6 +2,12 @@
 // admin-config.js — 設定・定数・DOM参照・内部状態
 // ============================
 
+const KHBAdmin = window.KHBAdmin || (window.KHBAdmin = {});
+KHBAdmin.config = KHBAdmin.config || {};
+KHBAdmin.constants = KHBAdmin.constants || {};
+KHBAdmin.dom = KHBAdmin.dom || {};
+KHBAdmin.helpers = KHBAdmin.helpers || {};
+
 const ADMIN_CONFIG = window.KHB_APP_CONFIG || {};
 const SUPABASE_URL = ADMIN_CONFIG.SUPABASE_URL;
 const SUPABASE_ANON_KEY = ADMIN_CONFIG.SUPABASE_ANON_KEY;
@@ -9,6 +15,12 @@ const SUPABASE_ANON_KEY = ADMIN_CONFIG.SUPABASE_ANON_KEY;
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
 }
+
+Object.assign(KHBAdmin.config, {
+  ADMIN_CONFIG,
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+});
 
 const CONTROL_CONFIRM_URL    = SUPABASE_URL + '/functions/v1/control_confirm_with_secret';
 const CONTROL_ADVANCE_URL    = SUPABASE_URL + '/functions/v1/control_advance_with_secret';
@@ -27,8 +39,26 @@ const AUDIO_NUMERIC_CLIP_MAX = 12;
 const AUDIO_QUEUE_SCROLL_CENTER_OFFSET = 35;
 const AUDIO_QUEUE_SCROLL_MARGIN = 60;
 
+Object.assign(KHBAdmin.constants, {
+  CONTROL_CONFIRM_URL,
+  CONTROL_ADVANCE_URL,
+  CONTROL_SET_MATCH_URL,
+  ADMIN_SET_MATCH_JUDGES_URL,
+  ADMIN_PATCH_STATE_URL,
+  adminHeaders,
+  ADMIN_AUTO_REFRESH_MS,
+  AUDIO_NUMERIC_CLIP_MAX,
+  AUDIO_QUEUE_SCROLL_CENTER_OFFSET,
+  AUDIO_QUEUE_SCROLL_MARGIN,
+});
+
 const query = (sel, root = document) => root.querySelector(sel);
 const queryAll = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+Object.assign(KHBAdmin.helpers, {
+  query,
+  queryAll,
+});
 
 // DOM 参照
 const venueSelect         = query('#venueSelect');
@@ -58,6 +88,30 @@ const e5e6StatusEl        = query('#e5e6Status');
 const epochInput          = query('#epochInput');
 const btnSetEpoch         = query('#btnSetEpoch');
 
+Object.assign(KHBAdmin.dom, {
+  venueSelect,
+  matchSelect,
+  btnStartMatch,
+  toggleAcceptingBtn,
+  topMsg,
+  stateSummary,
+  scoreboardContainer,
+  scoreboardModeBtn,
+  judgeReorderList,
+  btnSaveJudgeOrder,
+  judgeReorderStatus,
+  audioStatusEl,
+  audioQueueListEl,
+  btnAudioPlayAll,
+  btnAudioStop,
+  adminSecretInput,
+  btnE5,
+  btnE6,
+  e5e6StatusEl,
+  epochInput,
+  btnSetEpoch,
+});
+
 // 内部状態
 let lastState       = null;
 let scoreboardMode  = 'horizontal'; // 'horizontal' | 'vertical'
@@ -85,3 +139,5 @@ function hasUndecidableWinner(submission) {
     && redTotal === whiteTotal
     && redWork === whiteWork;
 }
+
+KHBAdmin.helpers.hasUndecidableWinner = hasUndecidableWinner;
