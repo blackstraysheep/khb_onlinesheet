@@ -14,11 +14,18 @@
             <h1>スナップショット JSON ビューワー</h1>
             <p class="input-card-description">保存されたJSONを貼り付けて、OBS用スコアボードを復元表示します。</p>
 
+            <label for="jsonInput">スナップショット JSON</label>
             <textarea id="jsonInput" class="snapshot-json-input" placeholder='Paste JSON here... {"bout": ...}'></textarea>
 
             <div class="team-inputs">
-                <input type="text" id="redTeamInput" placeholder="紅チーム名 (任意)">
-                <input type="text" id="whiteTeamInput" placeholder="白チーム名 (任意)">
+                <div>
+                    <label for="redTeamInput">紅チーム名 (任意)</label>
+                    <input type="text" id="redTeamInput" placeholder="紅チーム名 (任意)">
+                </div>
+                <div>
+                    <label for="whiteTeamInput">白チーム名 (任意)</label>
+                    <input type="text" id="whiteTeamInput" placeholder="白チーム名 (任意)">
+                </div>
             </div>
 
             <button id="renderBtn" class="snapshot-render-button">表示 (Render)</button>

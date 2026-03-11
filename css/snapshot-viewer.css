@@ -72,8 +72,19 @@ body {
   gap: 1rem;
 }
 
-.team-inputs input {
+.team-inputs > div {
   flex: 1;
+}
+
+.team-inputs label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.team-inputs input {
+  width: 100%;
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 4px;
