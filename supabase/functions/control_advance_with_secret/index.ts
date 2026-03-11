@@ -98,10 +98,10 @@ serve(async (req) => {
       return json({ error: "failed to advance state" }, corsHeaders, 500);
     }
 
-    // 3. event_log に E6 を記録（match_id は省略：現仕様では state に持っていない）
+    // 3. event_log に E6 を記録
     await supabase.from("event_log").insert({
       event_type: "E6",
-      match_id: null,
+      match_id: stateRow.current_match_id ?? null,
       judge_id: null,
       epoch: nextEpoch,
       detail: {

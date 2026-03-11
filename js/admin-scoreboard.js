@@ -11,6 +11,12 @@ function setCellMultilineText(cell, text) {
   });
 }
 
+function markJudgeAnomaly(cell, judgeId, anomalyJudgeIds) {
+  if (cell && anomalyJudgeIds && anomalyJudgeIds.has(judgeId)) {
+    cell.classList.add('score-anomaly');
+  }
+}
+
 function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
   if (!scoreboardContainer) return;
   scoreboardContainer.innerHTML = '';
@@ -22,6 +28,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
   const boutLabelFull = meta.boutLabelFull || '対戦名';
   const redTeam   = meta.redTeamName  || '紅';
   const whiteTeam = meta.whiteTeamName || '白';
+  const anomalyJudgeIds = new Set(meta.anomalyJudgeIds || []);
 
   const table = document.createElement('table');
   const tbody = document.createElement('tbody');
@@ -83,6 +90,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'red-star');
     if (s && s.red_flag) td.textContent = '★';
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('旗', 'label vertical'));
@@ -98,6 +106,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'score-big');
     if (s && s.red_total != null) td.textContent = s.red_total;
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('合計', 'label vertical'));
@@ -113,6 +122,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.red_app != null && s.red_app !== 0) td.textContent = s.red_app;
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('鑑賞点', 'label vertical'));
@@ -128,6 +138,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.red_work != null) td.textContent = s.red_work;
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('作品点', 'label vertical'));
@@ -146,7 +157,9 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
       if (typeof j === 'string') name = j;
       else if (typeof j === 'object' && j.name) name = j.name;
     }
-    tr.appendChild(createCell(name, 'judge-name center-block-cell vertical'));
+    const td = createCell(name, 'judge-name center-block-cell vertical');
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
+    tr.appendChild(td);
   });
   tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
   addOuterCells(tr, rowIndex, 'right');
@@ -161,6 +174,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.white_work != null) td.textContent = s.white_work;
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('作品点', 'label vertical'));
@@ -176,6 +190,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.white_app != null && s.white_app !== 0) td.textContent = s.white_app;
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('鑑賞点', 'label vertical'));
@@ -191,6 +206,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'score-big');
     if (s && s.white_total != null) td.textContent = s.white_total;
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('合計', 'label vertical'));
@@ -206,6 +222,7 @@ function buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta) {
     const s = subMap[id];
     const td = createCell('', 'star');
     if (s && s.white_flag) td.textContent = '★';
+    markJudgeAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('旗', 'label vertical'));
@@ -230,6 +247,7 @@ function buildScoreboard_vertical(expectedIds, judgesMap, subMap, meta) {
   const boutLabelFull = meta.boutLabelFull || '対戦名';
   const redTeam   = meta.redTeamName  || '紅チーム';
   const whiteTeam = meta.whiteTeamName || '白チーム';
+  const anomalyJudgeIds = new Set(meta.anomalyJudgeIds || []);
 
   const table = document.createElement('table');
   table.className = 'scoreboard-v';
@@ -280,6 +298,7 @@ function buildScoreboard_vertical(expectedIds, judgesMap, subMap, meta) {
   expectedIds.forEach(id => {
     const s = subMap[id] || {};
     const tr = document.createElement('tr');
+    if (anomalyJudgeIds.has(id)) tr.classList.add('score-anomaly-row');
 
     // 紅 旗
     const tdRedFlag = createCell('', 'cell-flag red-flag');

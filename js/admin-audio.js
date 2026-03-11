@@ -185,6 +185,15 @@ function buildAudioSegments(expectedIds, judgesMap, subMap) {
       clips.push(...numToAudioIds(whiteTotal));
     }
 
+    if (hasUndecidableWinner(sub)) {
+      console.warn('Audio: 勝敗判定不能のため勝者音声をスキップします:', jid);
+      audioJudgeSegments[jid] = {
+        revision: sub.revision || 1,
+        clips,
+      };
+      return;
+    }
+
     const isDrawTotal = (redTotal === whiteTotal);
     let winnerSideForTotal;
     if (!isDrawTotal) {

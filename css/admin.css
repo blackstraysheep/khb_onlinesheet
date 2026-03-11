@@ -363,6 +363,14 @@ button:disabled {
   -webkit-font-smoothing: antialiased;
 }
 
+.scoreboard .score-anomaly {
+  background-color: #fff3e0 !important;
+}
+
+.scoreboard .score-anomaly-row td {
+  background-color: #fff3e0 !important;
+}
+
 /* =========================
  レイアウト（2カラム）
  ========================= */

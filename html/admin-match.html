@@ -321,11 +321,11 @@
       el.className = 'msg ' + (isErr ? 'err' : 'ok');
     }
 
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = s;
-      return d.innerHTML;
-    }
+      function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s ?? '';
+        return d.innerHTML;
+      }
 
     $('#btnRefreshMatches').addEventListener('click', refreshMatches);
 

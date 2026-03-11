@@ -164,7 +164,7 @@ async function runLoadData(isAuto = false) {
     // 2. state（会場別）
     const stateRows = currentVenueId
       ? await fetchJson('state', { select: 'epoch,accepting,e3_reached,updated_at,current_match_id', venue_id: 'eq.' + currentVenueId })
-      : await fetchJson('state', { select: 'epoch,accepting,e3_reached,updated_at,current_match_id', id: 'eq.1' });
+      : [];
     const st  = stateRows[0] || null;
     lastState = st;
 
@@ -219,6 +219,7 @@ async function runLoadData(isAuto = false) {
     // 6. スコアボード描画
     const subMap = {};
     subs.forEach(s => { subMap[String(s.judge_id)] = s; });
+    const anomalyJudgeIds = expectedIds.filter(id => hasUndecidableWinner(subMap[id]));
 
     const matchLabel = (match.name || match.code).replace(/　/g, '\n');
     const boutLabelForBoard = boutLabelFull || '対戦名';
@@ -228,6 +229,7 @@ async function runLoadData(isAuto = false) {
       boutLabelFull: boutLabelForBoard,
       redTeamName:   match.red_team_name  || '紅',
       whiteTeamName: match.white_team_name || '白',
+      anomalyJudgeIds,
     };
 
     if (scoreboardMode === 'vertical') {
@@ -277,7 +279,12 @@ async function runLoadData(isAuto = false) {
       submittedCount,
     });
 
-    if (!isAuto) setMsg('読み込み完了', 'ok');
+    if (anomalyJudgeIds.length > 0) {
+      const anomalyNames = anomalyJudgeIds.map(id => judgesMap[id]?.name || id);
+      setMsg(`勝敗判定不能: ${anomalyNames.join(', ')}。勝者音声をスキップしています。`, 'warn');
+    } else if (!isAuto) {
+      setMsg('読み込み完了', 'ok');
+    }
 
   } catch (err) {
     console.error(err);

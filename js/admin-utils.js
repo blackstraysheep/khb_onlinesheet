@@ -35,3 +35,19 @@ function setControlsDisabled(disabled) {
   if (venueSelect) venueSelect.disabled = disabled;
   if (matchSelect) matchSelect.disabled = disabled;
 }
+
+function hasUndecidableWinner(submission) {
+  if (!submission) return false;
+
+  const redTotal = submission.red_total;
+  const whiteTotal = submission.white_total;
+  const redWork = submission.red_work;
+  const whiteWork = submission.white_work;
+
+  return Number.isFinite(redTotal)
+    && Number.isFinite(whiteTotal)
+    && Number.isFinite(redWork)
+    && Number.isFinite(whiteWork)
+    && redTotal === whiteTotal
+    && redWork === whiteWork;
+}

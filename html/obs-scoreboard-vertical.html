@@ -91,9 +91,10 @@
             }
 
             // khb_score 風スコアボード構築 (縦型レイアウト)
-            function buildScoreboard(expectedIds, judgesMap, subMap, meta) {
-                if (!scoreboardContainer) return;
-                scoreboardContainer.innerHTML = '';
+            function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
+                const targetContainer = container || scoreboardContainer;
+                if (!targetContainer) return;
+                targetContainer.innerHTML = '';
 
                 if (!expectedIds || !expectedIds.length) {
                     return;
@@ -225,7 +226,7 @@
                     tbody.appendChild(tr);
                 });
 
-                scoreboardContainer.appendChild(table);
+                targetContainer.appendChild(table);
             }
 
             // Helper function to fetch JSON from Supabase

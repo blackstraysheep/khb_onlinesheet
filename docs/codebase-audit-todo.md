@@ -70,10 +70,11 @@
 
 ## 🟡 Medium
 
-- [ ] **M1: 引き分けタイブレイクが暗黙的に赤勝ちになる**
+- [x] **M1: 引き分けタイブレイクが暗黙的に赤勝ちになる**
   - ファイル: `js/admin-audio.js` (L191-201)
   - 内容: `redTotal === whiteTotal`かつ`redWork === whiteWork`の場合、`winnerSideForTotal`がデフォルトで`'red'`に。
   - 修正案: 完全引き分けケースを明示的に処理する。
+  - **済: 2026-03-10 完全同点時は勝者音声をスキップし、管理画面を warn 表示 + オレンジ強調**
 
 - [x] **M2: `loadData()`の手動/自動実行間にレースコンディション**
     - ファイル: `js/admin-core.js` (L5-178, L386-389)
@@ -108,25 +109,29 @@
   - ファイル: `css/admin.css` (670行), `css/admin-vertical.css` (641行)
   - 修正案: 共通スタイルを`admin-base.css`に抽出する。
 
-- [ ] **M8: `control_advance`がevent_logに`match_id: null`を記録**
-  - ファイル: `supabase/functions/control_advance_with_secret/index.ts` (L103)
-  - 修正案: `match_id: stateRow.current_match_id`を設定する。
+- [x] **M8: `control_advance`がevent_logに`match_id: null`を記録**
+    - ファイル: `supabase/functions/control_advance_with_secret/index.ts` (L103)
+    - 修正案: `match_id: stateRow.current_match_id`を設定する。
+    - **済: 2026-03-10 `event_log.match_id` に `stateRow.current_match_id` を記録**
 
-- [ ] **M9: `esc()`がnullでクラッシュ**
-  - ファイル: `html/admin-match.html` (L316)
-  - 修正案: `d.textContent = s ?? '';`に変更する。
+- [x] **M9: `esc()`がnullでクラッシュ**
+    - ファイル: `html/admin-match.html` (L316)
+    - 修正案: `d.textContent = s ?? '';`に変更する。
+    - **済: 2026-03-10 `esc()` を null safe 化**
 
-- [ ] **M10: `obs-scoreboard-vertical.html`の`buildScoreboard`が5番目の引数を無視**
-  - ファイル: `html/obs-scoreboard-vertical.html` (L96 vs L353)
-  - 修正案: `container`パラメータを追加し`scoreboard.js`と一致させる。
+- [x] **M10: `obs-scoreboard-vertical.html`の`buildScoreboard`が5番目の引数を無視**
+    - ファイル: `html/obs-scoreboard-vertical.html` (L96 vs L353)
+    - 修正案: `container`パラメータを追加し`scoreboard.js`と一致させる。
+    - **済: 2026-03-10 `container` 引数を受け取り、未指定時は既存コンテナを使用**
 
 - [ ] **M11: `snapshot_viewer.html`が`buildScoreboard`関数を丸ごと複製**
   - ファイル: `html/snapshot_viewer.html` (L152-287)
   - 修正案: `scoreboard.js`を再利用するか、`scoreboard-vertical.js`を作成する。
 
-- [ ] **M12: `state.id`のPKがvenue移行後に形骸化**
+- [x] **M12: `state.id`のPKがvenue移行後に形骸化**
   - ファイル: `supabase/migrations/`
   - 修正案: PKを`venue_id`に移行する。
+  - **済: 2026-03-10 `20260310000002_state_primary_key_on_venue_id.sql` を追加し、`admin-core.js` の `id=1` フォールバックも削除**
 
 - [x] **M13: API呼び出しの直列ウォーターフォール**
     - ファイル: `js/admin-core.js` (L28-83)

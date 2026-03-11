@@ -585,6 +585,16 @@ button:disabled {
   font-family: 'CMU Serif Local Bold', 'CMU Serif', serif;
 }
 
+.scoreboard .score-anomaly,
+.scoreboard-v .score-anomaly {
+  background-color: #fff3e0 !important;
+}
+
+.scoreboard .score-anomaly-row td,
+.scoreboard-v .score-anomaly-row td {
+  background-color: #fff3e0 !important;
+}
+
 .scoreboard-v .cell-scores {
   width: 80px;
 }
