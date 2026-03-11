@@ -22,6 +22,11 @@ const adminHeaders = {
   'Content-Type': 'application/json',
 };
 
+const ADMIN_AUTO_REFRESH_MS = 2000;
+const AUDIO_NUMERIC_CLIP_MAX = 12;
+const AUDIO_QUEUE_SCROLL_CENTER_OFFSET = 35;
+const AUDIO_QUEUE_SCROLL_MARGIN = 60;
+
 const query = (sel, root = document) => root.querySelector(sel);
 const queryAll = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 

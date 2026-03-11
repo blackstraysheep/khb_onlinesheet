@@ -50,7 +50,7 @@ function ensureAudioClip(id) {
   if (id.startsWith('num_')) {
     const n = Number(id.slice(4));
     let file;
-    if (n >= 1 && n <= 12) {
+    if (n >= 1 && n <= AUDIO_NUMERIC_CLIP_MAX) {
       file = `${n}.mp3`;
     } else {
       console.warn('Audio: 未定義の数字クリップです:', n);
@@ -131,7 +131,7 @@ function numToAudioIds(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v < 0) return [];
 
-  if (v >= 1 && v <= 12) return [`num_${v}`];
+  if (v >= 1 && v <= AUDIO_NUMERIC_CLIP_MAX) return [`num_${v}`];
 
   console.warn('Audio: 対応していない点数です:', v);
   return [];
@@ -269,18 +269,18 @@ function renderAudioQueue(forceScroll = false) {
       const itemTop = currentEl.offsetTop;
       const itemHeight = currentEl.offsetHeight;
       const containerHeight = audioQueueListEl.clientHeight;
-      const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + 35;
+      const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + AUDIO_QUEUE_SCROLL_CENTER_OFFSET;
       audioQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
     } else {
       const cRect = audioQueueListEl.getBoundingClientRect();
       const iRect = currentEl.getBoundingClientRect();
       const relativeTop = iRect.top - cRect.top;
       const containerHeight = cRect.height;
-      const margin = 60;
+      const margin = AUDIO_QUEUE_SCROLL_MARGIN;
       if (relativeTop > -margin && relativeTop < containerHeight + margin) {
         const itemTop = currentEl.offsetTop;
         const itemHeight = currentEl.offsetHeight;
-        const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + 35;
+        const targetTop = itemTop - (containerHeight / 2) + (itemHeight / 2) + AUDIO_QUEUE_SCROLL_CENTER_OFFSET;
         audioQueueListEl.scrollTo({ top: targetTop, behavior: 'smooth' });
       }
     }

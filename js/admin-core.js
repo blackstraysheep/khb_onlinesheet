@@ -534,7 +534,7 @@ if (btnSaveJudgeOrder) {
 setInterval(() => {
   if (!matchSelect || !matchSelect.value) return;
   loadData(true);
-}, 2000);
+}, ADMIN_AUTO_REFRESH_MS);
 
 // 音声再生ボタン
 if (btnAudioPlayAll) {

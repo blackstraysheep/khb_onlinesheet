@@ -150,7 +150,8 @@
 ## 🟢 Low
 
 - [ ] **L1: 全関数・変数がグローバルスコープ**（全admin-*.js）
-- [ ] **L2: マジックナンバー多数**（`admin-audio.js`等）
+- [x] **L2: マジックナンバー多数**（`admin-audio.js`等）
+  - **済: 2026-03-10 ポーリング間隔、音声数字上限、音声キュー自動スクロール値を `admin-config.js` の定数へ集約**
 - [x] **L3: 死んだCSSルール `[v-cloak]`**（`obs-scoreboard.html`, `obs-scoreboard-vertical.html`）
   - **済: 2026-03-10 未使用ルールを削除**
 - [x] **L4: `zoom: 1.0`はno-op**（`obs-scoreboard-vertical.html`）
