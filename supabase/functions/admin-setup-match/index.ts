@@ -170,7 +170,7 @@ serve(async (req) => {
 
     const processedJudgeIds: string[] = [];
 
-    for (const j of (judges ?? [])) {
+    for (const [judgeIndex, j] of (judges ?? []).entries()) {
       const name = (j?.name || "").trim();
       if (!name) continue;
 
@@ -226,7 +226,11 @@ serve(async (req) => {
 
         const { error: insErr } = await supabase
           .from("expected_judges")
-          .insert({ match_id, judge_id });
+          .insert({
+            match_id,
+            judge_id,
+            sort_order: judgeIndex + 1,
+          });
 
         if (insErr) {
           console.error("expected_judges insert error", insErr);

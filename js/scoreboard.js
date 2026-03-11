@@ -30,6 +30,30 @@ function reorderIdsForScoreboard(ids) {
   return result;
 }
 
+function setScoreboardMultilineText(cell, text) {
+  cell.replaceChildren();
+  const lines = String(text ?? '').split(/[　\n]/);
+  lines.forEach((line, idx) => {
+    if (idx > 0) cell.appendChild(document.createElement('br'));
+    cell.appendChild(document.createTextNode(line));
+  });
+}
+
+function resolveScoreboardJudgeName(id, judgesMap) {
+  let name = id.slice(0, 8);
+  const judge = judgesMap[id];
+  if (!judge) return name;
+  if (typeof judge === 'string') return judge || name;
+  if (typeof judge === 'object' && judge.name) return judge.name;
+  return name;
+}
+
+function markScoreboardCellAnomaly(cell, judgeId, anomalyJudgeIds) {
+  if (cell && anomalyJudgeIds && anomalyJudgeIds.has(judgeId)) {
+    cell.classList.add('score-anomaly');
+  }
+}
+
 /**
  * 対戦名ラベル生成
  */
@@ -76,6 +100,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
   const boutLabelFull = meta.boutLabelFull || '';
   const redTeam = meta.redTeamName || '紅';
   const whiteTeam = meta.whiteTeamName || '白';
+  const anomalyJudgeIds = new Set(meta.anomalyJudgeIds || []);
 
   // ID並び替え（中心から外側へ）
   const displayIds = reorderIdsForScoreboard(expectedIds);
@@ -146,6 +171,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'red-star');
     if (s && s.red_flag) td.textContent = '★';
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('旗', 'label vertical'));
@@ -161,6 +187,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'score-big');
     if (s && s.red_total != null) td.textContent = s.red_total;
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('合計', 'label vertical'));
@@ -176,6 +203,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.red_app != null && s.red_app !== 0) td.textContent = s.red_app;
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('鑑賞点', 'label vertical'));
@@ -191,6 +219,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.red_work != null) td.textContent = s.red_work;
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('作品点', 'label vertical'));
@@ -203,16 +232,9 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
   addOuterCells(tr, rowIndex, 'left');
   tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
   displayIds.forEach(id => {
-    let name = id.slice(0, 8);
-    const j = judgesMap[id];
-    if (j) {
-      if (typeof j === 'string') {
-        name = j;
-      } else if (typeof j === 'object' && j.name) {
-        name = j.name;
-      }
-    }
+    const name = resolveScoreboardJudgeName(id, judgesMap);
     const td = createCell(name, 'judge-name center-block-cell vertical');
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('審査員', 'label center-block-cell vertical'));
@@ -228,6 +250,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.white_work != null) td.textContent = s.white_work;
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('作品点', 'label vertical'));
@@ -243,6 +266,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'score');
     if (s && s.white_app != null && s.white_app !== 0) td.textContent = s.white_app;
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('鑑賞点', 'label vertical'));
@@ -258,6 +282,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'score-big');
     if (s && s.white_total != null) td.textContent = s.white_total;
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('合計', 'label vertical'));
@@ -273,6 +298,7 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
     const s = subMap[id];
     const td = createCell('', 'star');
     if (s && s.white_flag) td.textContent = '★';
+    markScoreboardCellAnomaly(td, id, anomalyJudgeIds);
     tr.appendChild(td);
   });
   tr.appendChild(createCell('旗', 'label vertical'));

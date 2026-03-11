@@ -58,10 +58,11 @@
   - 修正案: Supabase Realtimeに切替、または`Promise.all()`で並列化。
   - **済: 2026-03-10 `matches` / `expected_judges` / `submissions` を `Promise.all()` 化、`venue_id` をキャッシュ**
 
-- [ ] **H6: `scoreboard.js`と`admin-scoreboard.js`に〜200行の重複コード**
+- [x] **H6: `scoreboard.js`と`admin-scoreboard.js`に〜200行の重複コード**
   - ファイル: `js/scoreboard.js` (284行) vs `js/admin-scoreboard.js`
   - 内容: ほぼ同一のスコアボード描画ロジックが重複。
   - 修正案: 共通ロジックをパラメータ化した共有関数に抽出する。
+  - **済: 2026-03-10 横型は `js/scoreboard.js`、縦型は `js/scoreboard-vertical.js` を共有利用する形に整理**
 
 - [x] **H7: `fetchJson`がHTTPエラーステータスをチェックしていない**
   - ファイル: `html/admin-judges.html` (L155), `html/admin-match.html` (L135)
@@ -105,9 +106,10 @@
     - 修正案: セレクト要素が明示的に選択されたかを検証する。
     - **済: 2026-03-10 作品点セレクトの明示選択を送信前に必須化**
 
-- [ ] **M7: CSS 90%重複**
+- [x] **M7: CSS 90%重複**
   - ファイル: `css/admin.css` (670行), `css/admin-vertical.css` (641行)
   - 修正案: 共通スタイルを`admin-base.css`に抽出する。
+  - **済: 2026-03-10 一致していた共通土台を `css/admin-base.css` に抽出し、差分だけを各CSSへ残した**
 
 - [x] **M8: `control_advance`がevent_logに`match_id: null`を記録**
     - ファイル: `supabase/functions/control_advance_with_secret/index.ts` (L103)
@@ -124,9 +126,10 @@
     - 修正案: `container`パラメータを追加し`scoreboard.js`と一致させる。
     - **済: 2026-03-10 `container` 引数を受け取り、未指定時は既存コンテナを使用**
 
-- [ ] **M11: `snapshot_viewer.html`が`buildScoreboard`関数を丸ごと複製**
+- [x] **M11: `snapshot_viewer.html`が`buildScoreboard`関数を丸ごと複製**
   - ファイル: `html/snapshot_viewer.html` (L152-287)
   - 修正案: `scoreboard.js`を再利用するか、`scoreboard-vertical.js`を作成する。
+  - **済: 2026-03-10 `js/scoreboard-vertical.js` を新設し、`snapshot_viewer.html` と OBS/admin 縦型で再利用**
 
 - [x] **M12: `state.id`のPKがvenue移行後に形骸化**
   - ファイル: `supabase/migrations/`

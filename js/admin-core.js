@@ -235,8 +235,7 @@ async function runLoadData(isAuto = false) {
     if (scoreboardMode === 'vertical') {
       buildScoreboard_vertical(expectedIds, judgesMap, subMap, meta);
     } else {
-      const displayIds = reorderIdsForScoreboard(expectedIds);
-      buildScoreboard_horizontal(displayIds, judgesMap, subMap, meta);
+      buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta);
     }
 
     // 音声読み上げ

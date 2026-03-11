@@ -61,6 +61,7 @@
     <script src="../js/config.js"></script>
     <!-- 共通ロジック読み込み -->
     <script src="../js/scoreboard.js"></script>
+    <script src="../js/scoreboard-vertical.js"></script>
     <script>
         (function () {
             const CONFIG = window.KHB_APP_CONFIG || {};
@@ -92,141 +93,9 @@
 
             // khb_score 風スコアボード構築 (縦型レイアウト)
             function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
-                const targetContainer = container || scoreboardContainer;
-                if (!targetContainer) return;
-                targetContainer.innerHTML = '';
-
-                if (!expectedIds || !expectedIds.length) {
-                    return;
-                }
-
-                meta = meta || {};
-                const matchLabel = meta.matchLabel || '試合名';
-                const boutLabelFull = meta.boutLabelFull || '対戦名';
-                const redTeam = meta.redTeamName || '紅チーム';
-                const whiteTeam = meta.whiteTeamName || '白チーム';
-
-                const table = document.createElement('table');
-                table.className = 'scoreboard-v';
-                const tbody = document.createElement('tbody');
-                table.appendChild(tbody);
-
-                // createCell helper
-                const createCell = (text, className, rowSpan, colSpan) => {
-                    const td = document.createElement('td');
-                    if (className) td.className = className;
-                    if (text !== undefined && text !== null) td.textContent = text;
-                    if (rowSpan) td.rowSpan = rowSpan;
-                    if (colSpan) td.colSpan = colSpan;
-                    return td;
-                };
-
-                // --- Header Rows ---
-
-                // 1. Top Header: [Red Team Header] [Match Info] [White Team Header]
-                const trTop = document.createElement('tr');
-                trTop.appendChild(createCell('紅', 'header-team-red', 1, 3)); // 3 cols
-
-                // Handle line breaks: Match name contains full-width space -> <br>
-                const displayMatchLabel = (matchLabel || '').replace(/　/g, '<br>');
-                const tdMatch = createCell('', 'header-match-info', 1, 1);
-                tdMatch.innerHTML = displayMatchLabel;
-
-                trTop.appendChild(tdMatch);
-                trTop.appendChild(createCell('白', 'header-team-white', 1, 3)); // 3 cols
-                tbody.appendChild(trTop);
-
-                // 2. Team Names Rows
-                const trTeam = document.createElement('tr');
-                trTeam.appendChild(createCell(redTeam, 'team-name-red', 1, 3)); // 3 cols
-                const tdBout = createCell(boutLabelFull, 'header-match-info', 1, 1);
-                trTeam.appendChild(tdBout);
-                trTeam.appendChild(createCell(whiteTeam, 'team-name-white', 1, 3)); // 3 cols
-                tbody.appendChild(trTeam);
-
-                // 3. Column Headers
-                // Flag | Total | Work/App || Judge || Work/App | Total | Flag
-                const trColHead = document.createElement('tr');
-
-                // Red Side Cols
-                trColHead.appendChild(createCell('旗', 'col-header', 1, 1));
-                trColHead.appendChild(createCell('合計', 'col-header', 1, 1));
-                const tdRedWorkApp = createCell('作品点<br>鑑賞点', 'col-header', 1, 1);
-                tdRedWorkApp.innerHTML = '作品点<div class="sub-label">鑑賞点</div>';
-                trColHead.appendChild(tdRedWorkApp);
-
-                // Center Judge
-                trColHead.appendChild(createCell('審査員', 'col-header', 1, 1));
-
-                // White Side Cols
-                const tdWhiteWorkApp = createCell('作品点<br>鑑賞点', 'col-header', 1, 1);
-                tdWhiteWorkApp.innerHTML = '作品点<div class="sub-label">鑑賞点</div>';
-                trColHead.appendChild(tdWhiteWorkApp);
-                trColHead.appendChild(createCell('合計', 'col-header', 1, 1));
-                trColHead.appendChild(createCell('旗', 'col-header', 1, 1));
-
-                tbody.appendChild(trColHead);
-
-
-                // --- Data Rows (Judges) ---
-                expectedIds.forEach(id => {
-                    const s = subMap[id] || {};
-                    const tr = document.createElement('tr');
-
-                    // --- Red Side ---
-                    // Flag
-                    const tdRedFlag = createCell('', 'cell-flag red-flag');
-                    if (s.red_flag) tdRedFlag.textContent = '◆';
-                    tr.appendChild(tdRedFlag);
-
-                    // Total
-                    tr.appendChild(createCell(s.red_total != null ? s.red_total : '', 'cell-total'));
-
-                    // Work / App (Stacked)
-                    const tdRedScores = createCell('', 'cell-scores');
-                    const redWorkDiv = document.createElement('div');
-                    redWorkDiv.className = 'score-main';
-                    redWorkDiv.textContent = s.red_work != null ? s.red_work : '';
-                    const redAppDiv = document.createElement('div');
-                    redAppDiv.className = 'score-sub';
-                    redAppDiv.textContent = (s.red_app != null && s.red_app !== 0) ? s.red_app : '';
-                    tdRedScores.appendChild(redWorkDiv);
-                    tdRedScores.appendChild(redAppDiv);
-                    tr.appendChild(tdRedScores);
-
-                    // --- Judge Name (Center) ---
-                    let name = id.slice(0, 8);
-                    const j = judgesMap[id];
-                    if (j) name = (typeof j === 'object' ? j.name : j) || name;
-                    tr.appendChild(createCell(name, 'cell-judge'));
-
-                    // --- White Side ---
-                    // Work / App (Stacked)
-                    const tdWhiteScores = createCell('', 'cell-scores');
-                    const whiteWorkDiv = document.createElement('div');
-                    whiteWorkDiv.className = 'score-main';
-                    whiteWorkDiv.textContent = s.white_work != null ? s.white_work : '';
-                    const whiteAppDiv = document.createElement('div');
-                    whiteAppDiv.className = 'score-sub';
-                    whiteAppDiv.textContent = (s.white_app != null && s.white_app !== 0) ? s.white_app : '';
-                    tdWhiteScores.appendChild(whiteWorkDiv);
-                    tdWhiteScores.appendChild(whiteAppDiv);
-                    tr.appendChild(tdWhiteScores);
-
-                    // Total
-                    tr.appendChild(createCell(s.white_total != null ? s.white_total : '', 'cell-total'));
-
-                    // Flag
-                    const tdWhiteFlag = createCell('', 'cell-flag');
-                    if (s.white_flag) {
-                        tdWhiteFlag.textContent = '◆';
-                        tdWhiteFlag.classList.add('white-flag');
-                    }
-                    tr.appendChild(tdWhiteFlag);
-                    tbody.appendChild(tr);
+                buildVerticalScoreboard(expectedIds, judgesMap, subMap, meta, container || scoreboardContainer, {
+                    multilineMatchLabel: true,
                 });
-
-                targetContainer.appendChild(table);
             }
 
             // Helper function to fetch JSON from Supabase
