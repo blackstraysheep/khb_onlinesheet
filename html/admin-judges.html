@@ -186,7 +186,10 @@
           }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || res.statusText);
+        if (!res.ok) {
+          showMsg('#addMsg', data.error || res.statusText, true);
+          return;
+        }
         showMsg('#addMsg', `追加完了: ${data.judge_name} (token: ${data.token})`, false);
         judgeNameInput.value = '';
         voiceKeyInput.value = '';
@@ -358,7 +361,7 @@
       if (!selectedMatchId || selectedMatchTimeline == null) return;
       const warn = $('#assignConflictWarn');
       const checkedIds = new Set(
-        Array.from($('#assignCheckboxes').querySelectorAll('input:checked')).map(cb => cb.value)
+        Array.from(assignCheckboxes.querySelectorAll('input:checked')).map(cb => cb.value)
       );
 
       // 同一タイムラインの他試合でアサイン済みの審査員
@@ -416,7 +419,10 @@
           }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || res.statusText);
+        if (!res.ok) {
+          showMsg('#assignMsg', data.error || res.statusText, true);
+          return;
+        }
         showMsg('#assignMsg', `アサイン保存完了 (${judgeIds.length}名)`, false);
         await refreshAll();
       } catch (e) {
