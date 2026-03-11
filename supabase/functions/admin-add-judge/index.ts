@@ -3,14 +3,8 @@
 // admin_secret による認証（会場非依存: 1審査員1トークン）
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -18,7 +12,7 @@ const adminSecret = (Deno.env.get("ADMIN_SETUP_SECRET") ?? "").trim();
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, corsHeaders: HeadersInit, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -33,11 +27,15 @@ function generateToken(prefix = "khb-"): string {
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
+  if (!isAllowedOrigin(req)) {
+    return json({ error: "forbidden origin" }, corsHeaders, 403);
+  }
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
+    return json({ error: "Method not allowed" }, corsHeaders, 405);
   }
 
   try {
@@ -50,19 +48,19 @@ serve(async (req) => {
 
     // 1. admin_secret 確認
     if (!adminSecret) {
-      return json({ error: "server misconfigured: ADMIN_SETUP_SECRET not set" }, 500);
+      return json({ error: "server misconfigured: ADMIN_SETUP_SECRET not set" }, corsHeaders, 500);
     }
     const clientSecret = typeof body?.admin_secret === "string"
       ? body.admin_secret.trim()
       : "";
     if (!timingSafeEqual(clientSecret, adminSecret)) {
-      return json({ error: "unauthorized" }, 401);
+      return json({ error: "unauthorized" }, corsHeaders, 401);
     }
 
     // 2. 入力チェック
     const name = (body?.name ?? "").trim();
     if (!name) {
-      return json({ error: "name is required" }, 400);
+      return json({ error: "name is required" }, corsHeaders, 400);
     }
     const voiceKey = (body?.voice_key ?? "").trim() || null;
     const tokenPrefix = (body?.token_prefix ?? "khb-").trim();
@@ -96,7 +94,7 @@ serve(async (req) => {
 
         if (insErr || !inserted) {
           console.error("judges insert error", insErr);
-          return json({ error: "failed to insert judge" }, 500);
+          return json({ error: "failed to insert judge" }, corsHeaders, 500);
         }
         judgeId = inserted.id as string;
       }
@@ -123,7 +121,7 @@ serve(async (req) => {
 
         if (tokErr) {
           console.error("access_tokens insert error", tokErr);
-          return json({ error: "failed to create access token" }, 500);
+          return json({ error: "failed to create access token" }, corsHeaders, 500);
         }
       }
     }
@@ -133,9 +131,9 @@ serve(async (req) => {
       judge_id: judgeId,
       judge_name: name,
       token,
-    });
+    }, corsHeaders);
   } catch (e) {
     console.error(e);
-    return json({ error: "internal error" }, 500);
+    return json({ error: "internal error" }, corsHeaders, 500);
   }
 });

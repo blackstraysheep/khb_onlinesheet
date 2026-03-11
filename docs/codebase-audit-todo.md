@@ -46,10 +46,11 @@
   - 修正案: `timingSafeEqual`等の定数時間比較を使用する。
   - **済: 2026-03-10 `supabase/functions/_shared/secret.ts` の共通ヘルパーへ置換**
 
-- [ ] **H4: CORS `*`が管理エンドポイントに設定**
+- [x] **H4: CORS `*`が管理エンドポイントに設定**
   - ファイル: 全Edge Function
   - 内容: `"Access-Control-Allow-Origin": "*"`で全オリジン許可。
   - 修正案: ホワイトリスト制にするか、`Origin`ヘッダーを検証する。
+  - **済: 2026-03-10 `supabase/functions/_shared/cors.ts` で許可オリジンをホワイトリスト化**
 
 - [ ] **H5: OBSスコアボードが毎秒5〜6回の直列API呼び出し**
   - ファイル: `html/obs-scoreboard.html` (L239), `html/obs-scoreboard-vertical.html` (L381)

@@ -1,12 +1,7 @@
 // supabase/functions/judge-submit-with-token/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-// CORS ヘッダ
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -36,15 +31,6 @@ type SubmissionInfo = {
   };
   revision: any;
 } | null;
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      ...corsHeaders
-    }
-  });
-}
 // epoch と num_bouts から対戦名（先鋒戦・中堅戦など）を決め打ち
 function getBoutLabel(epoch, numBouts) {
   const e = Number(epoch || 0);
@@ -71,6 +57,19 @@ function getBoutLabel(epoch, numBouts) {
   return `第${e}対戦`;
 }
 serve(async (req)=>{
+  const corsHeaders = buildCorsHeaders(req);
+  const json = (body, status = 200)=>new Response(JSON.stringify(body), {
+      status,
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders
+      }
+    });
+  if (!isAllowedOrigin(req)) {
+    return json({
+      error: "forbidden origin"
+    }, 403);
+  }
   // preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", {

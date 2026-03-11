@@ -1,14 +1,8 @@
 // supabase/functions/control_advance_with_secret/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -16,7 +10,7 @@ const adminSecret = (Deno.env.get("ADMIN_SETUP_SECRET") ?? "").trim();
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, corsHeaders: HeadersInit, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -27,11 +21,15 @@ function json(body: unknown, status = 200) {
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
+  if (!isAllowedOrigin(req)) {
+    return json({ error: "forbidden origin" }, corsHeaders, 403);
+  }
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
+    return json({ error: "Method not allowed" }, corsHeaders, 405);
   }
 
   try {
@@ -48,11 +46,12 @@ serve(async (req) => {
     if (!adminSecret) {
       return json(
         { error: "server misconfigured: ADMIN_SETUP_SECRET not set" },
+        corsHeaders,
         500,
       );
     }
     if (!timingSafeEqual(clientSecret, adminSecret)) {
-      return json({ error: "unauthorized" }, 401);
+      return json({ error: "unauthorized" }, corsHeaders, 401);
     }
 
     // 会場を解決
@@ -60,7 +59,7 @@ serve(async (req) => {
     const { data: venueRow, error: venueErr } = await supabase
       .from("venues").select("id").eq("code", venueCode).maybeSingle();
     if (venueErr || !venueRow) {
-      return json({ error: `venue not found: ${venueCode}` }, 404);
+      return json({ error: `venue not found: ${venueCode}` }, corsHeaders, 404);
     }
     const venueId = venueRow.id as string;
 
@@ -72,7 +71,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (stateErr || !stateRow) {
-      return json({ error: "state not found" }, 500);
+      return json({ error: "state not found" }, corsHeaders, 500);
     }
 
     const currentEpoch: number = stateRow.epoch;
@@ -97,7 +96,7 @@ serve(async (req) => {
 
     if (updErr) {
       console.error("state update error on E6", updErr);
-      return json({ error: "failed to advance state" }, 500);
+      return json({ error: "failed to advance state" }, corsHeaders, 500);
     }
 
     // 3. event_log に E6 を記録（match_id は省略：現仕様では state に持っていない）
@@ -118,9 +117,9 @@ serve(async (req) => {
       venue_code: venueCode,
       from_epoch: currentEpoch,
       to_epoch: nextEpoch,
-    });
+    }, corsHeaders);
   } catch (e) {
     console.error(e);
-    return json({ error: "internal error" }, 500);
+    return json({ error: "internal error" }, corsHeaders, 500);
   }
 });
