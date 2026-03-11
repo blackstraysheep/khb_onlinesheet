@@ -2,8 +2,12 @@
 // admin-api.js — REST API ヘルパー
 // ============================
 
+const adminApiConfig = window.KHBAdmin?.config || {};
+const adminApiConstants = window.KHBAdmin?.constants || {};
+const adminApiDom = window.KHBAdmin?.dom || {};
+
 function buildRestUrl(path, params) {
-  const url = new URL(SUPABASE_URL + '/rest/v1/' + path);
+  const url = new URL(adminApiConfig.SUPABASE_URL + '/rest/v1/' + path);
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null) {
@@ -16,7 +20,7 @@ function buildRestUrl(path, params) {
 
 async function fetchJson(path, params) {
   const url = buildRestUrl(path, params);
-  const res = await fetch(url, { headers: adminHeaders });
+  const res = await fetch(url, { headers: adminApiConstants.adminHeaders });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`GET ${path} failed: ${res.status} ${txt}`);
@@ -29,8 +33,8 @@ async function callControlFunction(url, body) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'apikey': adminApiConfig.SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + adminApiConfig.SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(body),
   });
@@ -49,12 +53,12 @@ async function callControlFunction(url, body) {
 
 // state を更新（admin-patch-state Edge Function 経由）
 async function patchState(patch) {
-  const adminSec = adminSecretInput ? adminSecretInput.value.trim() : '';
+  const adminSec = adminApiDom.adminSecretInput ? adminApiDom.adminSecretInput.value.trim() : '';
   if (!adminSec) {
     throw new Error('管理用シークレットを入力してください。');
   }
   const venueCode = currentVenueCode || 'default';
-  const data = await callControlFunction(ADMIN_PATCH_STATE_URL, {
+  const data = await callControlFunction(adminApiConstants.ADMIN_PATCH_STATE_URL, {
     admin_secret: adminSec,
     venue_code: venueCode,
     patch,
@@ -63,3 +67,10 @@ async function patchState(patch) {
     lastState = { ...lastState, ...data.state };
   }
 }
+
+window.KHBAdmin.api = Object.assign(window.KHBAdmin.api || {}, {
+  buildRestUrl,
+  fetchJson,
+  callControlFunction,
+  patchState,
+});
