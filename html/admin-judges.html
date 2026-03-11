@@ -127,7 +127,7 @@
     const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
     const ADMIN_ADD_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-add-judge';
     const ADMIN_LIST_JUDGE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-judge-tokens';
-    const ADMIN_SETUP_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-setup-match';
+    const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -346,7 +346,6 @@
         cb.type = 'checkbox';
         cb.value = j.id;
         cb.checked = assigned.has(j.id);
-        cb.dataset.judgeName = j.name;
         cb.addEventListener('change', checkConflicts);
         lbl.appendChild(cb);
         lbl.appendChild(document.createTextNode(' ' + j.name));
@@ -390,15 +389,20 @@
       const match = allMatches.find(m => m.id === selectedMatchId);
       if (!match) return;
 
-      const checkedJudges = Array.from(assignCheckboxes.querySelectorAll('input:checked'))
-        .map(cb => ({ name: cb.dataset.judgeName }));
+      const judgeIds = Array.from(assignCheckboxes.querySelectorAll('input:checked'))
+        .map(cb => cb.value)
+        .filter(Boolean);
+
+      if (!judgeIds.length) {
+        return showMsg('#assignMsg', '審査員を1名以上選択してください', true);
+      }
 
       // venue_code を試合の venue_id から取得
       const venue = allVenues.find(v => v.id === match.venue_id);
       const venueCode = venue ? venue.code : 'default';
 
       try {
-        const res = await fetch(ADMIN_SETUP_MATCH_URL, {
+        const res = await fetch(ADMIN_SET_MATCH_JUDGES_URL, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -408,12 +412,12 @@
             match_name: match.name,
             timeline: match.timeline,
             num_bouts: match.num_bouts,
-            judges: checkedJudges,
+            judge_ids: judgeIds,
           }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || res.statusText);
-        showMsg('#assignMsg', `アサイン保存完了 (${checkedJudges.length}名)`, false);
+        showMsg('#assignMsg', `アサイン保存完了 (${judgeIds.length}名)`, false);
         await refreshAll();
       } catch (e) {
         showMsg('#assignMsg', e.message, true);

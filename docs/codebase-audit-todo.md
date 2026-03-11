@@ -92,10 +92,11 @@
     - 修正案: 共有モジュールに抽出する。
     - **済: 2026-03-10 フロントは `js/scoreboard.js`、Edge Functions は `_shared/bout.ts` に集約**
 
-- [ ] **M5: 審判割り当てがUUIDでなく名前ベース**
-  - ファイル: `html/admin-judges.html` (L367-368)
-  - 内容: `judge.name`で送信。同名審判がいると誤割り当ての可能性。
-  - 修正案: UUIDで送信し、`admin-set-match-judges`を使用する。
+- [x] **M5: 審判割り当てがUUIDでなく名前ベース**
+    - ファイル: `html/admin-judges.html` (L367-368)
+    - 内容: `judge.name`で送信。同名審判がいると誤割り当ての可能性。
+    - 修正案: UUIDで送信し、`admin-set-match-judges`を使用する。
+    - **済: 2026-03-10 `judge_ids` を `admin-set-match-judges` に送信**
 
 - [ ] **M6: ワークスコア0の入力バリデーション欠如**
   - ファイル: `html/judge.html` (L574-577)
