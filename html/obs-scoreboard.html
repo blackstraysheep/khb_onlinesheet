@@ -71,7 +71,6 @@
 
     <div class="status-bar" id="statusBar" style="display:none;">Connecting...</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/config.js"></script>
     <!-- 共通ロジック読み込み -->
     <script src="../js/scoreboard.js"></script>
@@ -198,9 +197,7 @@
                     subs.forEach(s => { subMap[String(s.judge_id)] = s; });
 
                     const matchLabel = (match.name || match.code).replace(/　/g, '\n');
-                    const boutLabelFull = getBoutLabel(epoch, match.num_bouts);
-
-                    let boutLabelForBoard = boutLabelFull;
+                    let boutLabelForBoard = getBoutLabel(epoch, match.num_bouts);
                     if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦')) {
                         boutLabelForBoard += '戦';
                     }

@@ -66,7 +66,6 @@
 
     <div class="status-bar" id="statusBar" style="display:none;">Connecting...</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/config.js"></script>
     <!-- 共通ロジック読み込み -->
     <script src="../js/scoreboard.js"></script>
@@ -344,15 +343,10 @@
                     const matchLabel = (match.name || match.code || '').replace(/　/g, '\n');
 
                     // boutLabelFull を生成 (scoreboard.js の getBoutLabel を利用)
-                    let boutLabelFull = '';
-                    if (typeof getBoutLabel === 'function') {
-                        boutLabelFull = getBoutLabel(epoch, match.num_bouts);
-                    } else {
-                        // fallback
-                        boutLabelFull = `第${epoch}戦`;
-                    }
-
-                    let boutLabelForBoard = boutLabelFull;
+                    const boutLabelBase = typeof getBoutLabel === 'function'
+                        ? getBoutLabel(epoch, match.num_bouts)
+                        : `第${epoch}戦`;
+                    let boutLabelForBoard = boutLabelBase;
                     if (boutLabelForBoard && !boutLabelForBoard.endsWith('戦') && !boutLabelForBoard.includes('対戦')) {
                         boutLabelForBoard += '戦';
                     }
