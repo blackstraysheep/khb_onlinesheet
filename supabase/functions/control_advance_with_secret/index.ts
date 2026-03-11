@@ -75,8 +75,7 @@ serve(async (req) => {
     }
 
     const currentEpoch: number = stateRow.epoch;
-    const nextEpoch = (typeof currentEpoch === "number" &&
-      Number.isInteger(currentEpoch) &&
+    const nextEpoch = (Number.isInteger(currentEpoch) &&
       currentEpoch >= 1)
       ? currentEpoch + 1
       : 1;

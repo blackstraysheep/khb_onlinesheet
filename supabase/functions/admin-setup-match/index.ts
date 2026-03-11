@@ -90,10 +90,10 @@ serve(async (req) => {
     }
 
     // 2. 入力チェック
-    if (!match_code || typeof match_code !== "string") {
+    if (!match_code) {
       return json({ error: "match_code is required" }, 400);
     }
-    if (!match_name || typeof match_name !== "string") {
+    if (!match_name) {
       return json({ error: "match_name is required" }, 400);
     }
     if (typeof timeline !== "number" || !Number.isFinite(timeline)) {

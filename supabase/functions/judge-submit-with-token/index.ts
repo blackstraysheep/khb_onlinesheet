@@ -341,7 +341,12 @@ serve(async (req)=>{
         created_at: nowIso,
         updated_at: nowIso
       });
-      if (insErr) throw insErr;
+      if (insErr) {
+        console.error("submissions insert error", insErr);
+        return json({
+          error: "failed to insert submission"
+        }, 500);
+      }
     } else {
       revision = existing.revision + 1;
       eventType = "E2";
@@ -357,7 +362,12 @@ serve(async (req)=>{
         white_flag: white.flag,
         updated_at: nowIso
       }).eq("id", existing.id);
-      if (updErr) throw updErr;
+      if (updErr) {
+        console.error("submissions update error", updErr);
+        return json({
+          error: "failed to update submission"
+        }, 500);
+      }
     }
     // 8. E1/E2 イベントログ
     await supabase.from("event_log").insert({
