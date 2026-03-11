@@ -2,13 +2,17 @@
 // admin-ui.js — 会場・試合ドロップダウン、審査員並び替え
 // ============================
 
+const adminUiDom = window.KHBAdmin?.dom || {};
+const adminUiApi = window.KHBAdmin?.api || {};
+const adminUiConstants = window.KHBAdmin?.constants || {};
+
 async function populateVenues() {
   try {
-    const venues = await fetchJson('venues', { select: 'id,code,name', order: 'code.asc' });
-    if (!venueSelect) return;
-    venueSelect.innerHTML = '';
+    const venues = await adminUiApi.fetchJson('venues', { select: 'id,code,name', order: 'code.asc' });
+    if (!adminUiDom.venueSelect) return;
+    adminUiDom.venueSelect.innerHTML = '';
     if (!venues.length) {
-      venueSelect.innerHTML = '<option value="">-- 会場なし --</option>';
+      adminUiDom.venueSelect.innerHTML = '<option value="">-- 会場なし --</option>';
       return;
     }
     venues.forEach(v => {
@@ -16,59 +20,59 @@ async function populateVenues() {
       opt.value = v.code;
       opt.dataset.venueId = v.id;
       opt.textContent = v.name ? `${v.code} (${v.name})` : v.code;
-      venueSelect.appendChild(opt);
+      adminUiDom.venueSelect.appendChild(opt);
     });
-    venueSelect.selectedIndex = 0;
+    adminUiDom.venueSelect.selectedIndex = 0;
     await onVenueChange();
   } catch (err) {
     console.error('populateVenues error', err);
-    if (venueSelect) venueSelect.innerHTML = '<option value="">-- 読込失敗 --</option>';
+    if (adminUiDom.venueSelect) adminUiDom.venueSelect.innerHTML = '<option value="">-- 読込失敗 --</option>';
   }
 }
 
 async function onVenueChange() {
-  if (!venueSelect) return;
-  const opt = venueSelect.selectedOptions[0];
+  if (!adminUiDom.venueSelect) return;
+  const opt = adminUiDom.venueSelect.selectedOptions[0];
   if (!opt || !opt.value) {
     currentVenueId = null;
     currentVenueCode = null;
-    if (matchSelect) matchSelect.innerHTML = '<option value="">-- 会場を選択 --</option>';
+    if (adminUiDom.matchSelect) adminUiDom.matchSelect.innerHTML = '<option value="">-- 会場を選択 --</option>';
     return;
   }
   currentVenueCode = opt.value;
   currentVenueId = opt.dataset.venueId || null;
   if (!currentVenueId) {
-    const vRows = await fetchJson('venues', { select: 'id', code: 'eq.' + currentVenueCode });
+    const vRows = await adminUiApi.fetchJson('venues', { select: 'id', code: 'eq.' + currentVenueCode });
     if (vRows[0]) currentVenueId = vRows[0].id;
   }
   await populateMatches();
 }
 
 async function populateMatches() {
-  if (!matchSelect) return;
+  if (!adminUiDom.matchSelect) return;
   if (!currentVenueId) {
-    matchSelect.innerHTML = '<option value="">-- 会場を選択 --</option>';
+    adminUiDom.matchSelect.innerHTML = '<option value="">-- 会場を選択 --</option>';
     return;
   }
   try {
-    const matches = await fetchJson('matches', {
+    const matches = await adminUiApi.fetchJson('matches', {
       select: 'id,code,name,red_team_name,white_team_name,num_bouts,timeline,venue_id',
       venue_id: 'eq.' + currentVenueId,
       order: 'timeline.asc.nullslast,code.asc',
     });
     matchesCache = matches;
 
-    const stateRows = await fetchJson('state', {
+    const stateRows = await adminUiApi.fetchJson('state', {
       select: 'epoch,accepting,e3_reached,updated_at,current_match_id',
       venue_id: 'eq.' + currentVenueId,
     });
     const st = stateRows[0] || null;
     lastState = st;
 
-    const previousSelection = matchSelect.value;
-    matchSelect.innerHTML = '';
+    const previousSelection = adminUiDom.matchSelect.value;
+    adminUiDom.matchSelect.innerHTML = '';
     if (!matches.length) {
-      matchSelect.innerHTML = '<option value="">-- 試合なし --</option>';
+      adminUiDom.matchSelect.innerHTML = '<option value="">-- 試合なし --</option>';
       return;
     }
     let currentMatchCode = null;
@@ -79,24 +83,24 @@ async function populateMatches() {
       const isCurrent = st && st.current_match_id === m.id;
       opt.textContent = (m.name || m.code) + (isCurrent ? ' ★' : '');
       if (isCurrent) currentMatchCode = m.code;
-      matchSelect.appendChild(opt);
+      adminUiDom.matchSelect.appendChild(opt);
     });
 
     // ユーザーが手動選択していた場合はその選択を維持
     if (previousSelection && matches.some(m => m.code === previousSelection)) {
-      matchSelect.value = previousSelection;
+      adminUiDom.matchSelect.value = previousSelection;
     } else if (currentMatchCode) {
-      matchSelect.value = currentMatchCode;
+      adminUiDom.matchSelect.value = currentMatchCode;
     }
     await onMatchChange();
   } catch (err) {
     console.error('populateMatches error', err);
-    matchSelect.innerHTML = '<option value="">-- 読込失敗 --</option>';
+    adminUiDom.matchSelect.innerHTML = '<option value="">-- 読込失敗 --</option>';
   }
 }
 
 async function onMatchChange() {
-  const matchCode = matchSelect ? matchSelect.value : '';
+  const matchCode = adminUiDom.matchSelect ? adminUiDom.matchSelect.value : '';
   if (!matchCode) return;
   await loadData(false);
   await loadJudgeOrder();
@@ -119,29 +123,29 @@ function getDragAfterElement(container, y) {
 }
 
 async function loadJudgeOrder() {
-  if (!judgeReorderList) return;
-  const matchCode = matchSelect ? matchSelect.value : '';
+  if (!adminUiDom.judgeReorderList) return;
+  const matchCode = adminUiDom.matchSelect ? adminUiDom.matchSelect.value : '';
   if (!matchCode) {
-    judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合を選択してください)</div>';
+    adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合を選択してください)</div>';
     return;
   }
   const match = matchesCache.find(m => m.code === matchCode);
   if (!match) {
-    judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合が見つかりません)</div>';
+    adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合が見つかりません)</div>';
     return;
   }
   try {
-    const expected = await fetchJson('expected_judges', {
+    const expected = await adminUiApi.fetchJson('expected_judges', {
       select: 'judge_id,sort_order',
       match_id: 'eq.' + match.id,
       order: 'sort_order.asc',
     });
     if (!expected.length) {
-      judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(この試合に期待審査員が設定されていません)</div>';
+      adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(この試合に期待審査員が設定されていません)</div>';
       return;
     }
     const judgeIds = expected.map(e => String(e.judge_id));
-    const judges = await fetchJson('judges', {
+    const judges = await adminUiApi.fetchJson('judges', {
       select: 'id,name',
       id: 'in.(' + judgeIds.join(',') + ')',
     });
@@ -152,13 +156,13 @@ async function loadJudgeOrder() {
     let tlConflicts = {}; // judgeId -> [conflicting match codes]
     if (currentTimeline != null) {
       // 全会場から同じtimelineの他試合を取得
-      const sameTimelineMatches = await fetchJson('matches', {
+      const sameTimelineMatches = await adminUiApi.fetchJson('matches', {
         select: 'id,code',
         timeline: 'eq.' + currentTimeline,
         id: 'neq.' + match.id,
       });
       if (sameTimelineMatches.length > 0) {
-        const allExpected = await fetchJson('expected_judges', {
+        const allExpected = await adminUiApi.fetchJson('expected_judges', {
           select: 'judge_id,match_id',
           match_id: 'in.(' + sameTimelineMatches.map(m => m.id).join(',') + ')',
         });
@@ -173,7 +177,7 @@ async function loadJudgeOrder() {
       }
     }
 
-    judgeReorderList.innerHTML = '';
+    adminUiDom.judgeReorderList.innerHTML = '';
     judgeIds.forEach(jid => {
       const div = document.createElement('div');
       div.className = 'judge-reorder-item';
@@ -193,48 +197,48 @@ async function loadJudgeOrder() {
         if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
       });
       div.addEventListener('dragend', () => div.classList.remove('dragging'));
-      judgeReorderList.appendChild(div);
+      adminUiDom.judgeReorderList.appendChild(div);
     });
 
-    if (!judgeReorderList._dndInitialized) {
-      judgeReorderList.addEventListener('dragover', e => {
+    if (!adminUiDom.judgeReorderList._dndInitialized) {
+      adminUiDom.judgeReorderList.addEventListener('dragover', e => {
         e.preventDefault();
-        const dragging = judgeReorderList.querySelector('.judge-reorder-item.dragging');
+        const dragging = adminUiDom.judgeReorderList.querySelector('.judge-reorder-item.dragging');
         if (!dragging) return;
-        const afterElement = getDragAfterElement(judgeReorderList, e.clientY);
-        if (afterElement == null) judgeReorderList.appendChild(dragging);
-        else judgeReorderList.insertBefore(dragging, afterElement);
+        const afterElement = getDragAfterElement(adminUiDom.judgeReorderList, e.clientY);
+        if (afterElement == null) adminUiDom.judgeReorderList.appendChild(dragging);
+        else adminUiDom.judgeReorderList.insertBefore(dragging, afterElement);
       });
-      judgeReorderList._dndInitialized = true;
+      adminUiDom.judgeReorderList._dndInitialized = true;
     }
     setJudgeReorderStatus('');
   } catch (err) {
     console.error('loadJudgeOrder error', err);
-    judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(読込失敗)</div>';
+    adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(読込失敗)</div>';
   }
 }
 
 function setJudgeReorderStatus(text, type) {
-  if (!judgeReorderStatus) return;
-  judgeReorderStatus.textContent = text || '';
-  judgeReorderStatus.className = 'msg';
-  if (type === 'ok')   judgeReorderStatus.classList.add('ok');
-  if (type === 'warn') judgeReorderStatus.classList.add('warn');
-  if (type === 'err')  judgeReorderStatus.classList.add('err');
+  if (!adminUiDom.judgeReorderStatus) return;
+  adminUiDom.judgeReorderStatus.textContent = text || '';
+  adminUiDom.judgeReorderStatus.className = 'msg';
+  if (type === 'ok')   adminUiDom.judgeReorderStatus.classList.add('ok');
+  if (type === 'warn') adminUiDom.judgeReorderStatus.classList.add('warn');
+  if (type === 'err')  adminUiDom.judgeReorderStatus.classList.add('err');
 }
 
 async function saveJudgeOrder() {
-  const matchCode = matchSelect ? matchSelect.value : '';
+  const matchCode = adminUiDom.matchSelect ? adminUiDom.matchSelect.value : '';
   if (!matchCode) {
     setJudgeReorderStatus('試合が選択されていません。', 'err');
     return;
   }
-  const adminSec = adminSecretInput ? adminSecretInput.value.trim() : '';
+  const adminSec = adminUiDom.adminSecretInput ? adminUiDom.adminSecretInput.value.trim() : '';
   if (!adminSec) {
     setJudgeReorderStatus('管理用シークレットを入力してください。', 'err');
     return;
   }
-  const items = judgeReorderList ? [...judgeReorderList.querySelectorAll('.judge-reorder-item')] : [];
+  const items = adminUiDom.judgeReorderList ? [...adminUiDom.judgeReorderList.querySelectorAll('.judge-reorder-item')] : [];
   const judgeIds = items.map(el => el.dataset.judgeId).filter(Boolean);
   if (!judgeIds.length) {
     setJudgeReorderStatus('並び替える審査員がいません。', 'err');
@@ -242,7 +246,7 @@ async function saveJudgeOrder() {
   }
   try {
     setJudgeReorderStatus('保存中…');
-    await callControlFunction(ADMIN_SET_MATCH_JUDGES_URL, {
+    await adminUiApi.callControlFunction(adminUiConstants.ADMIN_SET_MATCH_JUDGES_URL, {
       admin_secret: adminSec,
       venue_code: currentVenueCode || 'default',
       match_code: matchCode,
@@ -255,3 +259,13 @@ async function saveJudgeOrder() {
     setJudgeReorderStatus('保存に失敗しました: ' + (err.message || String(err)), 'err');
   }
 }
+
+window.KHBAdmin.ui = Object.assign(window.KHBAdmin.ui || {}, {
+  populateVenues,
+  onVenueChange,
+  populateMatches,
+  onMatchChange,
+  loadJudgeOrder,
+  saveJudgeOrder,
+  setJudgeReorderStatus,
+});
