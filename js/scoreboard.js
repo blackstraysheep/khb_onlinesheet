@@ -90,8 +90,6 @@ function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
   container.innerHTML = '';
 
   if (!expectedIds || !expectedIds.length) {
-    // データがない場合の表示（adminでは特に何も出さない、obsでは待機中など）
-    // container.innerHTML = '<div style="padding:20px; text-align:center;">審査員情報なし</div>';
     return;
   }
 

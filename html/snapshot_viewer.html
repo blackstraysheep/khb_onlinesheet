@@ -1,271 +1,40 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KHB Snapshot Viewer</title>
-    <!-- admin-vertical.css を読み込んでデザインを統一 -->
     <link rel="stylesheet" href="../css/admin-vertical.css" />
-    <style>
-        /* OBS用微調整: 背景透過 */
-        html,
-        body {
-            background-color: transparent !important;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        /* Wrap: 余白調整 */
-        .scoreboard-wrapper {
-            max-width: none;
-            margin: 0;
-            padding: 0;
-            background: rgba(255, 255, 255, 0.95);
-            width: fit-content;
-        }
-
-        table {
-            zoom: 1.0;
-        }
-
-        /* 入力インターフェース用スタイル */
-        #inputContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(240, 240, 240, 0.95);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .input-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 80%;
-            max-width: 600px;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .input-card h1 {
-            margin: 0 0 1rem 0;
-            font-size: 1.5rem;
-            color: #333;
-            text-align: center;
-        }
-
-        textarea {
-            width: 100%;
-            height: 200px;
-            padding: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: monospace;
-            resize: vertical;
-        }
-
-        .team-inputs {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .team-inputs input {
-            flex: 1;
-            padding: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        button {
-            padding: 0.75rem;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        .error-msg {
-            color: #dc3545;
-            font-size: 0.9rem;
-            display: none;
-        }
-
-        /* 隠すクラス */
-        .hidden {
-            display: none !important;
-        }
-    </style>
+    <link rel="stylesheet" href="../css/snapshot-viewer.css" />
 </head>
-
 <body>
 
-    <!-- 入力UI -->
     <div id="inputContainer">
         <div class="input-card">
             <h1>スナップショット JSON ビューワー</h1>
-            <p style="font-size: 0.9rem; color: #666; margin: 0;">保存されたJSONを貼り付けて、OBS用スコアボードを復元表示します。</p>
+            <p class="input-card-description">保存されたJSONを貼り付けて、OBS用スコアボードを復元表示します。</p>
 
-            <textarea id="jsonInput" placeholder='Paste JSON here... {"bout": ...}'></textarea>
+            <textarea id="jsonInput" class="snapshot-json-input" placeholder='Paste JSON here... {"bout": ...}'></textarea>
 
             <div class="team-inputs">
                 <input type="text" id="redTeamInput" placeholder="紅チーム名 (任意)">
                 <input type="text" id="whiteTeamInput" placeholder="白チーム名 (任意)">
             </div>
 
-            <button id="renderBtn">表示 (Render)</button>
+            <button id="renderBtn" class="snapshot-render-button">表示 (Render)</button>
             <div id="errorMsg" class="error-msg"></div>
         </div>
     </div>
 
-    <!-- スコアボード表示エリア -->
-    <div id="mainCard" class="card" style="width: 100%; box-sizing: border-box; display: none;">
-        <div id="scoreboardContainer" class="scoreboard-wrapper">
-            <!-- ここにJSでテーブルを描画 -->
+    <div id="mainCard" class="card snapshot-main-card">
+        <div id="scoreboardContainer" class="scoreboard-wrapper snapshot-scoreboard-wrapper">
         </div>
     </div>
 
+    <script src="../js/config.js"></script>
     <script src="../js/scoreboard.js"></script>
     <script src="../js/scoreboard-vertical.js"></script>
-    <script>
-        (function () {
-            function buildScoreboard(expectedIds, judgesMap, subMap, meta, container) {
-                buildVerticalScoreboard(expectedIds, judgesMap, subMap, meta, container, {
-                    multilineMatchLabel: true,
-                });
-            }
-
-            function normalizeSnapshotInput(raw) {
-                let value = raw;
-                if (Array.isArray(value)) {
-                    value = value[0];
-                }
-                if (value && typeof value === 'object' && value.snapshot && typeof value.snapshot === 'object') {
-                    value = value.snapshot;
-                }
-                if (!value || typeof value !== 'object') {
-                    throw new Error('不正なデータ形式です。snapshot JSON を入力してください。');
-                }
-                if (!Array.isArray(value.items)) {
-                    throw new Error('不正なデータ形式です。"items" 配列が含まれていません。');
-                }
-                return value;
-            }
-
-            function toSortOrder(item, fallbackIndex) {
-                const value = Number(item?.sort_order);
-                return Number.isFinite(value) ? value : fallbackIndex;
-            }
-
-            function resolveDisplayName(value, fallback) {
-                const text = String(value ?? '').trim();
-                return text || fallback;
-            }
-
-            function renderSnapshot(rawData, redName, whiteName) {
-                const data = normalizeSnapshotInput(rawData);
-
-                const sortedItems = data.items
-                    .map((item, index) => ({ item, index }))
-                    .sort((left, right) => {
-                        const leftOrder = toSortOrder(left.item, left.index);
-                        const rightOrder = toSortOrder(right.item, right.index);
-                        if (leftOrder !== rightOrder) return leftOrder - rightOrder;
-                        return left.index - right.index;
-                    })
-                    .map(entry => entry.item);
-
-                const expectedIds = sortedItems.map(item => String(item.judge_id));
-                const judgesMap = {};
-                const subMap = {};
-
-                sortedItems.forEach(item => {
-                    const judgeId = String(item.judge_id);
-                    judgesMap[judgeId] = item.judge_name || judgeId;
-
-                    subMap[judgeId] = {
-                        judge_id: judgeId,
-                        red_work: item.red?.work_point ?? null,
-                        red_app: item.red?.app_point ?? null,
-                        red_total: item.red?.total ?? null,
-                        red_flag: !!item.red?.flag,
-                        white_work: item.white?.work_point ?? null,
-                        white_app: item.white?.app_point ?? null,
-                        white_total: item.white?.total ?? null,
-                        white_flag: !!item.white?.flag,
-                    };
-                });
-
-                const matchName = data.match?.name || data.match?.code || '試合情報なし';
-                const boutLabel = data.bout?.label || `第${data.epoch}戦`;
-
-                const meta = {
-                    matchLabel: matchName,
-                    boutLabelFull: boutLabel,
-                    redTeamName: resolveDisplayName(redName, data.teams?.red || '紅'),
-                    whiteTeamName: resolveDisplayName(whiteName, data.teams?.white || '白'),
-                };
-
-                const container = document.getElementById('scoreboardContainer');
-                buildScoreboard(expectedIds, judgesMap, subMap, meta, container);
-            }
-
-            // イベントリスナー設定
-            const renderBtn = document.getElementById('renderBtn');
-            const jsonInput = document.getElementById('jsonInput');
-            const errorMsg = document.getElementById('errorMsg');
-            const inputContainer = document.getElementById('inputContainer');
-            const mainCard = document.getElementById('mainCard');
-            const redTeamInput = document.getElementById('redTeamInput');
-            const whiteTeamInput = document.getElementById('whiteTeamInput');
-
-            renderBtn.addEventListener('click', () => {
-                const jsonText = jsonInput.value.trim();
-                if (!jsonText) {
-                    showError('JSONを入力してください。');
-                    return;
-                }
-
-                try {
-                    const data = JSON.parse(jsonText);
-                    const rName = redTeamInput.value.trim();
-                    const wName = whiteTeamInput.value.trim();
-
-                    renderSnapshot(data, rName, wName);
-
-                    inputContainer.classList.add('hidden');
-                    mainCard.style.display = 'block';
-
-                } catch (e) {
-                    console.error(e);
-                    showError('エラー: ' + (e?.message || String(e)));
-                }
-            });
-
-            function showError(msg) {
-                errorMsg.textContent = msg;
-                errorMsg.style.display = 'block';
-            }
-
-        })();
-    </script>
+    <script src="../js/snapshot-viewer.js"></script>
 </body>
 
 </html>

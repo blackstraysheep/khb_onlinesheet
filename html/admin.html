@@ -10,9 +10,9 @@
 
 <body>
   <h1>KHB-Kuawase Admin Panel</h1>
-  <div style="margin-bottom:12px; display:flex; gap:12px;">
-    <a href="admin-match.html" style="color:#3a86ff; font-size:0.9rem;">試合管理</a>
-    <a href="admin-judges.html" style="color:#3a86ff; font-size:0.9rem;">審査員管理</a>
+  <div class="admin-nav">
+    <a href="admin-match.html" class="admin-nav-link">試合管理</a>
+    <a href="admin-judges.html" class="admin-nav-link">審査員管理</a>
   </div>
 
   <div class="layout-grid">
@@ -59,13 +59,13 @@
             <label for="matchSelect">試合</label>
             <select id="matchSelect"><option value="">-- 会場を選択 --</option></select>
           </div>
-          <div style="display:flex;align-items:flex-end;">
+          <div class="row-align-end">
             <button id="btnStartMatch" class="small-btn btn-blue-grey">この試合を開始</button>
           </div>
         </div>
         <div class="msg" id="topMsg"></div>
         <div class="control-group">
-          <label for="epochInput" style="margin:0;display:flex;align-items:center;font-size:.8rem;color:var(--muted);">Epoch手動設定:</label>
+          <label for="epochInput" class="epoch-label">Epoch手動設定:</label>
           <input id="epochInput" type="number" min="1" class="input-epoch" placeholder="epoch" />
           <button id="btnSetEpoch" class="small-btn btn-blue-grey">Epoch設定</button>
         </div>
@@ -82,7 +82,7 @@
       <section class="card">
         <h2 class="card-header small">審査員の並び替え</h2>
         <div id="judgeReorderList" class="judge-select-list">
-          <div class="small" style="color:#aaa;">(試合を選択してください)</div>
+          <div class="small placeholder-muted">(試合を選択してください)</div>
         </div>
         <div class="control-group">
           <button id="btnSaveJudgeOrder" class="small-btn btn-green">並び順を保存</button>

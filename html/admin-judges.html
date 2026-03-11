@@ -4,57 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>審査員管理 - KHB Admin</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
-    h1 { font-size: 1.3rem; margin-bottom: 12px; }
-    .card { background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-    .card-header { font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid #334; padding-bottom: 6px; }
-    label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 2px; }
-    input, select { background: #0f3460; color: #fff; border: 1px solid #334; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; }
-    input:focus, select:focus { outline: none; border-color: #e94560; }
-
-    .input-md { width: 160px; }
-    .input-lg { width: 240px; }
-    button { cursor: pointer; border: none; border-radius: 4px; padding: 6px 14px; font-size: 0.82rem; color: #fff; background: #0f3460; }
-    button:hover { opacity: 0.85; }
-    .btn-green { background: #1b998b; }
-
-    .btn-blue { background: #3a86ff; }
-    .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-
-    .mb-8 { margin-bottom: 8px; }
-    .msg { font-size: 0.8rem; margin-top: 6px; min-height: 1.2em; }
-
-    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #223; }
-    th { color: #aaa; font-weight: 600; font-size: 0.75rem; }
-    td { color: #ddd; }
-    tr:hover td { background: #1a2744; }
-    .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
-
-    .tag-warn { background: #f0ad4e33; color: #f0ad4e; }
-
-    .back-link { display: inline-block; margin-bottom: 10px; color: #3a86ff; text-decoration: none; font-size: 0.85rem; }
-    .back-link:hover { text-decoration: underline; }
-    .token-text { font-family: monospace; font-size: 0.75rem; color: #ccc; word-break: break-all; }
-
-    .judge-row label { display: inline; font-size: 0.85rem; color: #ddd; margin: 0; }
-    .conflict-warn { color: #f0ad4e; font-size: 0.75rem; }
-
-    /* 期待審査員アサイン */
-    .assign-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #334; }
-
-    .checkbox-grid { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    .checkbox-grid label { font-size: 0.82rem; color: #ddd; display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: #0f3460; border-radius: 4px; cursor: pointer; }
-    .checkbox-grid label:hover { background: #1a2744; }
-  </style>
+  <link rel="stylesheet" href="../css/admin-judges.css" />
 </head>
 <body>
   <a class="back-link" href="admin.html">&larr; 管理画面に戻る</a>
   <h1>審査員管理</h1>
 
-  <!-- 認証 -->
   <div class="card">
     <div class="row">
       <div>
@@ -64,7 +19,6 @@
     </div>
   </div>
 
-  <!-- 審査員追加 -->
   <div class="card">
     <h2 class="card-header">審査員を追加</h2>
     <div class="row mb-8">
@@ -75,7 +29,6 @@
     <div class="msg" id="addMsg"></div>
   </div>
 
-  <!-- 審査員一覧 -->
   <div class="card">
     <h2 class="card-header">審査員一覧（名前順）</h2>
     <div class="row mb-8">
@@ -89,7 +42,6 @@
     </table>
   </div>
 
-  <!-- 試合ごとの審査員一覧 -->
   <div class="card">
     <h2 class="card-header">試合ごとの審査員</h2>
     <table>
@@ -100,7 +52,6 @@
     </table>
   </div>
 
-  <!-- 期待審査員アサイン -->
   <div class="card">
     <h2 class="card-header">期待審査員をアサイン</h2>
     <div class="assign-section">
@@ -120,336 +71,6 @@
   </div>
 
   <script src="../js/config.js"></script>
-  <script>
-  (function() {
-    const CONFIG = window.KHB_APP_CONFIG || {};
-    const SUPABASE_URL = CONFIG.SUPABASE_URL;
-    const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
-    const ADMIN_ADD_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-add-judge';
-    const ADMIN_LIST_JUDGE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-judge-tokens';
-    const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
-
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
-    }
-
-    const headers = {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-    };
-
-    const $ = (s) => document.querySelector(s);
-
-    // ---- state ----
-    let allJudges = [];
-    let allMatches = [];
-    let allExpectedJudges = [];
-    let allTokens = [];
-    let allVenues = [];
-
-    // ============================
-    // REST helper
-    // ============================
-    async function fetchJson(table, params = {}) {
-      const url = new URL(SUPABASE_URL + '/rest/v1/' + table);
-      for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
-      const res = await fetch(url, { headers });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`GET ${table} failed: ${res.status} ${txt}`);
-      }
-      return res.json();
-    }
-
-    // ============================
-    // 審査員追加
-    // ============================
-    $('#btnAddJudge').addEventListener('click', async () => {
-      const secret = $('#adminSecret').value.trim();
-      const judgeNameInput = $('#judgeName');
-      const voiceKeyInput = $('#voiceKey');
-      const name = judgeNameInput.value.trim();
-      const voiceKey = voiceKeyInput.value.trim();
-
-      if (!secret) return showMsg('#addMsg', '管理用シークレットを入力', true);
-      if (!name) return showMsg('#addMsg', '審査員名を入力', true);
-
-      try {
-        const res = await fetch(ADMIN_ADD_JUDGE_URL, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            admin_secret: secret,
-            name,
-            voice_key: voiceKey || undefined,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          showMsg('#addMsg', data.error || res.statusText, true);
-          return;
-        }
-        showMsg('#addMsg', `追加完了: ${data.judge_name} (token: ${data.token})`, false);
-        judgeNameInput.value = '';
-        voiceKeyInput.value = '';
-        await refreshAll();
-      } catch (e) {
-        showMsg('#addMsg', e.message, true);
-      }
-    });
-
-    // ============================
-    // 一覧更新
-    // ============================
-    async function refreshAll() {
-      try {
-        const secret = $('#adminSecret').value.trim();
-
-        // judges, matches, expected_judges, venues は公開テーブル（REST直接）
-        // access_tokens は admin_secret 認証の Edge Function 経由で取得
-        const [judges, matches, expectedJudges, tokensResult, venues] = await Promise.all([
-          fetchJson('judges', { select: 'id,name,voice_key', order: 'name.asc' }),
-          fetchJson('matches', { select: 'id,code,name,timeline,num_bouts,venue_id', order: 'timeline.asc,code.asc' }),
-          fetchJson('expected_judges', { select: 'match_id,judge_id' }),
-          secret
-            ? fetch(ADMIN_LIST_JUDGE_TOKENS_URL, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ admin_secret: secret }),
-              }).then(r => r.json()).then(d => d.tokens ?? [])
-            : Promise.resolve([]),
-          fetchJson('venues', { select: 'id,code' }),
-        ]);
-        allJudges = judges;
-        allMatches = matches;
-        allExpectedJudges = expectedJudges;
-        allTokens = tokensResult;
-        allVenues = venues;
-        renderJudgeList();
-        renderMatchSelect();
-        renderMatchJudgeList();
-      } catch (e) {
-        console.error('refreshAll error', e);
-      }
-    }
-
-    function renderJudgeList() {
-      const tokenByJudge = new Map();
-      for (const t of allTokens) tokenByJudge.set(t.judge_id, t.token);
-
-      // judge -> assigned matches
-      const matchesByJudge = new Map();
-      const matchById = new Map(allMatches.map(m => [m.id, m]));
-      for (const ej of allExpectedJudges) {
-        if (!matchesByJudge.has(ej.judge_id)) matchesByJudge.set(ej.judge_id, []);
-        const m = matchById.get(ej.match_id);
-        if (m) matchesByJudge.get(ej.judge_id).push(m);
-      }
-      // timeline順にソート
-      for (const [, matches] of matchesByJudge) {
-        matches.sort((a, b) => (a.timeline ?? 0) - (b.timeline ?? 0));
-      }
-
-      const tbody = $('#judgeListBody');
-      tbody.innerHTML = '';
-      for (const j of allJudges) {
-        const token = tokenByJudge.get(j.id) || '-';
-        const assigned = matchesByJudge.get(j.id) || [];
-        const assignedStr = assigned.map(m => `${esc(m.code)}(TL${m.timeline})`).join(', ') || '-';
-
-        // タイムライン重複チェック
-        const tlGroups = new Map();
-        for (const m of assigned) {
-          const tl = m.timeline;
-          if (!tlGroups.has(tl)) tlGroups.set(tl, []);
-          tlGroups.get(tl).push(m.code);
-        }
-        let conflictHtml = '';
-        for (const [tl, codes] of tlGroups) {
-          if (codes.length > 1) {
-            conflictHtml += ` <span class="tag tag-warn">TL${tl}重複: ${codes.join(',')}</span>`;
-          }
-        }
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${esc(j.name)}</td>
-          <td>${esc(j.voice_key || '')}</td>
-          <td><span class="token-text">${esc(token)}</span></td>
-          <td>${assignedStr}${conflictHtml}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    }
-
-    // ============================
-    // 試合ごとの審査員一覧
-    // ============================
-    function renderMatchJudgeList() {
-      const judgeById = new Map(allJudges.map(j => [j.id, j]));
-      const tbody = $('#matchJudgeListBody');
-      tbody.innerHTML = '';
-      for (const m of allMatches) {
-        const judges = allExpectedJudges
-          .filter(e => e.match_id === m.id)
-          .map(e => judgeById.get(e.judge_id))
-          .filter(Boolean)
-          .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${m.timeline ?? '-'}</td>
-          <td>${esc(m.code)}</td>
-          <td>${esc(m.name || '')}</td>
-          <td>${judges.length ? judges.map(j => esc(j.name)).join(', ') : '<span style="color:#888">未設定</span>'}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    }
-
-    const assignMatchSelect = $('#assignMatch');
-    const assignCheckboxes = $('#assignCheckboxes');
-
-    // ============================
-    // 期待審査員アサイン
-    // ============================
-    function renderMatchSelect() {
-      assignMatchSelect.innerHTML = '<option value="">-- 試合を選択 --</option>';
-      for (const m of allMatches) {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.textContent = `[TL${m.timeline}] ${m.code} - ${m.name}`;
-        assignMatchSelect.appendChild(opt);
-      }
-    }
-
-    let selectedMatchId = null;
-    let selectedMatchTimeline = null;
-
-    assignMatchSelect.addEventListener('change', loadAssignForMatch);
-
-    function loadAssignForMatch() {
-      selectedMatchId = assignMatchSelect.value;
-      if (!selectedMatchId) {
-        assignCheckboxes.innerHTML = '';
-        $('#assignConflictWarn').textContent = '';
-        return;
-      }
-      const match = allMatches.find(m => m.id === selectedMatchId);
-      selectedMatchTimeline = match?.timeline;
-
-      // 現在のアサイン状況
-      const assigned = new Set(allExpectedJudges.filter(e => e.match_id === selectedMatchId).map(e => e.judge_id));
-
-      const container = assignCheckboxes;
-      container.innerHTML = '';
-      for (const j of allJudges) {
-        const lbl = document.createElement('label');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = j.id;
-        cb.checked = assigned.has(j.id);
-        cb.addEventListener('change', checkConflicts);
-        lbl.appendChild(cb);
-        lbl.appendChild(document.createTextNode(' ' + j.name));
-        container.appendChild(lbl);
-      }
-      checkConflicts();
-    }
-
-    function checkConflicts() {
-      if (!selectedMatchId || selectedMatchTimeline == null) return;
-      const warn = $('#assignConflictWarn');
-      const checkedIds = new Set(
-        Array.from(assignCheckboxes.querySelectorAll('input:checked')).map(cb => cb.value)
-      );
-
-      // 同一タイムラインの他試合でアサイン済みの審査員
-      const sameTimelineMatches = allMatches.filter(m => m.timeline === selectedMatchTimeline && m.id !== selectedMatchId);
-      const conflicts = [];
-      for (const m of sameTimelineMatches) {
-        const judgesInMatch = allExpectedJudges.filter(e => e.match_id === m.id).map(e => e.judge_id);
-        for (const jid of judgesInMatch) {
-          if (checkedIds.has(jid)) {
-            const j = allJudges.find(x => x.id === jid);
-            conflicts.push(`${j?.name || jid} → ${m.code}`);
-          }
-        }
-      }
-
-      if (conflicts.length > 0) {
-        warn.textContent = '⚠ 同一タイムライン重複: ' + conflicts.join(', ');
-      } else {
-        warn.textContent = '';
-      }
-    }
-
-    $('#btnSaveAssign').addEventListener('click', async () => {
-      if (!selectedMatchId) return showMsg('#assignMsg', '試合を選択してください', true);
-      const secret = $('#adminSecret').value.trim();
-      if (!secret) return showMsg('#assignMsg', '管理用シークレットを入力', true);
-
-      const match = allMatches.find(m => m.id === selectedMatchId);
-      if (!match) return;
-
-      const judgeIds = Array.from(assignCheckboxes.querySelectorAll('input:checked'))
-        .map(cb => cb.value)
-        .filter(Boolean);
-
-      if (!judgeIds.length) {
-        return showMsg('#assignMsg', '審査員を1名以上選択してください', true);
-      }
-
-      // venue_code を試合の venue_id から取得
-      const venue = allVenues.find(v => v.id === match.venue_id);
-      const venueCode = venue ? venue.code : 'default';
-
-      try {
-        const res = await fetch(ADMIN_SET_MATCH_JUDGES_URL, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            admin_secret: secret,
-            venue_code: venueCode,
-            match_code: match.code,
-            match_name: match.name,
-            timeline: match.timeline,
-            num_bouts: match.num_bouts,
-            judge_ids: judgeIds,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          showMsg('#assignMsg', data.error || res.statusText, true);
-          return;
-        }
-        showMsg('#assignMsg', `アサイン保存完了 (${judgeIds.length}名)`, false);
-        await refreshAll();
-      } catch (e) {
-        showMsg('#assignMsg', e.message, true);
-      }
-    });
-
-    // ============================
-    // util
-    // ============================
-    function showMsg(sel, text, isErr) {
-      const el = $(sel);
-      el.textContent = text;
-      el.className = 'msg ' + (isErr ? 'err' : 'ok');
-    }
-
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = s ?? '';
-      return d.innerHTML;
-    }
-
-    $('#btnRefresh').addEventListener('click', refreshAll);
-
-    // 初期読み込み
-    refreshAll();
-  })();
-  </script>
+  <script src="../js/admin-judges.js"></script>
 </body>
 </html>

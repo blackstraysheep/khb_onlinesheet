@@ -131,12 +131,12 @@ async function loadJudgeOrder() {
   if (!adminUiDom.judgeReorderList) return;
   const matchCode = adminUiDom.matchSelect ? adminUiDom.matchSelect.value : '';
   if (!matchCode) {
-    adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合を選択してください)</div>';
+    adminUiDom.judgeReorderList.innerHTML = '<div class="small placeholder-muted">(試合を選択してください)</div>';
     return;
   }
   const match = adminUiState.matchesCache.find(m => m.code === matchCode);
   if (!match) {
-    adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合が見つかりません)</div>';
+    adminUiDom.judgeReorderList.innerHTML = '<div class="small placeholder-muted">(試合が見つかりません)</div>';
     return;
   }
   try {
@@ -146,7 +146,7 @@ async function loadJudgeOrder() {
       order: 'sort_order.asc',
     });
     if (!expected.length) {
-      adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(この試合に期待審査員が設定されていません)</div>';
+      adminUiDom.judgeReorderList.innerHTML = '<div class="small placeholder-muted">(この試合に期待審査員が設定されていません)</div>';
       return;
     }
     const judgeIds = expected.map(e => String(e.judge_id));
@@ -219,7 +219,7 @@ async function loadJudgeOrder() {
     setJudgeReorderStatus('');
   } catch (err) {
     console.error('loadJudgeOrder error', err);
-    adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(読込失敗)</div>';
+    adminUiDom.judgeReorderList.innerHTML = '<div class="small placeholder-muted">(読込失敗)</div>';
   }
 }
 
