@@ -52,10 +52,11 @@
   - 修正案: ホワイトリスト制にするか、`Origin`ヘッダーを検証する。
   - **済: 2026-03-10 `supabase/functions/_shared/cors.ts` で許可オリジンをホワイトリスト化**
 
-- [ ] **H5: OBSスコアボードが毎秒5〜6回の直列API呼び出し**
+- [x] **H5: OBSスコアボードが毎秒5〜6回の直列API呼び出し**
   - ファイル: `html/obs-scoreboard.html` (L239), `html/obs-scoreboard-vertical.html` (L381)
   - 内容: `updateScoreboard()`が毎秒5〜6回の直列`fetchJson()`を実行。
   - 修正案: Supabase Realtimeに切替、または`Promise.all()`で並列化。
+  - **済: 2026-03-10 `matches` / `expected_judges` / `submissions` を `Promise.all()` 化、`venue_id` をキャッシュ**
 
 - [ ] **H6: `scoreboard.js`と`admin-scoreboard.js`に〜200行の重複コード**
   - ファイル: `js/scoreboard.js` (284行) vs `js/admin-scoreboard.js`

@@ -92,6 +92,7 @@
             };
 
             // 状態管理
+            let currentVenueId = null;
             let currentMatchId = null;
             let currentEpoch = 1;
 
@@ -126,17 +127,19 @@
 
             async function updateScoreboard() {
                 try {
-                    // 1. state（会場別）
                     const venueCode = new URLSearchParams(window.location.search).get('venue') || 'default';
-                    const venueRows = await fetchJson('venues', { select: 'id', code: 'eq.' + venueCode });
-                    const venueId = venueRows[0]?.id;
-                    if (!venueId) {
-                        setStatus(`venue not found: ${venueCode}`);
-                        return;
+                    if (!currentVenueId) {
+                        const venueRows = await fetchJson('venues', { select: 'id', code: 'eq.' + venueCode });
+                        currentVenueId = venueRows[0]?.id || null;
+                        if (!currentVenueId) {
+                            setStatus(`venue not found: ${venueCode}`);
+                            return;
+                        }
                     }
+
                     const stateRows = await fetchJson('state', {
                         select: 'epoch, current_match_id, accepting, scoreboard_visible',
-                        venue_id: 'eq.' + venueId
+                        venue_id: 'eq.' + currentVenueId
                     });
                     const st = stateRows[0];
                     if (!st || !st.current_match_id) {
@@ -158,30 +161,28 @@
 
                     setStatus(`Active: match=${matchId}, epoch=${epoch}`);
 
-                    // 2. matches
-                    const matches = await fetchJson('matches', {
-                        select: 'code,name,red_team_name,white_team_name,num_bouts',
-                        id: 'eq.' + matchId
-                    });
+                    const [matches, expected, subs] = await Promise.all([
+                        fetchJson('matches', {
+                            select: 'code,name,red_team_name,white_team_name,num_bouts',
+                            id: 'eq.' + matchId
+                        }),
+                        fetchJson('expected_judges', {
+                            select: 'judge_id, sort_order',
+                            match_id: 'eq.' + matchId,
+                            order: 'sort_order.asc',
+                        }),
+                        fetchJson('submissions', {
+                            select: '*',
+                            match_id: 'eq.' + matchId,
+                            epoch: 'eq.' + epoch,
+                        }),
+                    ]);
+
                     const match = matches[0];
                     if (!match) return;
 
-                    // 3. expected_judges
-                    const expected = await fetchJson('expected_judges', {
-                        select: 'judge_id, sort_order',
-                        match_id: 'eq.' + matchId,
-                        order: 'sort_order.asc',
-                    });
                     const expectedIds = expected.map(r => String(r.judge_id));
 
-                    // 4. submissions
-                    const subs = await fetchJson('submissions', {
-                        select: '*',
-                        match_id: 'eq.' + matchId,
-                        epoch: 'eq.' + epoch,
-                    });
-
-                    // 5. judges details
                     let judgesMap = {};
                     if (expectedIds.length) {
                         const idList = expectedIds.join(',');
