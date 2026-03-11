@@ -22,36 +22,36 @@ const adminHeaders = {
   'Content-Type': 'application/json',
 };
 
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const query = (sel, root = document) => root.querySelector(sel);
+const queryAll = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 // DOM 参照
-const venueSelect         = $('#venueSelect');
-const matchSelect         = $('#matchSelect');
-const btnStartMatch       = $('#btnStartMatch');
-const toggleAcceptingBtn  = $('#toggleAcceptingBtn');
+const venueSelect         = query('#venueSelect');
+const matchSelect         = query('#matchSelect');
+const btnStartMatch       = query('#btnStartMatch');
+const toggleAcceptingBtn  = query('#toggleAcceptingBtn');
 
-const topMsg              = $('#topMsg');
-const stateSummary        = $('#stateSummary');
-const scoreboardContainer = $('#scoreboardContainer');
+const topMsg              = query('#topMsg');
+const stateSummary        = query('#stateSummary');
+const scoreboardContainer = query('#scoreboardContainer');
 
-const scoreboardModeBtn   = $('#scoreboardModeBtn');
+const scoreboardModeBtn   = query('#scoreboardModeBtn');
 
-const judgeReorderList    = $('#judgeReorderList');
-const btnSaveJudgeOrder   = $('#btnSaveJudgeOrder');
-const judgeReorderStatus  = $('#judgeReorderStatus');
+const judgeReorderList    = query('#judgeReorderList');
+const btnSaveJudgeOrder   = query('#btnSaveJudgeOrder');
+const judgeReorderStatus  = query('#judgeReorderStatus');
 
-const audioStatusEl       = $('#audioStatus');
-const audioQueueListEl    = $('#audioQueueList');
-const btnAudioPlayAll     = $('#btnAudioPlayAll');
-const btnAudioStop        = $('#btnAudioStop');
+const audioStatusEl       = query('#audioStatus');
+const audioQueueListEl    = query('#audioQueueList');
+const btnAudioPlayAll     = query('#btnAudioPlayAll');
+const btnAudioStop        = query('#btnAudioStop');
 
-const adminSecretInput    = $('#adminSecret');
-const btnE5               = $('#btnE5');
-const btnE6               = $('#btnE6');
-const e5e6StatusEl        = $('#e5e6Status');
-const epochInput          = $('#epochInput');
-const btnSetEpoch         = $('#btnSetEpoch');
+const adminSecretInput    = query('#adminSecret');
+const btnE5               = query('#btnE5');
+const btnE6               = query('#btnE6');
+const e5e6StatusEl        = query('#e5e6Status');
+const epochInput          = query('#epochInput');
+const btnSetEpoch         = query('#btnSetEpoch');
 
 // 内部状態
 let lastState       = null;

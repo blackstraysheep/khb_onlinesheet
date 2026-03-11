@@ -151,7 +151,8 @@
   - **済: 2026-03-10 重複コメントを削除**
 - [x] **L6: `select:focus`スタイル不一致**（`admin-judges.html` vs `admin-match.html`）
   - **済: 2026-03-10 `admin-judges.html` に `select:focus` を追加**
-- [ ] **L7: `$`/`$$`ヘルパーがjQuery規約をシャドウ**（`admin-config.js`）
+- [x] **L7: `$`/`$$`ヘルパーがjQuery規約をシャドウ**（`admin-config.js`）
+  - **済: 2026-03-10 `query` / `queryAll` に改名**
 - [x] **L8: `buildAudioSegments`の未使用パラメータ**（`admin-audio.js`）
   - **済: 2026-03-10 修正完了**
 - [x] **L9: 死んだコード — `'戦'`サフィックス追加条件が常にfalse**（`admin-core.js`）
