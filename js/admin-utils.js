@@ -38,3 +38,9 @@ function setControlsDisabled(disabled) {
   if (adminUtilsDom.venueSelect) adminUtilsDom.venueSelect.disabled = disabled;
   if (adminUtilsDom.matchSelect) adminUtilsDom.matchSelect.disabled = disabled;
 }
+
+window.KHBAdmin.utils = Object.assign(window.KHBAdmin.utils || {}, {
+  setScoreboardMode,
+  setMsg,
+  setControlsDisabled,
+});

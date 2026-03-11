@@ -10,6 +10,7 @@ const adminCoreAudioState = window.KHBAdmin?.audioState || {};
 const adminCoreConstants = window.KHBAdmin?.constants || {};
 const adminCoreHelpers = window.KHBAdmin?.helpers || {};
 const adminCoreState = window.KHBAdmin?.state || {};
+const adminCoreUtils = window.KHBAdmin?.utils || {};
 
 function setStateSummaryMessage(message) {
   if (!adminCoreDom.stateSummary) return;
@@ -137,18 +138,18 @@ function buildLoadSignature({ match, epoch, st, expectedIds, judgesMap, subs, sc
 
 async function runLoadData(isAuto = false) {
   if (!isAuto) {
-    setMsg('読み込み中…', '');
-    setControlsDisabled(true);
+    adminCoreUtils.setMsg('読み込み中…', '');
+    adminCoreUtils.setControlsDisabled(true);
     if (adminCoreDom.scoreboardContainer) adminCoreDom.scoreboardContainer.innerHTML = '';
     setStateSummaryMessage('読み込み中…');
   }
 
-  const matchCode = matchSelect ? matchSelect.value : '';
+  const matchCode = adminCoreDom.matchSelect ? adminCoreDom.matchSelect.value : '';
 
   if (!matchCode) {
     if (!isAuto) {
-      setMsg('試合を選択してください。', 'err');
-      setControlsDisabled(false);
+      adminCoreUtils.setMsg('試合を選択してください。', 'err');
+      adminCoreUtils.setControlsDisabled(false);
     }
     return;
   }
@@ -162,7 +163,7 @@ async function runLoadData(isAuto = false) {
 
     if (!matches.length) {
       if (!isAuto) {
-        setMsg(`matches.code = "${matchCode}" の対戦が見つかりません。`, 'err');
+        adminCoreUtils.setMsg(`matches.code = "${matchCode}" の対戦が見つかりません。`, 'err');
         setStateSummaryMessage('対戦が見つかりません。');
       }
       return;
@@ -257,23 +258,23 @@ async function runLoadData(isAuto = false) {
 
     if (st) {
       // epoch入力欄を現在値で更新（未入力時のみ）
-      if (epochInput && !epochInput.matches(':focus')) {
-        epochInput.value = st.epoch;
+      if (adminCoreDom.epochInput && !adminCoreDom.epochInput.matches(':focus')) {
+        adminCoreDom.epochInput.value = st.epoch;
       }
 
-      if (toggleAcceptingBtn) {
+      if (adminCoreDom.toggleAcceptingBtn) {
         if (st.accepting) {
-          toggleAcceptingBtn.textContent = '受付締切（現在: 受付中）';
-          toggleAcceptingBtn.className = 'small-btn btn-red';
+          adminCoreDom.toggleAcceptingBtn.textContent = '受付締切（現在: 受付中）';
+          adminCoreDom.toggleAcceptingBtn.className = 'small-btn btn-red';
         } else {
-          toggleAcceptingBtn.textContent = '受付開始（現在: 停止中）';
-          toggleAcceptingBtn.className = 'small-btn btn-green';
+          adminCoreDom.toggleAcceptingBtn.textContent = '受付開始（現在: 停止中）';
+          adminCoreDom.toggleAcceptingBtn.className = 'small-btn btn-green';
         }
       }
     } else {
-      if (toggleAcceptingBtn) {
-        toggleAcceptingBtn.textContent = 'state 不明';
-        toggleAcceptingBtn.className = 'small-btn btn-grey';
+      if (adminCoreDom.toggleAcceptingBtn) {
+        adminCoreDom.toggleAcceptingBtn.textContent = 'state 不明';
+        adminCoreDom.toggleAcceptingBtn.className = 'small-btn btn-grey';
       }
     }
 
@@ -289,19 +290,19 @@ async function runLoadData(isAuto = false) {
 
     if (anomalyJudgeIds.length > 0) {
       const anomalyNames = anomalyJudgeIds.map(id => judgesMap[id]?.name || id);
-      setMsg(`勝敗判定不能: ${anomalyNames.join(', ')}。勝者音声をスキップしています。`, 'warn');
+      adminCoreUtils.setMsg(`勝敗判定不能: ${anomalyNames.join(', ')}。勝者音声をスキップしています。`, 'warn');
     } else if (!isAuto) {
-      setMsg('読み込み完了', 'ok');
+      adminCoreUtils.setMsg('読み込み完了', 'ok');
     }
 
   } catch (err) {
     console.error(err);
     if (!isAuto) {
-      setMsg('読み込み中にエラーが発生しました: ' + err.message, 'err');
+      adminCoreUtils.setMsg('読み込み中にエラーが発生しました: ' + err.message, 'err');
       setStateSummaryMessage('エラーが発生しました。');
     }
   } finally {
-    if (!isAuto) setControlsDisabled(false);
+    if (!isAuto) adminCoreUtils.setControlsDisabled(false);
   }
 }
 
@@ -348,35 +349,35 @@ async function loadData(isAuto = false) {
     const label = nextVal ? '受付開始' : '受付締切';
     try {
       setE5E6Status(`${label}処理中…`, '');
-      setControlsDisabled(true);
+      adminCoreUtils.setControlsDisabled(true);
       const patch = { accepting: nextVal };
       if (nextVal && adminCoreState.lastState.epoch) patch.epoch = adminCoreState.lastState.epoch;
-      await patchState(patch);
+      await adminCoreApi.patchState(patch);
       setE5E6Status(`${label}しました（accepting=${nextVal}）。`, 'ok');
       await loadData();
     } catch (err) {
       console.error(err);
       setE5E6Status(`${label}に失敗しました: ` + err.message, 'err');
-      setControlsDisabled(false);
+      adminCoreUtils.setControlsDisabled(false);
     }
   });
 }
 
 if (adminCoreDom.venueSelect) {
-  adminCoreDom.venueSelect.addEventListener('change', onVenueChange);
+  adminCoreDom.venueSelect.addEventListener('change', adminCoreUi.onVenueChange);
 }
 if (adminCoreDom.matchSelect) {
-  adminCoreDom.matchSelect.addEventListener('change', onMatchChange);
+  adminCoreDom.matchSelect.addEventListener('change', adminCoreUi.onMatchChange);
 }
 
 if (adminCoreDom.btnStartMatch) {
   adminCoreDom.btnStartMatch.addEventListener('click', async () => {
     const adminSecret = adminCoreDom.adminSecretInput ? adminCoreDom.adminSecretInput.value.trim() : '';
     const matchCode = adminCoreDom.matchSelect ? adminCoreDom.matchSelect.value : '';
-    if (!adminSecret) { setMsg('管理用シークレットを入力してください。', 'err'); return; }
-    if (!matchCode) { setMsg('試合を選択してください。', 'err'); return; }
+    if (!adminSecret) { adminCoreUtils.setMsg('管理用シークレットを入力してください。', 'err'); return; }
+    if (!matchCode) { adminCoreUtils.setMsg('試合を選択してください。', 'err'); return; }
 
-    setMsg('現在の試合を設定中…', '');
+    adminCoreUtils.setMsg('現在の試合を設定中…', '');
     try {
       const data = await adminCoreApi.callControlFunction(adminCoreConstants.CONTROL_SET_MATCH_URL, {
         admin_secret: adminSecret,
@@ -391,7 +392,7 @@ if (adminCoreDom.btnStartMatch) {
         const matches = [...new Set(data.warnings.map(w => w.other_match_name || w.other_match_code))];
         statusMsg += `\n⚠ 警告: ${names.join(', ')} は別の試合 (${matches.join(', ')}) を審査中です`;
       }
-      setMsg(statusMsg, hasWarnings ? 'warn' : 'ok');
+      adminCoreUtils.setMsg(statusMsg, hasWarnings ? 'warn' : 'ok');
       await adminCoreUi.populateMatches();
     } catch (err) {
       console.error(err);
@@ -399,12 +400,12 @@ if (adminCoreDom.btnStartMatch) {
         const conflicts = err.responseData.conflicts || [];
         const names = [...new Set(conflicts.map(c => c.judge_name || c.judge_id))];
         const matches = [...new Set(conflicts.map(c => c.other_match_name || c.other_match_code))];
-        setMsg(
+        adminCoreUtils.setMsg(
           `試合を開始できません: ${names.join(', ')} が同一タイムラインの試合 (${matches.join(', ')}) を審査中です`,
           'err'
         );
       } else {
-        setMsg('試合開始に失敗しました: ' + (err.message || String(err)), 'err');
+        adminCoreUtils.setMsg('試合開始に失敗しました: ' + (err.message || String(err)), 'err');
       }
     }
   });
