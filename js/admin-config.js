@@ -7,6 +7,8 @@ KHBAdmin.config = KHBAdmin.config || {};
 KHBAdmin.constants = KHBAdmin.constants || {};
 KHBAdmin.dom = KHBAdmin.dom || {};
 KHBAdmin.helpers = KHBAdmin.helpers || {};
+KHBAdmin.state = KHBAdmin.state || {};
+KHBAdmin.audioState = KHBAdmin.audioState || {};
 
 const ADMIN_CONFIG = window.KHB_APP_CONFIG || {};
 const SUPABASE_URL = ADMIN_CONFIG.SUPABASE_URL;
@@ -112,17 +114,28 @@ Object.assign(KHBAdmin.dom, {
   btnSetEpoch,
 });
 
-// 内部状態
-let lastState       = null;
-let scoreboardMode  = 'horizontal'; // 'horizontal' | 'vertical'
-let currentVenueId  = null;
-let currentVenueCode = null;
-let matchesCache    = [];
-let loadDataInFlight = false;
-let pendingAutoReload = false;
-let pendingManualReload = false;
-let currentLoadPromise = null;
-let lastRenderedLoadSignature = null;
+Object.assign(KHBAdmin.state, {
+  lastState: null,
+  scoreboardMode: 'horizontal',
+  currentVenueId: null,
+  currentVenueCode: null,
+  matchesCache: [],
+  loadDataInFlight: false,
+  pendingAutoReload: false,
+  pendingManualReload: false,
+  currentLoadPromise: null,
+  lastRenderedLoadSignature: null,
+});
+
+Object.assign(KHBAdmin.audioState, {
+  audioClips: {},
+  audioInitialized: false,
+  audioPlaying: false,
+  audioQueue: [],
+  audioQueueIndex: 0,
+  audioJudgeSegments: {},
+  pendingAudioRefresh: null,
+});
 
 function hasUndecidableWinner(submission) {
   if (!submission) return false;

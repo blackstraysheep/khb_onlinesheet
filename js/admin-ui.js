@@ -5,6 +5,7 @@
 const adminUiDom = window.KHBAdmin?.dom || {};
 const adminUiApi = window.KHBAdmin?.api || {};
 const adminUiConstants = window.KHBAdmin?.constants || {};
+const adminUiState = window.KHBAdmin?.state || {};
 
 async function populateVenues() {
   try {
@@ -34,40 +35,40 @@ async function onVenueChange() {
   if (!adminUiDom.venueSelect) return;
   const opt = adminUiDom.venueSelect.selectedOptions[0];
   if (!opt || !opt.value) {
-    currentVenueId = null;
-    currentVenueCode = null;
+    adminUiState.currentVenueId = null;
+    adminUiState.currentVenueCode = null;
     if (adminUiDom.matchSelect) adminUiDom.matchSelect.innerHTML = '<option value="">-- 会場を選択 --</option>';
     return;
   }
-  currentVenueCode = opt.value;
-  currentVenueId = opt.dataset.venueId || null;
-  if (!currentVenueId) {
-    const vRows = await adminUiApi.fetchJson('venues', { select: 'id', code: 'eq.' + currentVenueCode });
-    if (vRows[0]) currentVenueId = vRows[0].id;
+  adminUiState.currentVenueCode = opt.value;
+  adminUiState.currentVenueId = opt.dataset.venueId || null;
+  if (!adminUiState.currentVenueId) {
+    const vRows = await adminUiApi.fetchJson('venues', { select: 'id', code: 'eq.' + adminUiState.currentVenueCode });
+    if (vRows[0]) adminUiState.currentVenueId = vRows[0].id;
   }
   await populateMatches();
 }
 
 async function populateMatches() {
   if (!adminUiDom.matchSelect) return;
-  if (!currentVenueId) {
+  if (!adminUiState.currentVenueId) {
     adminUiDom.matchSelect.innerHTML = '<option value="">-- 会場を選択 --</option>';
     return;
   }
   try {
     const matches = await adminUiApi.fetchJson('matches', {
       select: 'id,code,name,red_team_name,white_team_name,num_bouts,timeline,venue_id',
-      venue_id: 'eq.' + currentVenueId,
+      venue_id: 'eq.' + adminUiState.currentVenueId,
       order: 'timeline.asc.nullslast,code.asc',
     });
-    matchesCache = matches;
+    adminUiState.matchesCache = matches;
 
     const stateRows = await adminUiApi.fetchJson('state', {
       select: 'epoch,accepting,e3_reached,updated_at,current_match_id',
-      venue_id: 'eq.' + currentVenueId,
+      venue_id: 'eq.' + adminUiState.currentVenueId,
     });
     const st = stateRows[0] || null;
-    lastState = st;
+    adminUiState.lastState = st;
 
     const previousSelection = adminUiDom.matchSelect.value;
     adminUiDom.matchSelect.innerHTML = '';
@@ -129,7 +130,7 @@ async function loadJudgeOrder() {
     adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合を選択してください)</div>';
     return;
   }
-  const match = matchesCache.find(m => m.code === matchCode);
+  const match = adminUiState.matchesCache.find(m => m.code === matchCode);
   if (!match) {
     adminUiDom.judgeReorderList.innerHTML = '<div class="small" style="color:#aaa;">(試合が見つかりません)</div>';
     return;
@@ -248,7 +249,7 @@ async function saveJudgeOrder() {
     setJudgeReorderStatus('保存中…');
     await adminUiApi.callControlFunction(adminUiConstants.ADMIN_SET_MATCH_JUDGES_URL, {
       admin_secret: adminSec,
-      venue_code: currentVenueCode || 'default',
+      venue_code: adminUiState.currentVenueCode || 'default',
       match_code: matchCode,
       judge_ids: judgeIds,
     });

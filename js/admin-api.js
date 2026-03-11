@@ -5,6 +5,7 @@
 const adminApiConfig = window.KHBAdmin?.config || {};
 const adminApiConstants = window.KHBAdmin?.constants || {};
 const adminApiDom = window.KHBAdmin?.dom || {};
+const adminApiState = window.KHBAdmin?.state || {};
 
 function buildRestUrl(path, params) {
   const url = new URL(adminApiConfig.SUPABASE_URL + '/rest/v1/' + path);
@@ -57,14 +58,14 @@ async function patchState(patch) {
   if (!adminSec) {
     throw new Error('管理用シークレットを入力してください。');
   }
-  const venueCode = currentVenueCode || 'default';
+  const venueCode = adminApiState.currentVenueCode || 'default';
   const data = await callControlFunction(adminApiConstants.ADMIN_PATCH_STATE_URL, {
     admin_secret: adminSec,
     venue_code: venueCode,
     patch,
   });
   if (data && data.state) {
-    lastState = { ...lastState, ...data.state };
+    adminApiState.lastState = { ...adminApiState.lastState, ...data.state };
   }
 }
 

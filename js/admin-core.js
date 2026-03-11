@@ -6,8 +6,10 @@ const adminCoreDom = window.KHBAdmin?.dom || {};
 const adminCoreApi = window.KHBAdmin?.api || {};
 const adminCoreUi = window.KHBAdmin?.ui || {};
 const adminCoreAudio = window.KHBAdmin?.audio || {};
+const adminCoreAudioState = window.KHBAdmin?.audioState || {};
 const adminCoreConstants = window.KHBAdmin?.constants || {};
 const adminCoreHelpers = window.KHBAdmin?.helpers || {};
+const adminCoreState = window.KHBAdmin?.state || {};
 
 function setStateSummaryMessage(message) {
   if (!adminCoreDom.stateSummary) return;
@@ -169,11 +171,11 @@ async function runLoadData(isAuto = false) {
     const matchId = match.id;
 
     // 2. state（会場別）
-    const stateRows = currentVenueId
-      ? await fetchJson('state', { select: 'epoch,accepting,e3_reached,updated_at,current_match_id', venue_id: 'eq.' + currentVenueId })
+    const stateRows = adminCoreState.currentVenueId
+      ? await adminCoreApi.fetchJson('state', { select: 'epoch,accepting,e3_reached,updated_at,current_match_id', venue_id: 'eq.' + adminCoreState.currentVenueId })
       : [];
     const st  = stateRows[0] || null;
-    lastState = st;
+    adminCoreState.lastState = st;
 
     // epoch は state から取得
     const epoch = st ? st.epoch : 1;
@@ -215,13 +217,13 @@ async function runLoadData(isAuto = false) {
       expectedIds,
       judgesMap,
       subs,
-      scoreboardMode,
+      scoreboardMode: adminCoreState.scoreboardMode,
     });
 
-    if (isAuto && lastRenderedLoadSignature === loadSignature) {
+    if (isAuto && adminCoreState.lastRenderedLoadSignature === loadSignature) {
       return;
     }
-    lastRenderedLoadSignature = loadSignature;
+    adminCoreState.lastRenderedLoadSignature = loadSignature;
 
     // 6. スコアボード描画
     const subMap = {};
@@ -239,7 +241,7 @@ async function runLoadData(isAuto = false) {
       anomalyJudgeIds,
     };
 
-    if (scoreboardMode === 'vertical') {
+    if (adminCoreState.scoreboardMode === 'vertical') {
       buildScoreboard_vertical(expectedIds, judgesMap, subMap, meta);
     } else {
       buildScoreboard_horizontal(expectedIds, judgesMap, subMap, meta);
@@ -305,31 +307,31 @@ async function runLoadData(isAuto = false) {
 
 async function loadData(isAuto = false) {
   if (isAuto) {
-    pendingAutoReload = true;
+        adminCoreState.pendingAutoReload = true;
   } else {
-    pendingManualReload = true;
+    adminCoreState.pendingManualReload = true;
   }
 
-  if (loadDataInFlight && currentLoadPromise) {
-    return currentLoadPromise;
+  if (adminCoreState.loadDataInFlight && adminCoreState.currentLoadPromise) {
+    return adminCoreState.currentLoadPromise;
   }
 
-  currentLoadPromise = (async () => {
-    loadDataInFlight = true;
+  adminCoreState.currentLoadPromise = (async () => {
+    adminCoreState.loadDataInFlight = true;
     try {
-      while (pendingManualReload || pendingAutoReload) {
-        const runIsAuto = !pendingManualReload;
-        pendingManualReload = false;
-        pendingAutoReload = false;
+      while (adminCoreState.pendingManualReload || adminCoreState.pendingAutoReload) {
+        const runIsAuto = !adminCoreState.pendingManualReload;
+        adminCoreState.pendingManualReload = false;
+        adminCoreState.pendingAutoReload = false;
         await runLoadData(runIsAuto);
       }
     } finally {
-      loadDataInFlight = false;
-      currentLoadPromise = null;
+      adminCoreState.loadDataInFlight = false;
+      adminCoreState.currentLoadPromise = null;
     }
   })();
 
-  return currentLoadPromise;
+  return adminCoreState.currentLoadPromise;
 }
 
 // ============================
@@ -338,17 +340,17 @@ async function loadData(isAuto = false) {
 
   if (adminCoreDom.toggleAcceptingBtn) {
     adminCoreDom.toggleAcceptingBtn.addEventListener('click', async () => {
-    if (!lastState) {
+    if (!adminCoreState.lastState) {
       setE5E6Status('状態が読み込まれていません。', 'err');
       return;
     }
-    const nextVal = !lastState.accepting;
+    const nextVal = !adminCoreState.lastState.accepting;
     const label = nextVal ? '受付開始' : '受付締切';
     try {
       setE5E6Status(`${label}処理中…`, '');
       setControlsDisabled(true);
       const patch = { accepting: nextVal };
-      if (nextVal && lastState.epoch) patch.epoch = lastState.epoch;
+      if (nextVal && adminCoreState.lastState.epoch) patch.epoch = adminCoreState.lastState.epoch;
       await patchState(patch);
       setE5E6Status(`${label}しました（accepting=${nextVal}）。`, 'ok');
       await loadData();
@@ -378,7 +380,7 @@ if (adminCoreDom.btnStartMatch) {
     try {
       const data = await adminCoreApi.callControlFunction(adminCoreConstants.CONTROL_SET_MATCH_URL, {
         admin_secret: adminSecret,
-        venue_code: currentVenueCode || 'default',
+        venue_code: adminCoreState.currentVenueCode || 'default',
         match_code: matchCode,
         epoch: 1,
       });
@@ -430,7 +432,7 @@ async function onClickE5() {
   try {
     const data = await adminCoreApi.callControlFunction(adminCoreConstants.CONTROL_CONFIRM_URL, {
       admin_secret: adminSecret,
-      venue_code: currentVenueCode || 'default',
+      venue_code: adminCoreState.currentVenueCode || 'default',
       match_code: matchCode,
     });
     setE5E6Status(`E5 完了: match=${matchCode}, epoch=${data.epoch}（スナップショット件数: ${data.snapshot_count}）`, 'ok');
@@ -447,8 +449,8 @@ async function onClickE6() {
 
   // E5チェック: スナップショットの存在と鮮度を確認
   const matchCode = adminCoreDom.matchSelect ? adminCoreDom.matchSelect.value : '';
-  const match = matchesCache.find(m => m.code === matchCode);
-  const epoch = lastState ? lastState.epoch : null;
+  const match = adminCoreState.matchesCache.find(m => m.code === matchCode);
+  const epoch = adminCoreState.lastState ? adminCoreState.lastState.epoch : null;
 
   if (match && epoch) {
     try {
@@ -498,7 +500,7 @@ async function onClickE6() {
   try {
     const data = await adminCoreApi.callControlFunction(adminCoreConstants.CONTROL_ADVANCE_URL, {
       admin_secret: adminSecret,
-      venue_code: currentVenueCode || 'default',
+      venue_code: adminCoreState.currentVenueCode || 'default',
     });
     setE5E6Status(`E6 完了: epoch ${data.from_epoch} → ${data.to_epoch} に進めました（受付再開）`, 'ok');
     await loadData();
@@ -546,15 +548,15 @@ setInterval(() => {
 // 音声再生ボタン
 if (adminCoreDom.btnAudioPlayAll) {
   adminCoreDom.btnAudioPlayAll.addEventListener('click', () => {
-    if (!audioQueue.length) {
+    if (!adminCoreAudioState.audioQueue.length) {
       adminCoreAudio.setAudioStatus('再生キューが空です。先に読み込みを行ってください。');
       return;
     }
-    if (audioPlaying) {
+    if (adminCoreAudioState.audioPlaying) {
       adminCoreAudio.setAudioStatus('すでに再生中です。');
       return;
     }
-    audioQueueIndex = 0;
+    adminCoreAudioState.audioQueueIndex = 0;
     adminCoreAudio.playAudioQueue();
   });
 }

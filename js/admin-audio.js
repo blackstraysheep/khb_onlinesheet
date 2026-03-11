@@ -6,6 +6,7 @@ const adminAudioDom = window.KHBAdmin?.dom || {};
 const adminAudioApi = window.KHBAdmin?.api || {};
 const adminAudioConstants = window.KHBAdmin?.constants || {};
 const adminAudioHelpers = window.KHBAdmin?.helpers || {};
+const adminAudioState = window.KHBAdmin?.audioState || {};
 
 const AUDIO_BASE = 'https://blackstraysheep.github.io/khb_onlinesheet/audio/';
 
@@ -23,32 +24,24 @@ const audioPhraseFiles = {
   win_draw_white: 'deWhite_sakuhin.mp3',
 };
 
-const audioClips = {};
-let audioInitialized = false;
-let audioPlaying = false;
-let audioQueue = [];
-let audioQueueIndex = 0;
-let audioJudgeSegments = {};
-let pendingAudioRefresh = null;
-
 function setAudioStatus(text) {
   if (!adminAudioDom.audioStatusEl) return;
   adminAudioDom.audioStatusEl.textContent = text || '';
 }
 
 function initAudio() {
-  if (audioInitialized) return;
+  if (adminAudioState.audioInitialized) return;
   Object.entries(audioPhraseFiles).forEach(([id, file]) => {
-    audioClips[id] = new Audio(AUDIO_BASE + file);
+    adminAudioState.audioClips[id] = new Audio(AUDIO_BASE + file);
   });
-  audioInitialized = true;
+  adminAudioState.audioInitialized = true;
 }
 
 function ensureAudioClip(id) {
-  if (audioClips[id]) return;
+  if (adminAudioState.audioClips[id]) return;
 
   if (audioPhraseFiles[id]) {
-    audioClips[id] = new Audio(AUDIO_BASE + audioPhraseFiles[id]);
+    adminAudioState.audioClips[id] = new Audio(AUDIO_BASE + audioPhraseFiles[id]);
     return;
   }
 
@@ -61,12 +54,12 @@ function ensureAudioClip(id) {
       console.warn('Audio: 未定義の数字クリップです:', n);
       return;
     }
-    audioClips[id] = new Audio(AUDIO_BASE + file);
+    adminAudioState.audioClips[id] = new Audio(AUDIO_BASE + file);
     return;
   }
 
   if (id.startsWith('judge_')) {
-    audioClips[id] = new Audio(AUDIO_BASE + `${id}.mp3`);
+    adminAudioState.audioClips[id] = new Audio(AUDIO_BASE + `${id}.mp3`);
     return;
   }
 
@@ -77,7 +70,7 @@ function playAudioClip(id) {
   return new Promise(resolve => {
     initAudio();
     ensureAudioClip(id);
-    const audio = audioClips[id];
+    const audio = adminAudioState.audioClips[id];
     if (!audio) {
       console.warn('Audio: インスタンスがありません:', id);
       resolve();
@@ -94,37 +87,37 @@ function playAudioClip(id) {
 }
 
 async function playAudioQueue() {
-  if (!audioQueue.length) {
+  if (!adminAudioState.audioQueue.length) {
     setAudioStatus('再生キューが空です。');
-    audioPlaying = false;
+    adminAudioState.audioPlaying = false;
     return;
   }
 
   adminAudioApi.patchState({ scoreboard_visible: true }).catch(err => console.error(err));
   setAudioStatus('再生中…');
-  audioPlaying = true;
+  adminAudioState.audioPlaying = true;
   renderAudioQueue(true);
 
-  while (audioPlaying && audioQueueIndex < audioQueue.length) {
+  while (adminAudioState.audioPlaying && adminAudioState.audioQueueIndex < adminAudioState.audioQueue.length) {
     renderAudioQueue();
-    const id = audioQueue[audioQueueIndex++];
+    const id = adminAudioState.audioQueue[adminAudioState.audioQueueIndex++];
     await playAudioClip(id);
   }
   renderAudioQueue();
 
-  if (audioPlaying) {
+  if (adminAudioState.audioPlaying) {
     setAudioStatus('再生完了');
   } else {
     setAudioStatus('停止しました');
   }
-  audioPlaying = false;
+  adminAudioState.audioPlaying = false;
   adminAudioApi.patchState({ scoreboard_visible: false }).catch(err => console.error(err));
   applyPendingAudioRefresh();
 }
 
 function stopAudio() {
-  audioPlaying = false;
-  Object.values(audioClips).forEach(a => {
+  adminAudioState.audioPlaying = false;
+  Object.values(adminAudioState.audioClips).forEach(a => {
     try { a.pause(); } catch (e) { }
   });
   adminAudioApi.patchState({ scoreboard_visible: false }).catch(err => console.error(err));
@@ -149,7 +142,7 @@ function getJudgeVoiceKey(judgeId, judgesMap) {
 }
 
 function buildAudioSegments(expectedIds, judgesMap, subMap) {
-  audioJudgeSegments = {};
+  adminAudioState.audioJudgeSegments = {};
   if (!expectedIds || !expectedIds.length) return;
 
   expectedIds.forEach(jid => {
@@ -192,7 +185,7 @@ function buildAudioSegments(expectedIds, judgesMap, subMap) {
 
     if (adminAudioHelpers.hasUndecidableWinner(sub)) {
       console.warn('Audio: 勝敗判定不能のため勝者音声をスキップします:', jid);
-      audioJudgeSegments[jid] = {
+      adminAudioState.audioJudgeSegments[jid] = {
         revision: sub.revision || 1,
         clips,
       };
@@ -217,7 +210,7 @@ function buildAudioSegments(expectedIds, judgesMap, subMap) {
       clips.push(`win_${winnerSideForTotal}`);
     }
 
-    audioJudgeSegments[jid] = {
+    adminAudioState.audioJudgeSegments[jid] = {
       revision: sub.revision || 1,
       clips,
     };
@@ -227,13 +220,13 @@ function buildAudioSegments(expectedIds, judgesMap, subMap) {
 function rebuildAudioQueue() {
   const queue = [];
   queue.push('start');
-  Object.entries(audioJudgeSegments).forEach(([_, seg]) => {
+  Object.entries(adminAudioState.audioJudgeSegments).forEach(([_, seg]) => {
     seg.clips.forEach(id => queue.push(id));
   });
   queue.push('end');
 
-  audioQueue = queue;
-  audioQueueIndex = 0;
+  adminAudioState.audioQueue = queue;
+  adminAudioState.audioQueueIndex = 0;
   setAudioStatus(`再生キューを準備しました（${queue.length}クリップ）。`);
   renderAudioQueue();
 }
@@ -241,7 +234,7 @@ function rebuildAudioQueue() {
 function renderAudioQueue(forceScroll = false) {
   if (!adminAudioDom.audioQueueListEl) return;
   adminAudioDom.audioQueueListEl.replaceChildren();
-  if (!audioQueue.length) {
+  if (!adminAudioState.audioQueue.length) {
     const emptyEl = document.createElement('div');
     emptyEl.className = 'audio-empty';
     emptyEl.textContent = '(キューは空です)';
@@ -249,7 +242,7 @@ function renderAudioQueue(forceScroll = false) {
     return;
   }
 
-  audioQueue.forEach((id, idx) => {
+  adminAudioState.audioQueue.forEach((id, idx) => {
     let label = id;
     if (audioPhraseFiles[id]) {
       label = `[定型] ${id}`;
@@ -258,7 +251,7 @@ function renderAudioQueue(forceScroll = false) {
     } else if (id.startsWith('num_')) {
       label = `[数字] ${id.replace('num_', '')}`;
     }
-    const isCurrent = (idx === audioQueueIndex);
+    const isCurrent = (idx === adminAudioState.audioQueueIndex);
     const cls = isCurrent ? 'audio-item current' : 'audio-item';
     const marker = isCurrent ? '▶ ' : '';
     const item = document.createElement('div');
@@ -299,24 +292,24 @@ function buildAudioSuite({ expectedIds, judgesMap, subMap }) {
 
 function scheduleAudioRefresh(data) {
   if (!data || !data.expectedIds || !data.expectedIds.length) {
-    pendingAudioRefresh = null;
-    audioQueue = [];
-    audioQueueIndex = 0;
+    adminAudioState.pendingAudioRefresh = null;
+    adminAudioState.audioQueue = [];
+    adminAudioState.audioQueueIndex = 0;
     setAudioStatus('再生キューが空です。');
     return;
   }
-  if (audioPlaying) {
-    pendingAudioRefresh = data;
+  if (adminAudioState.audioPlaying) {
+    adminAudioState.pendingAudioRefresh = data;
     return;
   }
-  pendingAudioRefresh = null;
+  adminAudioState.pendingAudioRefresh = null;
   buildAudioSuite(data);
 }
 
 function applyPendingAudioRefresh() {
-  if (!pendingAudioRefresh) return;
-  const data = pendingAudioRefresh;
-  pendingAudioRefresh = null;
+  if (!adminAudioState.pendingAudioRefresh) return;
+  const data = adminAudioState.pendingAudioRefresh;
+  adminAudioState.pendingAudioRefresh = null;
   buildAudioSuite(data);
 }
 
