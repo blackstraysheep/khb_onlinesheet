@@ -320,7 +320,8 @@ serve(async (req)=>{
       if (insErr) {
         console.error("submissions insert error", insErr);
         return json({
-          error: "failed to insert submission"
+          error: "failed to insert submission",
+          detail: insErr.message || String(insErr)
         }, 500);
       }
     } else {
@@ -341,7 +342,8 @@ serve(async (req)=>{
       if (updErr) {
         console.error("submissions update error", updErr);
         return json({
-          error: "failed to update submission"
+          error: "failed to update submission",
+          detail: updErr.message || String(updErr)
         }, 500);
       }
     }
@@ -402,8 +404,10 @@ serve(async (req)=>{
     });
   } catch (e) {
     console.error(e);
+    const errorMsg = e instanceof Error ? e.message : String(e);
     return json({
-      error: "internal error"
+      error: "internal error",
+      detail: errorMsg
     }, 500);
   }
 });

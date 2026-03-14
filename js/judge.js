@@ -18,13 +18,23 @@
     return !!(el && el.value !== '');
   }
 
+  // DOM要素をキャッシュ
+  const redElems = {
+    works: $(`.works[data-side="red"]`),
+    app: $(`.app[data-side="red"]`),
+    total: $(`.total[data-side="red"]`),
+    flag: $(`.flag[data-side="red"]`),
+  };
+
+  const whiteElems = {
+    works: $(`.works[data-side="white"]`),
+    app: $(`.app[data-side="white"]`),
+    total: $(`.total[data-side="white"]`),
+    flag: $(`.flag[data-side="white"]`),
+  };
+
   function getSideElems(side) {
-    return {
-      works: $(`.works[data-side="${side}"]`),
-      app: $(`.app[data-side="${side}"]`),
-      total: $(`.total[data-side="${side}"]`),
-      flag: $(`.flag[data-side="${side}"]`),
-    };
+    return side === 'red' ? redElems : whiteElems;
   }
 
   function updateTotals() {
@@ -411,14 +421,14 @@
       });
 
       const text = await res.text();
-      console.log('edge function status =', res.status, 'body =', text);
 
       let data = {};
       try { data = JSON.parse(text); } catch (_) {}
 
       if (!res.ok || !data.ok) {
         const msg = data.error || data.message || res.status;
-        setResult(`送信失敗: ${msg}`, false);
+        const detail = data.detail ? ` (${data.detail})` : '';
+        setResult(`送信失敗: ${msg}${detail}`, false);
         return false;
       }
 

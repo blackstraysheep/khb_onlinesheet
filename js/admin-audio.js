@@ -94,7 +94,12 @@ async function playAudioQueue() {
     return;
   }
 
-  adminAudioApi.patchState({ scoreboard_visible: true }).catch(err => console.error(err));
+  try {
+    await adminAudioApi.patchState({ scoreboard_visible: true });
+  } catch (err) {
+    console.error(err);
+    setAudioStatus('⚠ スコアボード表示の設定に失敗しました。音声のみ再生します。');
+  }
   setAudioStatus('再生中…');
   adminAudioState.audioPlaying = true;
   renderAudioQueue(true);
@@ -112,16 +117,24 @@ async function playAudioQueue() {
     setAudioStatus('停止しました');
   }
   adminAudioState.audioPlaying = false;
-  adminAudioApi.patchState({ scoreboard_visible: false }).catch(err => console.error(err));
+  try {
+    await adminAudioApi.patchState({ scoreboard_visible: false });
+  } catch (err) {
+    console.error(err);
+  }
   applyPendingAudioRefresh();
 }
 
-function stopAudio() {
+async function stopAudio() {
   adminAudioState.audioPlaying = false;
   Object.values(adminAudioState.audioClips).forEach(a => {
     try { a.pause(); } catch (e) { }
   });
-  adminAudioApi.patchState({ scoreboard_visible: false }).catch(err => console.error(err));
+  try {
+    await adminAudioApi.patchState({ scoreboard_visible: false });
+  } catch (err) {
+    console.error(err);
+  }
   setAudioStatus('停止しました');
   applyPendingAudioRefresh();
 }
