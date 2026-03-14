@@ -14,13 +14,9 @@ function setScoreboardMode(mode) {
   }
 }
 
-if (adminUtilsDom.scoreboardModeBtn) {
-  adminUtilsDom.scoreboardModeBtn.addEventListener('click', async () => {
-    setScoreboardMode(adminUtilsState.scoreboardMode === 'horizontal' ? 'vertical' : 'horizontal');
-    if (adminUtilsCore.loadData) {
-      await adminUtilsCore.loadData(false);
-    }
-  });
+function toggleScoreboardMode() {
+  const newMode = adminUtilsState.scoreboardMode === 'horizontal' ? 'vertical' : 'horizontal';
+  setScoreboardMode(newMode);
 }
 
 function setMsg(text, type) {
@@ -46,6 +42,7 @@ function setControlsDisabled(disabled) {
 
 window.KHBAdmin.utils = Object.assign(window.KHBAdmin.utils || {}, {
   setScoreboardMode,
+  toggleScoreboardMode,
   setMsg,
   setControlsDisabled,
 });

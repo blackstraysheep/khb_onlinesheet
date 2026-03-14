@@ -542,6 +542,14 @@ if (adminCoreDom.btnSaveJudgeOrder) {
   adminCoreDom.btnSaveJudgeOrder.addEventListener('click', adminCoreUi.saveJudgeOrder);
 }
 
+// スコアボードモード切替
+if (adminCoreDom.scoreboardModeBtn) {
+  adminCoreDom.scoreboardModeBtn.addEventListener('click', async () => {
+    adminCoreUtils.toggleScoreboardMode();
+    await loadData(false);
+  });
+}
+
 // 自動更新
 setInterval(() => {
   if (!adminCoreDom.matchSelect || !adminCoreDom.matchSelect.value) return;

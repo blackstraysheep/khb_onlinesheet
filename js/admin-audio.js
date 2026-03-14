@@ -94,13 +94,19 @@ async function playAudioQueue() {
     return;
   }
 
+  let scoreboardVisibleSuccess = true;
   try {
     await adminAudioApi.patchState({ scoreboard_visible: true });
   } catch (err) {
     console.error(err);
+    scoreboardVisibleSuccess = false;
+  }
+
+  if (scoreboardVisibleSuccess) {
+    setAudioStatus('再生中…');
+  } else {
     setAudioStatus('⚠ スコアボード表示の設定に失敗しました。音声のみ再生します。');
   }
-  setAudioStatus('再生中…');
   adminAudioState.audioPlaying = true;
   renderAudioQueue(true);
 
