@@ -204,13 +204,13 @@ button:disabled {
   border: 2px solid #aaa;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   background-color: #fff;
-  width: 720px;
+  width: 808px;
   max-width: 100%;
   table-layout: fixed;
 }
 
 .card.fixed-width {
-  width: 752px;
+  width: 840px;
   max-width: 100%;
 }
 
@@ -345,7 +345,7 @@ button:disabled {
 
 .layout-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: minmax(840px, 1.35fr) minmax(360px, 1fr);
   gap: 12px;
   flex: 1;
   min-height: 0;
