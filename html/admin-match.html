@@ -16,16 +16,13 @@
         <label for="adminSecret">管理用シークレット</label>
         <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET" class="input-lg" />
       </div>
-      <div>
-        <label for="venueCode">会場コード</label>
-        <input id="venueCode" value="default" class="input-md" />
-      </div>
     </div>
   </div>
 
   <div class="card">
     <h2 class="card-header">試合作成・編集</h2>
     <div class="row mb-8">
+      <div><label for="venueCode">会場コード</label><input id="venueCode" value="default" class="input-md" /></div>
       <div><label for="matchCode">試合コード</label><input id="matchCode" placeholder="例: A-1" class="input-md" /></div>
       <div><label for="matchName">試合名</label><input id="matchName" placeholder="例: 予選A" class="input-md" /></div>
       <div><label for="timeline">タイムライン</label><input id="timeline" type="number" step="0.1" placeholder="例: 1" class="input-sm" /></div>

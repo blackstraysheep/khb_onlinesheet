@@ -17,6 +17,7 @@
   };
 
   const $ = (s) => document.querySelector(s);
+  let allVenues = [];
 
   async function fetchJson(table, params = {}) {
     const url = new URL(SUPABASE_URL + '/rest/v1/' + table);
@@ -85,6 +86,7 @@
       }
 
       const venues = await fetchJson('venues', { select: 'id,code' });
+      allVenues = venues;
       const venueCodeById = new Map(venues.map(v => [v.id, v.code]));
 
       const tbody = $('#matchListBody');
@@ -178,6 +180,8 @@
   }
 
   function loadMatchForEdit(m) {
+    const venue = allVenues.find(v => v.id === m.venue_id);
+    $('#venueCode').value = venue?.code || 'default';
     $('#matchCode').value = m.code || '';
     $('#matchName').value = m.name || '';
     $('#timeline').value = m.timeline ?? '';
