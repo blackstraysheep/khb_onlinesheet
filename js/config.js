@@ -6,7 +6,7 @@
   const TOKEN_PREFIX = 'khb-';
   const TOKEN_LENGTH = 8;
 
-  const appConfig = Object.freeze({
+  global.KHB_APP_CONFIG = Object.freeze({
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     JUDGE_FUNCTION_URL: SUPABASE_URL + '/functions/v1/judge-submit-with-token',
@@ -14,6 +14,4 @@
     TOKEN_PREFIX,
     TOKEN_LENGTH,
   });
-
-  global.KHB_APP_CONFIG = appConfig;
 })(window);
