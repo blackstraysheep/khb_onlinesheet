@@ -19,6 +19,7 @@ button:hover { opacity: 0.85; }
 .msg { font-size: 0.8rem; margin-top: 6px; min-height: 1.2em; }
 .msg.ok { color: #1b998b; }
 .msg.err { color: #e94560; }
+.msg.warn { color: #f0ad4e; }
 table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 th,
 td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #223; }
@@ -37,3 +38,4 @@ tr:hover td { background: #1a2744; }
 .checkbox-grid label { font-size: 0.82rem; color: #ddd; display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: #0f3460; border-radius: 4px; cursor: pointer; }
 .checkbox-grid label:hover { background: #1a2744; }
 .text-muted { color: #888; }
+.link { color: #3a86ff; cursor: pointer; text-decoration: underline; }

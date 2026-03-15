@@ -4,7 +4,7 @@
   const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
   const TOKEN_PREFIX = CONFIG.TOKEN_PREFIX || 'khb-';
   const TOKEN_LENGTH = Number.isInteger(CONFIG.TOKEN_LENGTH) ? CONFIG.TOKEN_LENGTH : 32;
-  const ADMIN_ADD_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-add-judge';
+  const ADMIN_UPSERT_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-upsert-judge';
   const ADMIN_LIST_JUDGE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-judge-tokens';
   const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
 
@@ -24,6 +24,7 @@
   let allExpectedJudges = [];
   let allTokens = [];
   let allVenues = [];
+  let tokenStatus = { text: '管理用シークレットを入力するとTOKENを表示できます。', type: 'warn' };
 
   async function fetchJson(table, params = {}) {
     const url = new URL(SUPABASE_URL + '/rest/v1/' + table);
@@ -36,56 +37,93 @@
     return res.json();
   }
 
-  $('#btnAddJudge').addEventListener('click', async () => {
+  async function fetchJudgeTokens(secret) {
+    if (!secret) {
+      tokenStatus = { text: '管理用シークレットを入力するとTOKENを表示できます。', type: 'warn' };
+      return [];
+    }
+
+    const res = await fetch(ADMIN_LIST_JUDGE_TOKENS_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ admin_secret: secret }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || res.statusText || 'failed to fetch judge tokens');
+    }
+    tokenStatus = { text: `TOKENを表示中 (${(data.tokens || []).length}件)`, type: 'ok' };
+    return data.tokens ?? [];
+  }
+
+  function resetJudgeForm() {
+    $('#judgeId').value = '';
+    $('#judgeName').value = '';
+    $('#voiceKey').value = '';
+    $('#judgeFormHint').textContent = '一覧の「編集」で既存審査員の情報を読み込めます。';
+  }
+
+  function loadJudgeForEdit(judge) {
+    $('#judgeId').value = judge.id || '';
+    $('#judgeName').value = judge.name || '';
+    $('#voiceKey').value = judge.voice_key || '';
+    $('#judgeFormHint').textContent = `編集中: ${judge.name}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function saveJudge() {
     const secret = $('#adminSecret').value.trim();
+    const judgeId = $('#judgeId').value.trim();
     const judgeNameInput = $('#judgeName');
     const voiceKeyInput = $('#voiceKey');
     const name = judgeNameInput.value.trim();
     const voiceKey = voiceKeyInput.value.trim();
 
-    if (!secret) return showMsg('#addMsg', '管理用シークレットを入力', true);
-    if (!name) return showMsg('#addMsg', '審査員名を入力', true);
+    if (!secret) return showMsg('#addMsg', '管理用シークレットを入力', 'err');
+    if (!name) return showMsg('#addMsg', '審査員名を入力', 'err');
 
     try {
-      const res = await fetch(ADMIN_ADD_JUDGE_URL, {
+      const res = await fetch(ADMIN_UPSERT_JUDGE_URL, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           admin_secret: secret,
+          judge_id: judgeId || undefined,
           name,
-          voice_key: voiceKey || undefined,
+          voice_key: voiceKey || null,
           token_prefix: TOKEN_PREFIX,
           token_length: TOKEN_LENGTH,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showMsg('#addMsg', data.error || res.statusText, true);
+        showMsg('#addMsg', data.error || res.statusText, 'err');
         return;
       }
-      showMsg('#addMsg', `追加完了: ${data.judge_name} (token: ${data.token})`, false);
-      judgeNameInput.value = '';
-      voiceKeyInput.value = '';
+      const modeLabel = judgeId ? '更新' : '作成';
+      showMsg('#addMsg', `${modeLabel}完了: ${data.judge_name} (TOKEN: ${data.token})`, 'ok');
+      resetJudgeForm();
       await refreshAll();
     } catch (e) {
-      showMsg('#addMsg', e.message, true);
+      showMsg('#addMsg', e.message, 'err');
     }
-  });
+  }
 
   async function refreshAll() {
     try {
       const secret = $('#adminSecret').value.trim();
-      const [judges, matches, expectedJudges, tokensResult, venues] = await Promise.all([
+      let tokensResult;
+      try {
+        tokensResult = await fetchJudgeTokens(secret);
+      } catch (tokenError) {
+        tokenStatus = { text: `TOKEN取得失敗: ${tokenError.message}`, type: 'err' };
+        tokensResult = [];
+      }
+
+      const [judges, matches, expectedJudges, venues] = await Promise.all([
         fetchJson('judges', { select: 'id,name,voice_key', order: 'name.asc' }),
         fetchJson('matches', { select: 'id,code,name,timeline,num_bouts,venue_id', order: 'timeline.asc,code.asc' }),
         fetchJson('expected_judges', { select: 'match_id,judge_id' }),
-        secret
-          ? fetch(ADMIN_LIST_JUDGE_TOKENS_URL, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ admin_secret: secret }),
-            }).then(r => r.json()).then(d => d.tokens ?? [])
-          : Promise.resolve([]),
         fetchJson('venues', { select: 'id,code' }),
       ]);
       allJudges = judges;
@@ -96,21 +134,24 @@
       renderJudgeList();
       renderMatchSelect();
       renderMatchJudgeList();
+      showMsg('#judgeListMsg', tokenStatus.text, tokenStatus.type);
     } catch (e) {
       console.error('refreshAll error', e);
+      showMsg('#judgeListMsg', '一覧取得に失敗しました: ' + e.message, 'err');
     }
   }
 
   function renderJudgeList() {
     const tokenByJudge = new Map();
-    for (const t of allTokens) tokenByJudge.set(t.judge_id, t.token);
+    for (const t of allTokens) tokenByJudge.set(String(t.judge_id), t.token);
 
     const matchesByJudge = new Map();
     const matchById = new Map(allMatches.map(m => [m.id, m]));
     for (const ej of allExpectedJudges) {
-      if (!matchesByJudge.has(ej.judge_id)) matchesByJudge.set(ej.judge_id, []);
+      const judgeId = String(ej.judge_id);
+      if (!matchesByJudge.has(judgeId)) matchesByJudge.set(judgeId, []);
       const m = matchById.get(ej.match_id);
-      if (m) matchesByJudge.get(ej.judge_id).push(m);
+      if (m) matchesByJudge.get(judgeId).push(m);
     }
     for (const [, matches] of matchesByJudge) {
       matches.sort((a, b) => (a.timeline ?? 0) - (b.timeline ?? 0));
@@ -119,8 +160,8 @@
     const tbody = $('#judgeListBody');
     tbody.innerHTML = '';
     for (const j of allJudges) {
-      const token = tokenByJudge.get(j.id) || '-';
-      const assigned = matchesByJudge.get(j.id) || [];
+      const token = tokenByJudge.get(String(j.id)) || (allTokens.length ? '-' : '非表示');
+      const assigned = matchesByJudge.get(String(j.id)) || [];
       const assignedStr = assigned.map(m => `${esc(m.code)}(TL${m.timeline})`).join(', ') || '-';
 
       const tlGroups = new Map();
@@ -142,7 +183,9 @@
         <td>${esc(j.voice_key || '')}</td>
         <td><span class="token-text">${esc(token)}</span></td>
         <td>${assignedStr}${conflictHtml}</td>
+        <td><span class="link" data-judge-id="${esc(j.id)}">編集</span></td>
       `;
+      tr.querySelector('.link').addEventListener('click', () => loadJudgeForEdit(j));
       tbody.appendChild(tr);
     }
   }
@@ -174,12 +217,17 @@
   let selectedMatchTimeline = null;
 
   function renderMatchSelect() {
+    const previousValue = assignMatchSelect.value;
     assignMatchSelect.innerHTML = '<option value="">-- 試合を選択 --</option>';
     for (const m of allMatches) {
       const opt = document.createElement('option');
       opt.value = m.id;
       opt.textContent = `[TL${m.timeline}] ${m.code} - ${m.name}`;
       assignMatchSelect.appendChild(opt);
+    }
+    if (previousValue && allMatches.some(m => String(m.id) === String(previousValue))) {
+      assignMatchSelect.value = previousValue;
+      loadAssignForMatch();
     }
   }
 
@@ -192,9 +240,13 @@
       $('#assignConflictWarn').textContent = '';
       return;
     }
-    const match = allMatches.find(m => m.id === selectedMatchId);
+    const match = allMatches.find(m => String(m.id) === String(selectedMatchId));
     selectedMatchTimeline = match?.timeline;
-    const assigned = new Set(allExpectedJudges.filter(e => e.match_id === selectedMatchId).map(e => e.judge_id));
+    const assigned = new Set(
+      allExpectedJudges
+        .filter(e => String(e.match_id) === String(selectedMatchId))
+        .map(e => String(e.judge_id))
+    );
 
     assignCheckboxes.innerHTML = '';
     for (const j of allJudges) {
@@ -202,7 +254,7 @@
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.value = j.id;
-      cb.checked = assigned.has(j.id);
+      cb.checked = assigned.has(String(j.id));
       cb.addEventListener('change', checkConflicts);
       lbl.appendChild(cb);
       lbl.appendChild(document.createTextNode(' ' + j.name));
@@ -216,13 +268,13 @@
     const warn = $('#assignConflictWarn');
     const checkedIds = new Set(Array.from(assignCheckboxes.querySelectorAll('input:checked')).map(cb => cb.value));
 
-    const sameTimelineMatches = allMatches.filter(m => m.timeline === selectedMatchTimeline && m.id !== selectedMatchId);
+    const sameTimelineMatches = allMatches.filter(m => m.timeline === selectedMatchTimeline && String(m.id) !== String(selectedMatchId));
     const conflicts = [];
     for (const m of sameTimelineMatches) {
-      const judgesInMatch = allExpectedJudges.filter(e => e.match_id === m.id).map(e => e.judge_id);
+      const judgesInMatch = allExpectedJudges.filter(e => String(e.match_id) === String(m.id)).map(e => String(e.judge_id));
       for (const jid of judgesInMatch) {
         if (checkedIds.has(jid)) {
-          const j = allJudges.find(x => x.id === jid);
+          const j = allJudges.find(x => String(x.id) === jid);
           conflicts.push(`${j?.name || jid} → ${m.code}`);
         }
       }
@@ -232,16 +284,16 @@
   }
 
   $('#btnSaveAssign').addEventListener('click', async () => {
-    if (!selectedMatchId) return showMsg('#assignMsg', '試合を選択してください', true);
+    if (!selectedMatchId) return showMsg('#assignMsg', '試合を選択してください', 'err');
     const secret = $('#adminSecret').value.trim();
-    if (!secret) return showMsg('#assignMsg', '管理用シークレットを入力', true);
+    if (!secret) return showMsg('#assignMsg', '管理用シークレットを入力', 'err');
 
-    const match = allMatches.find(m => m.id === selectedMatchId);
+    const match = allMatches.find(m => String(m.id) === String(selectedMatchId));
     if (!match) return;
 
     const judgeIds = Array.from(assignCheckboxes.querySelectorAll('input:checked')).map(cb => cb.value).filter(Boolean);
     if (!judgeIds.length) {
-      return showMsg('#assignMsg', '審査員を1名以上選択してください', true);
+      return showMsg('#assignMsg', '審査員を1名以上選択してください', 'err');
     }
 
     const venue = allVenues.find(v => v.id === match.venue_id);
@@ -261,22 +313,25 @@
           judge_ids: judgeIds,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showMsg('#assignMsg', data.error || res.statusText, true);
+        showMsg('#assignMsg', data.error || res.statusText, 'err');
         return;
       }
-      showMsg('#assignMsg', `アサイン保存完了 (${judgeIds.length}名)`, false);
+      showMsg('#assignMsg', `アサイン保存完了 (${judgeIds.length}名)`, 'ok');
       await refreshAll();
     } catch (e) {
-      showMsg('#assignMsg', e.message, true);
+      showMsg('#assignMsg', e.message, 'err');
     }
   });
 
-  function showMsg(sel, text, isErr) {
+  function showMsg(sel, text, type) {
     const el = $(sel);
     el.textContent = text;
-    el.className = 'msg ' + (isErr ? 'err' : 'ok');
+    el.className = 'msg';
+    if (type === 'ok') el.classList.add('ok');
+    if (type === 'warn') el.classList.add('warn');
+    if (type === 'err') el.classList.add('err');
   }
 
   function esc(s) {
@@ -285,6 +340,8 @@
     return d.innerHTML;
   }
 
+  $('#btnSaveJudge').addEventListener('click', saveJudge);
+  $('#btnResetJudgeForm').addEventListener('click', resetJudgeForm);
   $('#btnRefresh').addEventListener('click', refreshAll);
   refreshAll();
 })();
