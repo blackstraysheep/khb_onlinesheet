@@ -40,6 +40,12 @@
   white-space: nowrap;
 }
 
+.tag.muted {
+  background-color: #eceff3;
+  border-color: #d7dde5;
+  color: #7b8794;
+}
+
 .state-summary-row {
   display: flex;
   flex-wrap: wrap;

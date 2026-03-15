@@ -70,16 +70,24 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
     e3Tag.textContent = `e3_reached: ${st.e3_reached}`;
 
     const currentMatchTag = document.createElement('span');
+    const isCurrentMatch = !!st.current_match_id && st.current_match_id === matchId;
     if (st.current_match_id) {
-      currentMatchTag.className = st.current_match_id === matchId ? 'tag ok' : 'tag warn';
-      currentMatchTag.textContent = st.current_match_id === matchId
+      currentMatchTag.className = isCurrentMatch ? 'tag ok' : 'tag warn';
+      currentMatchTag.textContent = isCurrentMatch
         ? 'current_match_id: true'
         : 'current_match_id: false';
     } else {
       currentMatchTag.className = 'tag warn';
       currentMatchTag.textContent = 'current_match_id: 未設定';
     }
-    firstRowNodes.push(currentMatchTag);
+
+    const currentEpochTag = document.createElement('span');
+    currentEpochTag.className = isCurrentMatch ? 'tag ok' : 'tag muted';
+    currentEpochTag.textContent = isCurrentMatch
+      ? 'current_epoch: true'
+      : 'current_epoch: N/A';
+
+    firstRowNodes.push(currentMatchTag, currentEpochTag);
     secondRowNodes.push(acceptingTag, e3Tag);
   } else {
     const stateMissingTag = document.createElement('span');
