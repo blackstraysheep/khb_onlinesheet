@@ -12,6 +12,19 @@ const adminSecret = (Deno.env.get("ADMIN_SETUP_SECRET") ?? "").trim();
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+type StateRow = {
+  accepting: boolean | null;
+  current_match_id: string | null;
+};
+
+type MatchRow = {
+  id: string;
+  code: string;
+  name: string | null;
+  num_bouts: number | null;
+  timeline: number | null;
+};
+
 function json(body: unknown, corsHeaders: HeadersInit, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -87,6 +100,126 @@ serve(async (req) => {
       return json({ error: `venue not found: ${venueCode}` }, corsHeaders, 404);
     }
     const venueId = venueRow.id as string;
+
+    const { data: currentState, error: currentStateErr } = await supabase
+      .from("state")
+      .select("accepting, current_match_id")
+      .eq("venue_id", venueId)
+      .maybeSingle();
+
+    if (currentStateErr || !currentState) {
+      return json({ error: "state not found" }, corsHeaders, 404);
+    }
+
+    const resolvedCurrentState = currentState as StateRow;
+    const isExplicitAcceptingRestart = safePatch.accepting === true &&
+      resolvedCurrentState.accepting !== true;
+
+    if (isExplicitAcceptingRestart && resolvedCurrentState.current_match_id) {
+      const targetMatchId = String(resolvedCurrentState.current_match_id);
+
+      const { data: targetExpected } = await supabase
+        .from("expected_judges")
+        .select("judge_id")
+        .eq("match_id", targetMatchId);
+      const targetJudgeIds = (targetExpected ?? []).map((r: any) => String(r.judge_id));
+
+      const { data: targetMatch } = await supabase
+        .from("matches")
+        .select("id, code, name, num_bouts, timeline")
+        .eq("id", targetMatchId)
+        .maybeSingle() as { data: MatchRow | null; error: unknown };
+
+      if (!targetMatch) {
+        return json({ error: "current match not found" }, corsHeaders, 404);
+      }
+
+      if (targetJudgeIds.length > 0) {
+        const { data: allActiveStates } = await supabase
+          .from("state")
+          .select("venue_id, current_match_id")
+          .eq("accepting", true);
+
+        const otherMatchIds = (allActiveStates ?? [])
+          .filter((row: any) => String(row.venue_id) !== venueId)
+          .map((row: any) => String(row.current_match_id))
+          .filter((matchId: string) => matchId && matchId !== targetMatchId);
+
+        if (otherMatchIds.length > 0) {
+          const { data: otherExpected } = await supabase
+            .from("expected_judges")
+            .select("match_id, judge_id")
+            .in("match_id", otherMatchIds)
+            .in("judge_id", targetJudgeIds);
+
+          if (otherExpected && otherExpected.length > 0) {
+            const otherMatchIdSet = [...new Set(otherExpected.map((row: any) => String(row.match_id)))];
+            const { data: otherMatches } = await supabase
+              .from("matches")
+              .select("id, code, name, num_bouts, timeline")
+              .in("id", otherMatchIdSet) as { data: MatchRow[] | null; error: unknown };
+            const otherMatchMap = new Map<string, MatchRow>(
+              (otherMatches ?? []).map((match) => [String(match.id), match]),
+            );
+
+            const { data: otherSnaps } = await supabase
+              .from("match_snapshots")
+              .select("match_id, epoch")
+              .in("match_id", otherMatchIdSet);
+            const otherMaxEpoch = new Map<string, number>();
+            for (const snap of (otherSnaps ?? [])) {
+              const matchId = String(snap.match_id);
+              const currentMax = otherMaxEpoch.get(matchId) ?? 0;
+              if (snap.epoch > currentMax) otherMaxEpoch.set(matchId, snap.epoch);
+            }
+
+            const conflictJudgeIds = [...new Set(otherExpected.map((row: any) => String(row.judge_id)))];
+            const { data: judgeRows } = await supabase
+              .from("judges")
+              .select("id, name")
+              .in("id", conflictJudgeIds);
+            const judgeNameMap = new Map<string, string | null>(
+              (judgeRows ?? []).map((judge: any) => [String(judge.id), judge.name ?? null]),
+            );
+
+            const conflicts = [];
+            for (const row of otherExpected) {
+              const otherMatchId = String(row.match_id);
+              const otherMatchRow = otherMatchMap.get(otherMatchId);
+              if (!otherMatchRow) continue;
+
+              const numBouts = typeof otherMatchRow.num_bouts === "number"
+                ? otherMatchRow.num_bouts
+                : 5;
+              const maxConfirmed = otherMaxEpoch.get(otherMatchId) ?? 0;
+              if (maxConfirmed >= numBouts) continue;
+
+              const sameTimeline = targetMatch.timeline !== null &&
+                otherMatchRow.timeline !== null &&
+                targetMatch.timeline === otherMatchRow.timeline;
+              if (!sameTimeline) continue;
+
+              conflicts.push({
+                judge_id: String(row.judge_id),
+                judge_name: judgeNameMap.get(String(row.judge_id)) ?? null,
+                other_match_code: otherMatchRow.code,
+                other_match_name: otherMatchRow.name ?? null,
+                other_timeline: otherMatchRow.timeline ?? null,
+                same_timeline: true,
+              });
+            }
+
+            if (conflicts.length > 0) {
+              return json({
+                error: "same_timeline_conflict",
+                message: "同一タイムラインで審査中の審査員がいるため、受付を再開できません。",
+                conflicts,
+              }, corsHeaders, 409);
+            }
+          }
+        }
+      }
+    }
 
     // 4. state を更新
     const { data: updated, error: updErr } = await supabase

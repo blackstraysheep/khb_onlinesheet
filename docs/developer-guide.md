@@ -574,12 +574,11 @@ SET_MATCH: 試合開始 (epoch=1, accepting=true)
 
 - **同一 timeline 値** → 同時進行（並行試合）
 - **小さい値** → 先に進行
-- 審査員が複数試合に割り当てられている場合、以下の優先度で候補試合を選択:
-  1. `accepting=true` かつ未完了（優先度 0）
-  2. `accepting=false` かつ未完了（優先度 1）
-  3. 試合完了済み（優先度 2）
+- 審査員が複数試合に割り当てられている場合、候補試合の選択優先度はモードで分かれる:
+  1. 通常送信モード: `accepting=true` かつ未完了 → `accepting=false` かつ未完了 → 試合完了済み
+  2. `info` モード: `accepting=true` かつ未完了 → 試合完了済み → `accepting=false` かつ未完了
   - 同優先度内: timeline 昇順 → match.code 辞書順
-- **試合完了後も画面を保持**: 優先度 2 の場合は `match_complete: true` を返し、審査員画面に最終採点内訳を講評終了まで表示し続ける（送信ボタンは無効化）
+- **試合完了後も画面を保持**: `info` モードでは、最終対戦の E5 後も次試合が実際に `accepting=true` で開始されるまで `match_complete: true` を返し、審査員画面に最終採点内訳を講評終了まで表示し続ける（送信ボタンは無効化）
 - 試合完了判定: `match_snapshots` の確定済み epoch 数 ≥ `matches.num_bouts`
 
 REAL 型のため `1.5` のような中間値も可能。
