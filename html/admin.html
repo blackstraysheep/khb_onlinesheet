@@ -9,10 +9,12 @@
 </head>
 
 <body>
-  <h1>KHB-Kuawase Admin Panel</h1>
-  <div class="admin-nav">
-    <a href="admin-match.html" class="admin-nav-link">試合管理</a>
-    <a href="admin-judges.html" class="admin-nav-link">審査員管理</a>
+  <div class="page-header">
+    <h1>KHB-Kuawase Admin Panel</h1>
+    <div class="admin-nav">
+      <a href="admin-match.html" class="admin-nav-link">試合設定</a>
+      <a href="admin-judges.html" class="admin-nav-link">審査員設定</a>
+    </div>
   </div>
 
   <div class="layout-grid">
@@ -78,18 +80,6 @@
         <div class="msg" id="e5e6Status"></div>
       </section>
 
-      <!-- 審査員の並び替え -->
-      <section class="card">
-        <h2 class="card-header small">審査員の並び替え</h2>
-        <div id="judgeReorderList" class="judge-select-list">
-          <div class="small placeholder-muted">(試合を選択してください)</div>
-        </div>
-        <div class="control-group">
-          <button id="btnSaveJudgeOrder" class="small-btn btn-green">並び順を保存</button>
-        </div>
-        <div class="msg" id="judgeReorderStatus"></div>
-      </section>
-
       <!-- 得点読み上げパネル -->
       <section class="card">
         <h2 class="card-header">得点読み上げパネル</h2>
@@ -104,6 +94,20 @@
           <button id="btnAudioStop" class="small-btn btn-grey">停止</button>
         </div>
       </section>
+
+      <!-- 審査員の並び替え -->
+      <details class="card collapsible-card">
+        <summary class="card-header small collapsible-summary">審査員の並び替え</summary>
+        <div class="collapsible-body">
+          <div id="judgeReorderList" class="judge-select-list">
+            <div class="small placeholder-muted">(試合を選択してください)</div>
+          </div>
+          <div class="control-group">
+            <button id="btnSaveJudgeOrder" class="small-btn btn-green">並び順を保存</button>
+          </div>
+          <div class="msg" id="judgeReorderStatus"></div>
+        </div>
+      </details>
 
     </div>
   </div>

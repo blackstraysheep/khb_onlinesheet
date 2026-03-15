@@ -34,32 +34,40 @@ function appendTextAndStrong(parent, prefix, strongText, suffix = '') {
 function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expectedCount, submittedCount }) {
   if (!adminCoreDom.stateSummary) return;
 
-  const nodes = [];
+  const createSummaryRow = (...children) => {
+    const row = document.createElement('div');
+    row.className = 'state-summary-row';
+    row.append(...children);
+    return row;
+  };
+
+  const metaNodes = [];
 
   const matchSpan = document.createElement('span');
   appendTextAndStrong(matchSpan, '試合: ', match.code ?? '', ` (${match.name || ''})`);
-  nodes.push(matchSpan);
+  metaNodes.push(matchSpan);
 
   const boutSpan = document.createElement('span');
   boutSpan.textContent = boutLabelFull
     ? `第${epoch}対戦（${boutLabelFull}）`
     : `第${epoch}対戦`;
-  nodes.push(boutSpan);
+  metaNodes.push(boutSpan);
+
+  const epochSpan = document.createElement('span');
+  appendTextAndStrong(epochSpan, 'state.epoch: ', st?.epoch ?? '');
+  metaNodes.push(epochSpan);
+
+  const firstRowNodes = [...metaNodes];
+  const secondRowNodes = [];
 
   if (st) {
-    const epochSpan = document.createElement('span');
-    appendTextAndStrong(epochSpan, 'state.epoch: ', st.epoch ?? '');
-    nodes.push(epochSpan);
-
     const acceptingTag = document.createElement('span');
     acceptingTag.className = `tag ${st.accepting ? 'ok' : 'danger'}`;
     acceptingTag.textContent = `accepting: ${st.accepting}`;
-    nodes.push(acceptingTag);
 
     const e3Tag = document.createElement('span');
     e3Tag.className = `tag outline ${st.e3_reached ? 'ok' : 'warn'}`;
     e3Tag.textContent = `e3_reached: ${st.e3_reached}`;
-    nodes.push(e3Tag);
 
     const currentMatchTag = document.createElement('span');
     if (st.current_match_id) {
@@ -71,23 +79,28 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
       currentMatchTag.className = 'tag warn';
       currentMatchTag.textContent = 'current_match_id: 未設定';
     }
-    nodes.push(currentMatchTag);
+    firstRowNodes.push(currentMatchTag);
+    secondRowNodes.push(acceptingTag, e3Tag);
   } else {
     const stateMissingTag = document.createElement('span');
     stateMissingTag.className = 'tag warn';
     stateMissingTag.textContent = 'state が取得できません';
-    nodes.push(stateMissingTag);
+    secondRowNodes.push(stateMissingTag);
   }
 
   const expectedSpan = document.createElement('span');
   appendTextAndStrong(expectedSpan, '期待審査員: ', expectedCount, ' 人');
-  nodes.push(expectedSpan);
 
   const submittedSpan = document.createElement('span');
   appendTextAndStrong(submittedSpan, '提出済み: ', submittedCount, ' 人');
-  nodes.push(submittedSpan);
+  secondRowNodes.push(expectedSpan, submittedSpan);
 
-  adminCoreDom.stateSummary.replaceChildren(...nodes);
+  const rows = [createSummaryRow(...firstRowNodes)];
+  if (secondRowNodes.length > 0) {
+    rows.push(createSummaryRow(...secondRowNodes));
+  }
+
+  adminCoreDom.stateSummary.replaceChildren(...rows);
 }
 
 function buildLoadSignature({ match, epoch, st, expectedIds, judgesMap, subs, scoreboardMode }) {

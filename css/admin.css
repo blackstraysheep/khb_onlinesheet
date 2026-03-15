@@ -19,15 +19,65 @@
   white-space: pre-wrap;
 }
 
-.admin-nav {
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.admin-nav {
   display: flex;
   gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .admin-nav-link {
   color: #3a86ff;
   font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.state-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.collapsible-card {
+  padding-top: 0;
+}
+
+.collapsible-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 0;
+  padding: 8px 0;
+}
+
+.collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-summary::before {
+  content: "▸";
+  font-size: 0.8rem;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.collapsible-card[open] .collapsible-summary::before {
+  transform: rotate(90deg);
+}
+
+.collapsible-body {
+  padding-top: 8px;
 }
 
 .row-align-end {
@@ -222,4 +272,15 @@ select {
   border-top: 1px solid #333;
   margin-top: 2px;
   padding-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-nav {
+    justify-content: flex-start;
+  }
 }
