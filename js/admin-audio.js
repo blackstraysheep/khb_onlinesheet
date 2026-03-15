@@ -26,9 +26,13 @@ const audioPhraseFiles = {
   win_draw_white: 'deWhite_sakuhin.mp3',
 };
 
-function setAudioStatus(text) {
+function setAudioStatus(text, type = '') {
   if (!adminAudioDom.audioStatusEl) return;
   adminAudioDom.audioStatusEl.textContent = text || '';
+  adminAudioDom.audioStatusEl.className = 'msg';
+  if (type === 'ok') adminAudioDom.audioStatusEl.classList.add('ok');
+  if (type === 'warn') adminAudioDom.audioStatusEl.classList.add('warn');
+  if (type === 'err') adminAudioDom.audioStatusEl.classList.add('err');
 }
 
 function initAudio() {
@@ -90,7 +94,7 @@ function playAudioClip(id) {
 
 async function playAudioQueue() {
   if (!adminAudioState.audioQueue.length) {
-    setAudioStatus('再生キューが空です。');
+    setAudioStatus('再生キューが空です。', 'warn');
     adminAudioState.audioPlaying = false;
     return;
   }
@@ -106,7 +110,7 @@ async function playAudioQueue() {
   if (scoreboardVisibleSuccess) {
     setAudioStatus('再生中…');
   } else {
-    setAudioStatus('⚠ スコアボード表示の設定に失敗しました。音声のみ再生します。');
+    setAudioStatus('スコアボード表示の設定に失敗しました。音声のみ再生します。', 'warn');
   }
   adminAudioState.audioPlaying = true;
   renderAudioQueue(true);
@@ -119,7 +123,7 @@ async function playAudioQueue() {
   renderAudioQueue();
 
   if (adminAudioState.audioPlaying) {
-    setAudioStatus('再生完了');
+    setAudioStatus('再生完了', 'ok');
   } else {
     setAudioStatus('停止しました');
   }
@@ -248,7 +252,7 @@ function rebuildAudioQueue() {
 
   adminAudioState.audioQueue = queue;
   adminAudioState.audioQueueIndex = 0;
-  setAudioStatus(`再生キューを準備しました（${queue.length}クリップ）。`);
+  setAudioStatus(`再生キューを準備しました（${queue.length}クリップ）。`, 'ok');
   renderAudioQueue();
 }
 
@@ -316,7 +320,7 @@ function scheduleAudioRefresh(data) {
     adminAudioState.pendingAudioRefresh = null;
     adminAudioState.audioQueue = [];
     adminAudioState.audioQueueIndex = 0;
-    setAudioStatus('再生キューが空です。');
+    setAudioStatus('再生キューが空です。', 'warn');
     return;
   }
   if (adminAudioState.audioPlaying) {

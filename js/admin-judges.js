@@ -280,7 +280,7 @@
       }
     }
 
-    warn.textContent = conflicts.length > 0 ? '⚠ 同一タイムライン重複: ' + conflicts.join(', ') : '';
+    warn.textContent = conflicts.length > 0 ? '同一タイムライン重複: ' + conflicts.join(', ') : '';
   }
 
   $('#btnSaveAssign').addEventListener('click', async () => {

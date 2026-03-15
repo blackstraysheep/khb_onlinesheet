@@ -414,7 +414,7 @@ if (adminCoreDom.btnStartMatch) {
       if (hasWarnings) {
         const names = [...new Set(data.warnings.map(w => w.judge_name || w.judge_id))];
         const matches = [...new Set(data.warnings.map(w => w.other_match_name || w.other_match_code))];
-        statusMsg += `\n⚠ 警告: ${names.join(', ')} は別の試合 (${matches.join(', ')}) を審査中です`;
+      statusMsg += `\n警告: ${names.join(', ')} は別の試合 (${matches.join(', ')}) を審査中です`;
       }
       adminCoreUtils.setMsg(statusMsg, hasWarnings ? 'warn' : 'ok');
       await adminCoreUi.populateMatches();
@@ -498,7 +498,7 @@ async function onClickE6() {
 
       if (!snapshots.length) {
         // E5未実行
-        if (!confirm(`⚠ E5が未実行です（epoch=${epoch}）。\nスナップショットを保存せずに次の対戦へ進みますか？`)) {
+        if (!confirm(`E5が未実行です（epoch=${epoch}）。\nスナップショットを保存せずに次の対戦へ進みますか？`)) {
           setE5E6Status('E6 をキャンセルしました。', '');
           return;
         }
@@ -514,7 +514,7 @@ async function onClickE6() {
         });
 
         if (newerSubs.length > 0) {
-          if (!confirm(`⚠ E5確定後に提出の修正があります（epoch=${epoch}）。\n再度E5を実行してから進むことを推奨します。このまま次の対戦へ進みますか？`)) {
+          if (!confirm(`E5確定後に提出の修正があります（epoch=${epoch}）。\n再度E5を実行してから進むことを推奨します。このまま次の対戦へ進みますか？`)) {
             setE5E6Status('E6 をキャンセルしました。', '');
             return;
           }
@@ -522,7 +522,7 @@ async function onClickE6() {
       }
     } catch (err) {
       console.warn('E5チェック中にエラー:', err);
-      if (!confirm('⚠ E5の状態を確認できませんでした。このまま次の対戦へ進みますか？')) {
+      if (!confirm('E5の状態を確認できませんでした。このまま次の対戦へ進みますか？')) {
         setE5E6Status('E6 をキャンセルしました。', '');
         return;
       }
