@@ -25,13 +25,19 @@ type RequestBody = {
   white_team_name?: string;
   judges?: JudgeInput[];
   token_prefix?: string;
+  token_length?: number;
 };
 
+function normalizeTokenLength(value: unknown, fallback = 32): number {
+  if (typeof value !== "number" || !Number.isInteger(value)) return fallback;
+  return Math.min(128, Math.max(8, value));
+}
+
 // ランダムなトークンを生成
-function generateToken(prefix = "khb-"): string {
-  const bytes = new Uint8Array(16);
+function generateToken(prefix = "khb-", tokenLength = 32): string {
+  const bytes = new Uint8Array(Math.ceil(tokenLength / 2));
   crypto.getRandomValues(bytes);
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, tokenLength);
   return prefix + hex;
 }
 
@@ -71,7 +77,9 @@ serve(async (req) => {
       white_team_name,
       judges,
       token_prefix = "khb-",
+      token_length,
     } = body ?? {};
+    const tokenLength = normalizeTokenLength(token_length);
 
     // 1. 管理用シークレット確認
     if (!adminSecret) {
@@ -258,7 +266,7 @@ serve(async (req) => {
         if (existingToken) {
           token = existingToken.token as string;
         } else {
-          token = generateToken(token_prefix);
+          token = generateToken(token_prefix, tokenLength);
           const { error: insErr } = await supabase
             .from("access_tokens")
             .insert({

@@ -2,6 +2,8 @@
   const CONFIG = window.KHB_APP_CONFIG || {};
   const SUPABASE_URL = CONFIG.SUPABASE_URL;
   const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
+  const TOKEN_PREFIX = CONFIG.TOKEN_PREFIX || 'khb-';
+  const TOKEN_LENGTH = Number.isInteger(CONFIG.TOKEN_LENGTH) ? CONFIG.TOKEN_LENGTH : 32;
   const ADMIN_ADD_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-add-judge';
   const ADMIN_LIST_JUDGE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-judge-tokens';
   const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
@@ -52,6 +54,8 @@
           admin_secret: secret,
           name,
           voice_key: voiceKey || undefined,
+          token_prefix: TOKEN_PREFIX,
+          token_length: TOKEN_LENGTH,
         }),
       });
       const data = await res.json();

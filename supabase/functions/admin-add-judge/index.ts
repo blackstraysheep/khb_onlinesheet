@@ -19,10 +19,15 @@ function json(body: unknown, corsHeaders: HeadersInit, status = 200) {
   });
 }
 
-function generateToken(prefix = "khb-"): string {
-  const bytes = new Uint8Array(16);
+function normalizeTokenLength(value: unknown, fallback = 32): number {
+  if (typeof value !== "number" || !Number.isInteger(value)) return fallback;
+  return Math.min(128, Math.max(8, value));
+}
+
+function generateToken(prefix = "khb-", tokenLength = 32): string {
+  const bytes = new Uint8Array(Math.ceil(tokenLength / 2));
   crypto.getRandomValues(bytes);
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, tokenLength);
   return prefix + hex;
 }
 
@@ -44,6 +49,7 @@ serve(async (req) => {
       name?: string;
       voice_key?: string;
       token_prefix?: string;
+      token_length?: number;
     } | null;
 
     // 1. admin_secret 確認
@@ -64,6 +70,7 @@ serve(async (req) => {
     }
     const voiceKey = (body?.voice_key ?? "").trim() || null;
     const tokenPrefix = (body?.token_prefix ?? "khb-").trim();
+    const tokenLength = normalizeTokenLength(body?.token_length);
 
     // 4. judges テーブルに upsert（同名なら voice_key を更新）
     let judgeId: string;
@@ -114,7 +121,7 @@ serve(async (req) => {
       if (existingToken) {
         token = existingToken.token as string;
       } else {
-        token = generateToken(tokenPrefix);
+        token = generateToken(tokenPrefix, tokenLength);
         const { error: tokErr } = await supabase
           .from("access_tokens")
           .insert({ token, judge_id: judgeId, role: "judge" });

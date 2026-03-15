@@ -5,11 +5,12 @@
 (() => {
 const adminAudioDom = window.KHBAdmin?.dom || {};
 const adminAudioApi = window.KHBAdmin?.api || {};
+const adminAudioConfig = window.KHBAdmin?.config || {};
 const adminAudioConstants = window.KHBAdmin?.constants || {};
 const adminAudioHelpers = window.KHBAdmin?.helpers || {};
 const adminAudioState = window.KHBAdmin?.audioState || {};
 
-const AUDIO_BASE = 'https://blackstraysheep.github.io/khb_onlinesheet/audio/';
+const AUDIO_BASE = adminAudioConfig.AUDIO_BASE_URL || 'https://blackstraysheep.github.io/khb_onlinesheet/audio/';
 
 const audioPhraseFiles = {
   start: 'start.mp3',

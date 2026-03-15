@@ -268,7 +268,8 @@ Body:
   "red_team_name": "string?",
   "white_team_name": "string?",
   "judges": [{ "name": "string" }],
-  "token_prefix": "string (default: 'khb-')"
+  "token_prefix": "string (default: 'khb-')",
+  "token_length": "number (default: 32, random hex chars)"
 }
 ```
 
@@ -278,7 +279,7 @@ Body:
 3. 各審査員（入力配列順）:
    - `judges` を `name` で検索 → なければ INSERT
    - `expected_judges` を DELETE → INSERT（`sort_order = judges[]` の順番）
-   - `access_tokens` → 既存あれば再利用、なければ `crypto.getRandomValues(16)` で生成
+   - `access_tokens` → 既存あれば再利用、なければ `token_prefix` + ランダムhex文字列（長さ `token_length`）で生成
 
 **レスポンス (200)**:
 ```json
@@ -301,7 +302,8 @@ Body:
   "admin_secret": "string",
   "name": "string (必須)",
   "voice_key": "string?",
-  "token_prefix": "string (default: 'khb-')"
+  "token_prefix": "string (default: 'khb-')",
+  "token_length": "number (default: 32, random hex chars)"
 }
 ```
 

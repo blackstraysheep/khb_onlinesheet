@@ -2,6 +2,8 @@
   const CONFIG = window.KHB_APP_CONFIG || {};
   const SUPABASE_URL = CONFIG.SUPABASE_URL;
   const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
+  const TOKEN_PREFIX = CONFIG.TOKEN_PREFIX || 'khb-';
+  const TOKEN_LENGTH = Number.isInteger(CONFIG.TOKEN_LENGTH) ? CONFIG.TOKEN_LENGTH : 32;
   const ADMIN_SETUP_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-setup-match';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -54,6 +56,8 @@
           num_bouts: numBouts,
           red_team_name: redTeam || undefined,
           white_team_name: whiteTeam || undefined,
+          token_prefix: TOKEN_PREFIX,
+          token_length: TOKEN_LENGTH,
         }),
       });
       const data = await res.json();
