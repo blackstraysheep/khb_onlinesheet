@@ -10,58 +10,64 @@
   <a class="back-link" href="admin.html">&larr; 管理画面に戻る</a>
   <h1>試合管理</h1>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <label for="adminSecret">管理用シークレット</label>
-        <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET" class="input-lg" />
+  <div class="match-layout-grid">
+    <div class="match-layout-left">
+      <div class="card">
+        <div class="card-header-row">
+          <h2 class="card-header">試合一覧</h2>
+          <button id="btnRefreshMatches" class="btn-blue">一覧を更新</button>
+        </div>
+        <div id="matchListContainer">
+          <table>
+            <thead>
+              <tr><th>会場</th><th>TL</th><th>コード</th><th>試合名</th><th>紅</th><th>白</th><th>対戦数</th><th>状態</th><th>操作</th></tr>
+            </thead>
+            <tbody id="matchListBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-header">受付中の試合 (accepting = true)</h2>
+        <div id="acceptingListContainer">
+          <table>
+            <thead>
+              <tr><th>会場</th><th>TL</th><th>試合コード</th><th>試合名</th><th>紅</th><th>白</th><th>epoch</th><th>最終E5</th></tr>
+            </thead>
+            <tbody id="acceptingListBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="card">
-    <h2 class="card-header">試合作成・編集</h2>
-    <div class="row mb-8">
-      <div><label for="venueCode">会場コード</label><input id="venueCode" value="default" class="input-md" /></div>
-      <div><label for="matchCode">試合コード</label><input id="matchCode" placeholder="例: A-1" class="input-md" /></div>
-      <div><label for="matchName">試合名</label><input id="matchName" placeholder="例: 予選A" class="input-md" /></div>
-      <div><label for="timeline">タイムライン</label><input id="timeline" type="number" step="0.1" placeholder="例: 1" class="input-sm" /></div>
-      <div><label for="numBouts">対戦数</label><input id="numBouts" type="number" value="5" min="1" max="9" class="input-sm" /></div>
-    </div>
-    <div class="row mb-8">
-      <div><label for="redTeam">紅チーム</label><input id="redTeam" placeholder="紅チーム名" class="input-md" /></div>
-      <div><label for="whiteTeam">白チーム</label><input id="whiteTeam" placeholder="白チーム名" class="input-md" /></div>
-    </div>
-    <div class="row">
-      <button id="btnSaveMatch" class="btn-green">試合を保存</button>
-    </div>
-    <div class="msg" id="saveMsg"></div>
-  </div>
+    <div class="match-layout-right">
+      <div class="card">
+        <div class="row">
+          <div>
+            <label for="adminSecret">管理用シークレット</label>
+            <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET" class="input-lg" />
+          </div>
+        </div>
+      </div>
 
-  <div class="card">
-    <h2 class="card-header">試合一覧</h2>
-    <div class="row mb-8">
-      <button id="btnRefreshMatches" class="btn-blue">一覧を更新</button>
-    </div>
-    <div id="matchListContainer">
-      <table>
-        <thead>
-          <tr><th>会場</th><th>TL</th><th>コード</th><th>試合名</th><th>紅</th><th>白</th><th>対戦数</th><th>状態</th><th>操作</th></tr>
-        </thead>
-        <tbody id="matchListBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2 class="card-header">受付中の試合 (accepting = true)</h2>
-    <div id="acceptingListContainer">
-      <table>
-        <thead>
-          <tr><th>会場</th><th>TL</th><th>試合コード</th><th>試合名</th><th>紅</th><th>白</th><th>epoch</th><th>最終E5</th></tr>
-        </thead>
-        <tbody id="acceptingListBody"></tbody>
-      </table>
+      <div class="card">
+        <h2 class="card-header">試合作成・編集</h2>
+        <div class="row mb-8">
+          <div><label for="venueCode">会場コード</label><input id="venueCode" value="default" class="input-md" /></div>
+          <div><label for="matchCode">試合コード</label><input id="matchCode" placeholder="例: A-1" class="input-md" /></div>
+          <div><label for="matchName">試合名</label><input id="matchName" placeholder="例: 予選A" class="input-md" /></div>
+          <div><label for="timeline">タイムライン</label><input id="timeline" type="number" step="0.1" placeholder="例: 1" class="input-sm" /></div>
+          <div><label for="numBouts">対戦数</label><input id="numBouts" type="number" value="5" min="1" max="9" class="input-sm" /></div>
+        </div>
+        <div class="row mb-8">
+          <div><label for="redTeam">紅チーム</label><input id="redTeam" placeholder="紅チーム名" class="input-md" /></div>
+          <div><label for="whiteTeam">白チーム</label><input id="whiteTeam" placeholder="白チーム名" class="input-md" /></div>
+        </div>
+        <div class="row">
+          <button id="btnSaveMatch" class="btn-green">試合を保存</button>
+        </div>
+        <div class="msg" id="saveMsg"></div>
+      </div>
     </div>
   </div>
 

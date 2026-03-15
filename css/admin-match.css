@@ -3,6 +3,15 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; colo
 h1 { font-size: 1.3rem; margin-bottom: 12px; }
 .card { background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
 .card-header { font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid #334; padding-bottom: 6px; }
+.card-header-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.card-header-row .card-header { margin-bottom: 0; flex: 1; }
+.card-header-row button { flex: 0 0 auto; }
+.match-layout-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap: 12px; align-items: start; }
+.match-layout-left,
+.match-layout-right { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.match-layout-right .row > div { flex: 1 1 180px; min-width: 0; }
+.match-layout-right input,
+.match-layout-right select { width: 100%; }
 label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 2px; }
 input,
 select { background: #0f3460; color: #fff; border: 1px solid #334; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; }
@@ -39,3 +48,8 @@ tr:hover td { background: #1a2744; }
 .back-link { display: inline-block; margin-bottom: 10px; color: #3a86ff; text-decoration: none; font-size: 0.85rem; }
 .back-link:hover { text-decoration: underline; }
 .table-empty { color: #888; text-align: center; }
+
+@media (max-width: 900px) {
+  .match-layout-grid { grid-template-columns: 1fr; }
+  .card-header-row { align-items: flex-start; flex-wrap: wrap; }
+}

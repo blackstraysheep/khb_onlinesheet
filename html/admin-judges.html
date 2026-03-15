@@ -10,67 +10,73 @@
   <a class="back-link" href="admin.html">&larr; 管理画面に戻る</a>
   <h1>審査員管理</h1>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <label for="adminSecret">管理用シークレット</label>
-        <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET" class="input-lg" />
+  <div class="judges-layout-grid">
+    <div class="judges-layout-left">
+      <div class="card">
+        <div class="card-header-row">
+          <h2 class="card-header">審査員一覧（名前順）</h2>
+          <button id="btnRefresh" class="btn-blue">一覧を更新</button>
+        </div>
+        <div class="msg" id="judgeListMsg"></div>
+        <table>
+          <thead>
+            <tr><th>名前</th><th>Voice Key</th><th>TOKEN</th><th>担当試合</th><th>操作</th></tr>
+          </thead>
+          <tbody id="judgeListBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2 class="card-header">試合ごとの審査員</h2>
+        <table>
+          <thead>
+            <tr><th>TL</th><th>コード</th><th>試合名</th><th>審査員</th></tr>
+          </thead>
+          <tbody id="matchJudgeListBody"></tbody>
+        </table>
       </div>
     </div>
-  </div>
 
-  <div class="card">
-    <h2 class="card-header">審査員作成・編集</h2>
-    <div class="row mb-8">
-      <input id="judgeId" type="hidden" />
-      <div><label for="judgeName">審査員名</label><input id="judgeName" placeholder="審査員名" class="input-md" /></div>
-      <div><label for="voiceKey">Voice Key (任意)</label><input id="voiceKey" placeholder="例: sato" class="input-md" /></div>
-      <div><button id="btnSaveJudge" class="btn-green">保存</button></div>
-      <div><button id="btnResetJudgeForm" class="btn-blue">入力をクリア</button></div>
-    </div>
-    <div class="msg" id="judgeFormHint">一覧の「編集」で既存審査員の情報を読み込めます。</div>
-    <div class="msg" id="addMsg"></div>
-  </div>
-
-  <div class="card">
-    <h2 class="card-header">審査員一覧（名前順）</h2>
-    <div class="row mb-8">
-      <button id="btnRefresh" class="btn-blue">一覧を更新</button>
-    </div>
-    <div class="msg" id="judgeListMsg"></div>
-    <table>
-      <thead>
-        <tr><th>名前</th><th>Voice Key</th><th>TOKEN</th><th>担当試合</th><th>操作</th></tr>
-      </thead>
-      <tbody id="judgeListBody"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2 class="card-header">試合ごとの審査員</h2>
-    <table>
-      <thead>
-        <tr><th>TL</th><th>コード</th><th>試合名</th><th>審査員</th></tr>
-      </thead>
-      <tbody id="matchJudgeListBody"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2 class="card-header">期待審査員をアサイン</h2>
-    <div class="assign-section">
-      <div class="row mb-8">
-        <div>
-          <label for="assignMatch">試合を選択</label>
-          <select id="assignMatch" class="input-lg"></select>
+    <div class="judges-layout-right">
+      <div class="card">
+        <div class="row">
+          <div>
+            <label for="adminSecret">管理用シークレット</label>
+            <input id="adminSecret" type="password" placeholder="ADMIN_SETUP_SECRET" class="input-lg" />
+          </div>
         </div>
       </div>
-      <div id="assignCheckboxes" class="checkbox-grid"></div>
-      <div id="assignConflictWarn" class="conflict-warn mb-8"></div>
-      <div class="row">
-        <button id="btnSaveAssign" class="btn-green">アサインを保存</button>
+
+      <div class="card">
+        <h2 class="card-header">審査員作成・編集</h2>
+        <div class="row mb-8">
+          <input id="judgeId" type="hidden" />
+          <div><label for="judgeName">審査員名</label><input id="judgeName" placeholder="審査員名" class="input-md" /></div>
+          <div><label for="voiceKey">Voice Key (任意)</label><input id="voiceKey" placeholder="例: sato" class="input-md" /></div>
+          <div><button id="btnSaveJudge" class="btn-green">保存</button></div>
+          <div><button id="btnResetJudgeForm" class="btn-blue">入力をクリア</button></div>
+        </div>
+        <div class="msg" id="judgeFormHint">一覧の「編集」で既存審査員の情報を読み込めます。</div>
+        <div class="msg" id="addMsg"></div>
       </div>
-      <div class="msg" id="assignMsg"></div>
+
+      <div class="card">
+        <h2 class="card-header">期待審査員をアサイン</h2>
+        <div class="assign-section">
+          <div class="row mb-8">
+            <div>
+              <label for="assignMatch">試合を選択</label>
+              <select id="assignMatch" class="input-lg"></select>
+            </div>
+          </div>
+          <div id="assignCheckboxes" class="checkbox-grid"></div>
+          <div id="assignConflictWarn" class="conflict-warn mb-8"></div>
+          <div class="row">
+            <button id="btnSaveAssign" class="btn-green">アサインを保存</button>
+          </div>
+          <div class="msg" id="assignMsg"></div>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -95,6 +95,20 @@
   align-items: flex-end;
 }
 
+.layout-right .row > div {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.layout-right input:not([type="hidden"]),
+.layout-right select {
+  width: 100%;
+}
+
+.layout-right .row-align-end {
+  flex: 0 0 auto;
+}
+
 .epoch-label {
   margin: 0;
   display: flex;
