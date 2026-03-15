@@ -54,7 +54,7 @@
 }
 
 .collapsible-card {
-  padding-top: 0;
+  padding-top: 8px;
 }
 
 .collapsible-summary {
@@ -63,8 +63,12 @@
   gap: 8px;
   cursor: pointer;
   list-style: none;
-  margin-bottom: 0;
-  padding: 8px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border);
 }
 
 .collapsible-summary::-webkit-details-marker {
@@ -83,7 +87,7 @@
 }
 
 .collapsible-body {
-  padding-top: 8px;
+  padding-top: 10px;
 }
 
 .row-align-end {
@@ -147,7 +151,7 @@ select {
   border-radius: 6px;
   border: 1px solid var(--border);
   font-size: .9rem;
-  min-width: 120px;
+  min-width: 90px;
   background: #fff;
 }
 
