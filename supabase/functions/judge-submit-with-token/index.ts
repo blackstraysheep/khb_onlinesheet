@@ -173,11 +173,16 @@ serve(async (req)=>{
       return json({ error: "no active match for this judge" }, 409);
     }
 
-    // 優先度付きソート: 0=active未完了, 1=inactive未完了, 2=完了済み → timeline昇順 → code辞書順
+    // 優先度付きソート
+    // 通常送信モード: active未完了 > inactive未完了 > 完了済み
+    // infoモード: active未完了 > 完了済み > inactive未完了
+    // これにより最終epochのE5後も、次試合が実際に受付開始するまでは
+    // 審査員画面に最終採点内訳を保持できる。
     const candidatePriority = (c: Candidate): number => {
-      if (c.isComplete) return 2;
-      if (c.stateRow.accepting) return 0;
-      return 1;
+      if (c.stateRow.accepting && !c.isComplete) return 0;
+      if (infoMode && c.isComplete) return 1;
+      if (!c.stateRow.accepting && !c.isComplete) return infoMode ? 2 : 1;
+      return infoMode ? 1 : 2;
     };
     candidates.sort((a, b) => {
       const pA = candidatePriority(a), pB = candidatePriority(b);
