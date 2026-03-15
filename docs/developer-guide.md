@@ -269,7 +269,7 @@ Body:
   "white_team_name": "string?",
   "judges": [{ "name": "string" }],
   "token_prefix": "string (default: 'khb-')",
-  "token_length": "number (default: 32, random hex chars)"
+  "token_length": "number (default: 8, random hex chars)"
 }
 ```
 
@@ -303,7 +303,7 @@ Body:
   "name": "string (必須)",
   "voice_key": "string?",
   "token_prefix": "string (default: 'khb-')",
-  "token_length": "number (default: 32, random hex chars)"
+  "token_length": "number (default: 8, random hex chars)"
 }
 ```
 
@@ -654,11 +654,19 @@ function getSlot(epoch: number, numBouts: number): number {
 window.KHB_APP_CONFIG = {
   SUPABASE_URL: 'http://127.0.0.1:54321',
   JUDGE_FUNCTION_URL: 'http://127.0.0.1:54321/functions/v1/judge-submit-with-token',
-  SUPABASE_ANON_KEY: '...'
+  SUPABASE_ANON_KEY: '...',
+  AUDIO_BASE_URL: '../audio/',
+  TOKEN_PREFIX: 'khb-',
+  TOKEN_LENGTH: 8
 };
 ```
 
 `judge.html`、`admin.html`、`admin-match.html`、`admin-judges.html`、OBS 用 HTML はすべて `window.KHB_APP_CONFIG` を参照する。
+
+- `AUDIO_BASE_URL`: 管理画面の得点読み上げで使う音声フォルダ
+- `TOKEN_PREFIX`: 新規トークン発行時の接頭辞
+- `TOKEN_LENGTH`: prefix を除いたランダムhex文字列の長さ
+- ローカル検証時は `AUDIO_BASE_URL` に `../audio/` や `../audio_zundamon/` のような相対パスを指定できる
 
 ### 8.3 admin（分割 JS）主要構造
 
@@ -779,6 +787,13 @@ function updateFlagsAuto() {
 全体キュー: `[start, ...全審査員clips..., end]`
 
 再生開始時に `scoreboard_visible=true`、完了/停止時に `false` を自動設定（`admin-patch-state` 呼び出し）。
+
+音声ファイルの参照先は `config.js` の `AUDIO_BASE_URL` で切り替える。
+音声セットを差し替える場合は、少なくとも以下の命名規則に合わせること:
+
+- 定型音声: `start.mp3`, `end.mp3`, `vs.mp3`, `kansyo_*.mp3`, `de*.mp3`
+- 数字音声: `1.mp3` 〜 `12.mp3`
+- 審査員音声: `judge_<voice_key>.mp3` または `judge_<judge_id>.mp3`
 
 ---
 

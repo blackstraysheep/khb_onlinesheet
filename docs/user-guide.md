@@ -248,6 +248,9 @@ winnum_obs_overlay.html?venue=<会場コード>
 3. 再生中はスコアボードが自動表示されます
 4. 再生完了後、スコアボードは自動非表示になります
 
+音声の参照先フォルダは `js/config.js` の `AUDIO_BASE_URL` で切り替えます。  
+ローカル検証時は `../audio/` や `../audio_zundamon/` を指定できます。
+
 ---
 
 ## 8. 複数会場の運用
