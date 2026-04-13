@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KHB M1 Style Reveal</title>
+  <link rel="stylesheet" href="../css/m1-style.css" />
+</head>
+
+<body>
+  <main id="app" class="m1-stage is-waiting">
+    <header class="m1-header">
+      <p id="matchLabel" class="m1-match">対戦情報を取得中...</p>
+      <p id="epochLabel" class="m1-epoch"></p>
+    </header>
+
+    <section class="m1-board" aria-live="polite">
+      <p id="phaseLabel" class="m1-phase">E5確定待ち</p>
+      <div id="revealList" class="m1-list"></div>
+    </section>
+
+    <p id="statusText" class="m1-status">Initializing...</p>
+  </main>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/m1-style.js"></script>
+</body>
+
+</html>
+
