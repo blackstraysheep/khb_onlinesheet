@@ -4,8 +4,9 @@
   const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
 
   const POLL_INTERVAL_MS = 1200;
-  const STEP_INTERVAL_MS = 1200;
-  const FINISH_DELAY_MS = 1600;
+  const START_DELAY_MS = 280;
+  const STEP_INTERVAL_MS = 1300;
+  const FINISH_DELAY_MS = 1200;
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -20,6 +21,7 @@
 
   let venueId = null;
   let lastTriggerKey = null;
+  let lastWaitingEntriesKey = null;
   let currentRunId = 0;
   let activeTimers = [];
 
@@ -45,7 +47,7 @@
   }
 
   function clearTimers() {
-    activeTimers.forEach(timerId => clearTimeout(timerId));
+    activeTimers.forEach((timerId) => clearTimeout(timerId));
     activeTimers = [];
   }
 
@@ -69,9 +71,7 @@
   async function fetchJson(path, params) {
     const url = buildRestUrl(path, params);
     const res = await fetch(url, { headers });
-    if (!res.ok) {
-      throw new Error(`GET ${path} failed: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
     return res.json();
   }
 
@@ -90,40 +90,74 @@
     return fallback;
   }
 
-  function resolveFlagTeamName(submission, redTeamName, whiteTeamName) {
-    if (!submission) return '判定なし';
+  function resolveWinner(submission) {
+    if (!submission) return 'none';
     const hasRed = !!submission.red_flag;
     const hasWhite = !!submission.white_flag;
-
-    if (hasRed && !hasWhite) return redTeamName;
-    if (hasWhite && !hasRed) return whiteTeamName;
-    if (hasRed && hasWhite) return '両チーム';
-    return '判定なし';
+    if (hasRed && !hasWhite) return 'red';
+    if (hasWhite && !hasRed) return 'white';
+    return 'none';
   }
 
-  function renderRows(entries) {
+  // 横型スコアボードと同じ席順表示（中央寄せ並び）に合わせる。
+  function reorderIdsForScoreboard(ids) {
+    const n = ids.length;
+    if (n <= 2) return ids.slice();
+
+    const oddIdx = [];
+    const evenIdx = [];
+    for (let i = 0; i < n; i += 1) {
+      if (i % 2 === 1) oddIdx.push(i);
+      else evenIdx.push(i);
+    }
+
+    oddIdx.reverse();
+    const orderIdx = oddIdx.concat(evenIdx);
+    const result = [];
+    orderIdx.forEach((idx) => {
+      if (idx >= 0 && idx < n) result.push(ids[idx]);
+    });
+    return result;
+  }
+
+  function faceToRotation(face) {
+    if (face === 'red') return -120;
+    if (face === 'white') return 120;
+    return 0;
+  }
+
+  function renderPillars(entries) {
     if (!revealListEl) return [];
     revealListEl.innerHTML = '';
 
-    const rowElements = entries.map(entry => {
-      const row = document.createElement('div');
-      row.className = 'm1-row';
+    return entries.map((entry) => {
+      const pillar = document.createElement('div');
+      pillar.className = 'm1-pillar';
 
-      const judgeEl = document.createElement('div');
-      judgeEl.className = 'm1-judge';
-      judgeEl.textContent = entry.judgeName;
+      const core = document.createElement('div');
+      core.className = 'm1-pillar-core';
+      core.style.transform = 'rotateY(0deg)';
 
-      const teamEl = document.createElement('div');
-      teamEl.className = 'm1-team';
-      teamEl.textContent = entry.teamName;
+      const judgeFace = document.createElement('div');
+      judgeFace.className = 'm1-face m1-face-judge';
+      judgeFace.innerHTML = `<span>${entry.judgeName}</span>`;
 
-      row.appendChild(judgeEl);
-      row.appendChild(teamEl);
-      revealListEl.appendChild(row);
-      return row;
+      const redFace = document.createElement('div');
+      redFace.className = 'm1-face m1-face-red';
+      redFace.innerHTML = `<span>${entry.redTeamName}</span>`;
+
+      const whiteFace = document.createElement('div');
+      whiteFace.className = 'm1-face m1-face-white';
+      whiteFace.innerHTML = `<span>${entry.whiteTeamName}</span>`;
+
+      core.appendChild(judgeFace);
+      core.appendChild(redFace);
+      core.appendChild(whiteFace);
+      pillar.appendChild(core);
+      revealListEl.appendChild(pillar);
+
+      return { pillar, core, winner: entry.winner };
     });
-
-    return rowElements;
   }
 
   function startRevealSequence(payload) {
@@ -131,29 +165,50 @@
     clearTimers();
 
     setViewState('performing');
-    setStatus('E5検知: 判定表示を開始します。');
+    setStatus('E5検知: 右端から判定表示を開始します。');
 
-    const rows = renderRows(payload.entries);
-    if (!rows.length) {
+    const pillars = renderPillars(payload.entries);
+    if (!pillars.length) {
       setViewState('done');
       setStatus('表示対象の判定がありません。');
       return;
     }
 
-    rows.forEach((row, idx) => {
+    const order = [];
+    for (let i = pillars.length - 1; i >= 0; i -= 1) order.push(i);
+
+    order.forEach((pillarIndex, step) => {
       schedule(() => {
         if (runId !== currentRunId) return;
-        row.classList.add('is-shown', 'is-active');
-        if (idx > 0) rows[idx - 1].classList.remove('is-active');
-      }, idx * STEP_INTERVAL_MS);
+
+        pillars.forEach((p) => p.pillar.classList.remove('is-active'));
+
+        const p = pillars[pillarIndex];
+        p.pillar.classList.add('is-active');
+
+        const deg = faceToRotation(p.winner);
+        p.core.style.transform = `rotateY(${deg}deg)`;
+      }, START_DELAY_MS + step * STEP_INTERVAL_MS);
     });
 
     schedule(() => {
       if (runId !== currentRunId) return;
-      rows[rows.length - 1].classList.remove('is-active');
+      pillars.forEach((p) => p.pillar.classList.remove('is-active'));
       setViewState('done');
       setStatus('判定表示が完了しました。');
-    }, rows.length * STEP_INTERVAL_MS + FINISH_DELAY_MS);
+    }, START_DELAY_MS + order.length * STEP_INTERVAL_MS + FINISH_DELAY_MS);
+  }
+
+  function renderWaitingPillars(payload) {
+    const entriesKey = payload && payload.entriesKey ? payload.entriesKey : '';
+    if (entriesKey && entriesKey === lastWaitingEntriesKey) return;
+    lastWaitingEntriesKey = entriesKey || null;
+
+    const pillars = renderPillars((payload && payload.entries) || []);
+    pillars.forEach((p) => {
+      p.pillar.classList.remove('is-active');
+      p.core.style.transform = 'rotateY(0deg)';
+    });
   }
 
   async function collectPayload() {
@@ -166,10 +221,9 @@
       select: 'epoch,current_match_id',
       venue_id: 'eq.' + venueId,
     });
+
     const st = stateRows[0];
-    if (!st || !st.current_match_id || !st.epoch) {
-      return null;
-    }
+    if (!st || !st.current_match_id || !st.epoch) return null;
 
     const [matchRows, expectedRows, subsRows, snapshotRows] = await Promise.all([
       fetchJson('matches', {
@@ -200,30 +254,31 @@
 
     const redTeamName = match.red_team_name || '紅';
     const whiteTeamName = match.white_team_name || '白';
-    if (matchLabelEl) {
-      matchLabelEl.textContent = `${redTeamName} vs ${whiteTeamName}`;
-    }
-    if (epochLabelEl) {
-      epochLabelEl.textContent = `epoch ${st.epoch}`;
-    }
 
-    const expectedIds = expectedRows.map(row => String(row.judge_id));
+    if (matchLabelEl) matchLabelEl.textContent = `${redTeamName} vs ${whiteTeamName}`;
+    if (epochLabelEl) epochLabelEl.textContent = `epoch ${st.epoch}`;
+
+    const expectedIds = expectedRows.map((row) => String(row.judge_id));
     let judgesMap = {};
+
     if (expectedIds.length > 0) {
       const judgeRows = await fetchJson('judges', {
         select: 'id,name',
         id: 'in.(' + expectedIds.join(',') + ')',
       });
-      judgesMap = Object.fromEntries(judgeRows.map(row => [String(row.id), row]));
+      judgesMap = Object.fromEntries(judgeRows.map((row) => [String(row.id), row]));
     }
 
-    const subMap = Object.fromEntries(subsRows.map(sub => [String(sub.judge_id), sub]));
-    const entries = expectedRows.map(row => {
-      const judgeId = String(row.judge_id);
+    const subMap = Object.fromEntries(subsRows.map((sub) => [String(sub.judge_id), sub]));
+    const displayIds = reorderIdsForScoreboard(expectedIds);
+
+    const entries = displayIds.map((judgeId) => {
       const sub = subMap[judgeId];
       return {
         judgeName: resolveJudgeName(judgeId, judgesMap),
-        teamName: resolveFlagTeamName(sub, redTeamName, whiteTeamName),
+        redTeamName,
+        whiteTeamName,
+        winner: resolveWinner(sub),
       };
     });
 
@@ -235,14 +290,14 @@
     return {
       triggerKey,
       entries,
-      state: st,
-      match,
+      entriesKey: `${st.current_match_id}:${st.epoch}:${displayIds.join(',')}`,
     };
   }
 
   async function pollOnce() {
     try {
       const payload = await collectPayload();
+
       if (!payload) {
         setViewState('waiting');
         setStatus('試合情報待機中...');
@@ -251,12 +306,14 @@
 
       if (!payload.triggerKey) {
         setViewState('waiting');
+        renderWaitingPillars(payload);
         setStatus('E5の確定を待っています。');
         return;
       }
 
       if (payload.triggerKey !== lastTriggerKey) {
         lastTriggerKey = payload.triggerKey;
+        lastWaitingEntriesKey = null;
         startRevealSequence(payload);
       }
     } catch (error) {
@@ -269,4 +326,3 @@
   pollOnce();
   setInterval(pollOnce, POLL_INTERVAL_MS);
 })();
-
