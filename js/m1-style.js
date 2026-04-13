@@ -7,6 +7,7 @@
   const START_DELAY_MS = 900;
   const STEP_INTERVAL_MS = 1300;
   const FINISH_DELAY_MS = 1200;
+  const HIGHLIGHT_ADVANCE_MS = 500;
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -127,6 +128,41 @@
     return 0;
   }
 
+  function resolveMatchWinner(entries) {
+    let red = 0;
+    let white = 0;
+    (entries || []).forEach((entry) => {
+      if (!entry) return;
+      if (entry.winner === 'red') red += 1;
+      else if (entry.winner === 'white') white += 1;
+    });
+    if (red > white) return 'red';
+    if (white > red) return 'white';
+    return 'none';
+  }
+
+  function clearWinnerHighlight() {
+    if (appEl) {
+      appEl.classList.remove('is-win-red', 'is-win-white');
+    }
+    if (!revealListEl) return;
+    revealListEl.querySelectorAll('.m1-pillar').forEach((el) => {
+      el.classList.remove('is-win-red', 'is-win-white');
+    });
+  }
+
+  function applyWinnerHighlight(matchWinner, pillars) {
+    clearWinnerHighlight();
+    if (matchWinner !== 'red' && matchWinner !== 'white') return;
+
+    if (appEl) appEl.classList.add(matchWinner === 'red' ? 'is-win-red' : 'is-win-white');
+    (pillars || []).forEach((p) => {
+      if (p.winner === matchWinner) {
+        p.pillar.classList.add(matchWinner === 'red' ? 'is-win-red' : 'is-win-white');
+      }
+    });
+  }
+
   function renderPillars(entries) {
     if (!revealListEl) return [];
     revealListEl.innerHTML = '';
@@ -169,11 +205,14 @@
     setStatus('E5検知: 右端から判定表示を開始します。');
 
     const pillars = renderPillars(payload.entries);
+    const matchWinner = resolveMatchWinner(payload.entries);
     if (!pillars.length) {
       setViewState('done');
       setStatus('表示対象の判定がありません。');
       return;
     }
+
+    clearWinnerHighlight();
 
     const order = [];
     for (let i = pillars.length - 1; i >= 0; i -= 1) order.push(i);
@@ -192,11 +231,23 @@
       }, START_DELAY_MS + step * STEP_INTERVAL_MS);
     });
 
+    const highlightDelay = Math.max(
+      START_DELAY_MS,
+      START_DELAY_MS + order.length * STEP_INTERVAL_MS - HIGHLIGHT_ADVANCE_MS
+    );
+
+    schedule(() => {
+      if (runId !== currentRunId) return;
+      applyWinnerHighlight(matchWinner, pillars);
+    }, highlightDelay);
+
     schedule(() => {
       if (runId !== currentRunId) return;
       pillars.forEach((p) => p.pillar.classList.remove('is-active'));
       setViewState('done');
-      setStatus('判定表示が完了しました。');
+      if (matchWinner === 'red') setStatus('判定表示が完了しました。勝利: 紅');
+      else if (matchWinner === 'white') setStatus('判定表示が完了しました。勝利: 白');
+      else setStatus('判定表示が完了しました。引き分け/判定保留');
     }, START_DELAY_MS + order.length * STEP_INTERVAL_MS + FINISH_DELAY_MS);
   }
 
@@ -206,6 +257,7 @@
     lastWaitingEntriesKey = entriesKey || null;
 
     const pillars = renderPillars((payload && payload.entries) || []);
+    clearWinnerHighlight();
     pillars.forEach((p) => {
       p.pillar.classList.remove('is-active');
       p.core.style.transform = 'rotateY(0deg)';
@@ -301,6 +353,7 @@
 
       if (!payload) {
         setViewState('waiting');
+        clearWinnerHighlight();
         setStatus('試合情報待機中...');
         return;
       }
