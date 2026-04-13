@@ -4,7 +4,7 @@
   const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
 
   const POLL_INTERVAL_MS = 1200;
-  const START_DELAY_MS = 280;
+  const START_DELAY_MS = 900;
   const STEP_INTERVAL_MS = 1300;
   const FINISH_DELAY_MS = 1200;
 
@@ -121,8 +121,9 @@
   }
 
   function faceToRotation(face) {
-    if (face === 'red') return -120;
-    if (face === 'white') return 120;
+    // 回転方向は常に同一（負方向）にし、1回転分を加えて演出を強調する。
+    if (face === 'red') return -480;   // 1 + 1/3 回転
+    if (face === 'white') return -600; // 1 + 2/3 回転
     return 0;
   }
 
