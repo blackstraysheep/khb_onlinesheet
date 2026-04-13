@@ -1,12 +1,12 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
+body { font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
 h1 { font-size: 1.3rem; margin-bottom: 12px; }
 .card { background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
 .card-header { font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid #334; padding-bottom: 6px; }
 .card-header-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
 .card-header-row .card-header { margin-bottom: 0; flex: 1; }
 .card-header-row button { flex: 0 0 auto; }
-.judges-layout-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap: 12px; align-items: start; }
+.judges-layout-grid { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(240px, 0.6fr); gap: 12px; align-items: start; }
 .judges-layout-left,
 .judges-layout-right { display: grid; gap: 12px; align-content: start; min-width: 0; }
 .judges-layout-right .row > div { flex: 1 1 180px; min-width: 0; }
@@ -34,6 +34,10 @@ th,
 td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #223; }
 th { color: #aaa; font-weight: 600; font-size: 0.75rem; }
 td { color: #ddd; }
+.judges-layout-left table th:nth-child(1),
+.judges-layout-left table td:nth-child(1) { min-width: 132px; }
+.judges-layout-left table th:nth-child(5),
+.judges-layout-left table td:nth-child(5) { min-width: 72px; }
 tr:hover td { background: #1a2744; }
 .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
 .tag-warn { background: #f0ad4e33; color: #f0ad4e; }
