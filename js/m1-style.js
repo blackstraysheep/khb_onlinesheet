@@ -5,7 +5,11 @@
 
   const POLL_INTERVAL_MS = 1200;
   const START_DELAY_MS = 900;
-  const STEP_INTERVAL_MS = 1300;
+  const STEP_INTERVAL_MS = 1650;
+  const POP_OUT_MS = 410;
+  const HOLD_AT_FACE_MS = 260;
+  const POP_BACK_MS = 280;
+  const SETTLING_GLOW_ADVANCE_MS = 120;
   const FINISH_DELAY_MS = 1200;
   const HIGHLIGHT_ADVANCE_MS = 500;
 
@@ -55,6 +59,13 @@
   function schedule(fn, delayMs) {
     const id = setTimeout(fn, delayMs);
     activeTimers.push(id);
+  }
+
+  function setCoreTransform(coreEl, transform, durationMs, easing) {
+    if (!coreEl) return;
+    coreEl.style.setProperty('--core-move-ms', `${durationMs}ms`);
+    coreEl.style.setProperty('--core-ease', easing || 'cubic-bezier(0.22, 0.86, 0.24, 1)');
+    coreEl.style.transform = transform;
   }
 
   function buildRestUrl(path, params) {
@@ -122,9 +133,9 @@
   }
 
   function faceToRotation(face) {
-    // 回転方向は常に同一（負方向）にし、1回転分を加えて演出を強調する。
-    if (face === 'red') return -480;   // 1 + 1/3 回転
-    if (face === 'white') return -600; // 1 + 2/3 回転
+    // +1回転演出は無効化し、同一方向で必要角度のみ回す。
+    if (face === 'red') return -120;
+    if (face === 'white') return -240;
     return 0;
   }
 
@@ -148,7 +159,14 @@
     if (!revealListEl) return;
     revealListEl.querySelectorAll('.m1-pillar').forEach((el) => {
       el.classList.remove('is-win-red', 'is-win-white');
+      el.classList.remove('is-reveal-red', 'is-reveal-white', 'is-settling', 'is-locked-red', 'is-locked-white');
     });
+  }
+
+  function winnerToClass(winner, prefix) {
+    if (winner === 'red') return `${prefix}-red`;
+    if (winner === 'white') return `${prefix}-white`;
+    return '';
   }
 
   function applyWinnerHighlight(matchWinner, pillars) {
@@ -173,7 +191,7 @@
 
       const core = document.createElement('div');
       core.className = 'm1-pillar-core';
-      core.style.transform = 'rotateY(0deg)';
+      core.style.transform = 'translateZ(0px) rotateY(0deg)';
 
       const judgeFace = document.createElement('div');
       judgeFace.className = 'm1-face m1-face-judge';
@@ -202,7 +220,7 @@
     clearTimers();
 
     setViewState('performing');
-    setStatus('E5検知: 右端から判定表示を開始します。');
+    setStatus('E5検知: 左端から判定表示を開始します。');
 
     const pillars = renderPillars(payload.entries);
     const matchWinner = resolveMatchWinner(payload.entries);
@@ -215,7 +233,7 @@
     clearWinnerHighlight();
 
     const order = [];
-    for (let i = pillars.length - 1; i >= 0; i -= 1) order.push(i);
+    for (let i = 0; i < pillars.length; i += 1) order.push(i);
 
     order.forEach((pillarIndex, step) => {
       schedule(() => {
@@ -227,7 +245,39 @@
         p.pillar.classList.add('is-active');
 
         const deg = faceToRotation(p.winner);
-        p.core.style.transform = `rotateY(${deg}deg)`;
+        const revealClass = winnerToClass(p.winner, 'is-reveal');
+
+        if (revealClass) p.pillar.classList.add(revealClass);
+
+        setCoreTransform(
+          p.core,
+          `translateZ(var(--pillar-pop-out)) rotateY(${deg}deg)`,
+          POP_OUT_MS,
+          'cubic-bezier(0.22, 0.86, 0.24, 1)'
+        );
+
+        // 収まり発光は少し早めに入り、回転停止中から自然に見せる。
+        schedule(() => {
+          if (runId !== currentRunId) return;
+          p.pillar.classList.add('is-settling');
+        }, POP_OUT_MS + Math.max(0, HOLD_AT_FACE_MS - SETTLING_GLOW_ADVANCE_MS));
+
+        // 旗を揚げた面で一瞬静止させてから、浮き出し分だけ戻す。
+        schedule(() => {
+          if (runId !== currentRunId) return;
+          setCoreTransform(
+            p.core,
+            `translateZ(0px) rotateY(${deg}deg)`,
+            POP_BACK_MS,
+            'cubic-bezier(0.3, 0.0, 0.38, 1)'
+          );
+        }, POP_OUT_MS + HOLD_AT_FACE_MS);
+
+        schedule(() => {
+          if (runId !== currentRunId) return;
+          if (revealClass) p.pillar.classList.remove(revealClass);
+          p.pillar.classList.remove('is-settling');
+        }, POP_OUT_MS + HOLD_AT_FACE_MS + POP_BACK_MS);
       }, START_DELAY_MS + step * STEP_INTERVAL_MS);
     });
 
@@ -260,7 +310,9 @@
     clearWinnerHighlight();
     pillars.forEach((p) => {
       p.pillar.classList.remove('is-active');
-      p.core.style.transform = 'rotateY(0deg)';
+      p.core.style.removeProperty('--core-move-ms');
+      p.core.style.removeProperty('--core-ease');
+      p.core.style.transform = 'translateZ(0px) rotateY(0deg)';
     });
   }
 
