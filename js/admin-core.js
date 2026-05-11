@@ -59,6 +59,8 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
 
   const firstRowNodes = [...metaNodes];
   const secondRowNodes = [];
+  const isCurrentMatch = !!(st && st.current_match_id && st.current_match_id === matchId);
+  const canOperateCurrentMatch = !!(st && isCurrentMatch);
 
   if (st) {
     const acceptingTag = document.createElement('span');
@@ -70,7 +72,6 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
     e3Tag.textContent = `e3_reached: ${st.e3_reached}`;
 
     const currentMatchTag = document.createElement('span');
-    const isCurrentMatch = !!st.current_match_id && st.current_match_id === matchId;
     if (st.current_match_id) {
       currentMatchTag.className = isCurrentMatch ? 'tag ok' : 'tag warn';
       currentMatchTag.textContent = isCurrentMatch
@@ -89,11 +90,23 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
 
     firstRowNodes.push(currentMatchTag, currentEpochTag);
     secondRowNodes.push(acceptingTag, e3Tag);
+
+   if (!isCurrentMatch) {
+       const currentMatchNotice = document.createElement('span');
+       currentMatchNotice.className = 'tag warn';
+       currentMatchNotice.textContent = '結果の表示のみ（表示epochは変更可能）';
+       secondRowNodes.push(currentMatchNotice);
+     }
   } else {
     const stateMissingTag = document.createElement('span');
     stateMissingTag.className = 'tag warn';
     stateMissingTag.textContent = 'state が取得できません';
     secondRowNodes.push(stateMissingTag);
+
+    const operationNotice = document.createElement('span');
+    operationNotice.className = 'tag warn';
+    operationNotice.textContent = '現在の試合に切り替えてから操作してください';
+    secondRowNodes.push(operationNotice);
   }
 
   const expectedSpan = document.createElement('span');
@@ -109,6 +122,10 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
   }
 
   adminCoreDom.stateSummary.replaceChildren(...rows);
+
+  if (adminCoreUtils.setMatchOperationLocked) {
+    adminCoreUtils.setMatchOperationLocked(!canOperateCurrentMatch);
+  }
 }
 
 function buildLoadSignature({ match, epoch, st, expectedIds, judgesMap, subs, scoreboardMode }) {
@@ -201,8 +218,23 @@ async function runLoadData(isAuto = false) {
     const st  = stateRows[0] || null;
     adminCoreState.lastState = st;
 
-    // epoch は state から取得
-    const epoch = st ? st.epoch : 1;
+    const isCurrentMatch = !!(st && st.current_match_id && st.current_match_id === matchId);
+
+    // 表示epochはcurrent_match以外ではUI入力を優先
+    let displayEpoch = st ? st.epoch : 1;
+    if (!isCurrentMatch) {
+      const storedEpoch = adminCoreState.displayEpochByMatch?.[matchId];
+      if (Number.isInteger(storedEpoch) && storedEpoch > 0) {
+        displayEpoch = storedEpoch;
+      }
+      const inputEpoch = adminCoreDom.epochInput ? parseInt(adminCoreDom.epochInput.value, 10) : NaN;
+      if (Number.isInteger(inputEpoch) && inputEpoch > 0) {
+        displayEpoch = inputEpoch;
+      }
+    }
+
+    // epoch は表示用に切り替え
+    const epoch = displayEpoch;
     const numBouts = Number(match.num_bouts || 0);
     const boutLabelFull = getBoutLabel(epoch, numBouts);
 
@@ -282,7 +314,7 @@ async function runLoadData(isAuto = false) {
     if (st) {
       // epoch入力欄を現在値で更新（未入力時のみ）
       if (adminCoreDom.epochInput && !adminCoreDom.epochInput.matches(':focus')) {
-        adminCoreDom.epochInput.value = st.epoch;
+        adminCoreDom.epochInput.value = isCurrentMatch ? st.epoch : epoch;
       }
 
       if (adminCoreDom.toggleAcceptingBtn) {
@@ -569,8 +601,22 @@ if (adminCoreDom.btnSetEpoch) {
   });
 }
 
-if (adminCoreDom.btnSaveJudgeOrder) {
-  adminCoreDom.btnSaveJudgeOrder.addEventListener('click', adminCoreUi.saveJudgeOrder);
+if (adminCoreDom.epochInput) {
+  adminCoreDom.epochInput.addEventListener('change', async () => {
+    const matchCode = adminCoreDom.matchSelect ? adminCoreDom.matchSelect.value : '';
+    if (!matchCode) return;
+    const match = adminCoreState.matchesCache.find(m => m.code === matchCode);
+    if (!match) return;
+    const isCurrentMatch = !!(adminCoreState.lastState
+      && adminCoreState.lastState.current_match_id
+      && adminCoreState.lastState.current_match_id === match.id);
+
+    if (isCurrentMatch) return;
+    const inputEpoch = parseInt(adminCoreDom.epochInput.value, 10);
+    if (!Number.isInteger(inputEpoch) || inputEpoch < 1) return;
+    adminCoreState.displayEpochByMatch[match.id] = inputEpoch;
+    await loadData(false);
+  });
 }
 
 // スコアボードモード切替
