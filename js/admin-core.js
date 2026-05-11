@@ -41,6 +41,9 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
     return row;
   };
 
+  const isCurrentMatch = !!(st && st.current_match_id && st.current_match_id === matchId);
+  const isCurrentEpoch = !!(isCurrentMatch && st && st.epoch === epoch);
+
   const metaNodes = [];
 
   const matchSpan = document.createElement('span');
@@ -49,17 +52,16 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
 
   const boutSpan = document.createElement('span');
   boutSpan.textContent = boutLabelFull
-    ? `第${epoch}対戦（${boutLabelFull}）`
-    : `第${epoch}対戦`;
+    ? `第${epoch}対戦（${boutLabelFull}）${isCurrentEpoch ? ' ★' : ''}`
+    : `第${epoch}対戦${isCurrentEpoch ? ' ★' : ''}`;
   metaNodes.push(boutSpan);
 
   const epochSpan = document.createElement('span');
-  appendTextAndStrong(epochSpan, 'state.epoch: ', st?.epoch ?? '');
+  appendTextAndStrong(epochSpan, 'state.epoch: ', st?.epoch ?? '', isCurrentEpoch ? ' ★' : '');
   metaNodes.push(epochSpan);
 
   const firstRowNodes = [...metaNodes];
   const secondRowNodes = [];
-  const isCurrentMatch = !!(st && st.current_match_id && st.current_match_id === matchId);
   const canOperateCurrentMatch = !!(st && isCurrentMatch);
 
   if (st) {
@@ -83,10 +85,16 @@ function renderStateSummary({ match, boutLabelFull, epoch, st, matchId, expected
     }
 
     const currentEpochTag = document.createElement('span');
-    currentEpochTag.className = isCurrentMatch ? 'tag ok' : 'tag muted';
-    currentEpochTag.textContent = isCurrentMatch
-      ? 'current_epoch: true'
-      : 'current_epoch: N/A';
+    if (isCurrentMatch) {
+      const isCurrentEpoch = st.epoch === epoch;
+      currentEpochTag.className = isCurrentEpoch ? 'tag ok' : 'tag warn';
+      currentEpochTag.textContent = isCurrentEpoch
+        ? 'current_epoch: true'
+        : 'current_epoch: false';
+    } else {
+      currentEpochTag.className = 'tag muted';
+      currentEpochTag.textContent = 'current_epoch: N/A';
+    }
 
     firstRowNodes.push(currentMatchTag, currentEpochTag);
     secondRowNodes.push(acceptingTag, e3Tag);
@@ -220,13 +228,12 @@ async function runLoadData(isAuto = false) {
 
     const isCurrentMatch = !!(st && st.current_match_id && st.current_match_id === matchId);
 
-    // 表示epochはcurrent_match以外ではUI入力を優先
+    // 表示epochはUI入力を優先（current_matchでも表示切替のみ）
     let displayEpoch = st ? st.epoch : 1;
-    if (!isCurrentMatch) {
-      const storedEpoch = adminCoreState.displayEpochByMatch?.[matchId];
-      if (Number.isInteger(storedEpoch) && storedEpoch > 0) {
-        displayEpoch = storedEpoch;
-      }
+    const storedEpoch = adminCoreState.displayEpochByMatch?.[matchId];
+    if (Number.isInteger(storedEpoch) && storedEpoch > 0) {
+      displayEpoch = storedEpoch;
+    } else {
       const inputEpoch = adminCoreDom.epochInput ? parseInt(adminCoreDom.epochInput.value, 10) : NaN;
       if (Number.isInteger(inputEpoch) && inputEpoch > 0) {
         displayEpoch = inputEpoch;
@@ -314,7 +321,7 @@ async function runLoadData(isAuto = false) {
     if (st) {
       // epoch入力欄を現在値で更新（未入力時のみ）
       if (adminCoreDom.epochInput && !adminCoreDom.epochInput.matches(':focus')) {
-        adminCoreDom.epochInput.value = isCurrentMatch ? st.epoch : epoch;
+        adminCoreDom.epochInput.value = epoch;
       }
 
       if (adminCoreDom.toggleAcceptingBtn) {
@@ -607,11 +614,7 @@ if (adminCoreDom.epochInput) {
     if (!matchCode) return;
     const match = adminCoreState.matchesCache.find(m => m.code === matchCode);
     if (!match) return;
-    const isCurrentMatch = !!(adminCoreState.lastState
-      && adminCoreState.lastState.current_match_id
-      && adminCoreState.lastState.current_match_id === match.id);
 
-    if (isCurrentMatch) return;
     const inputEpoch = parseInt(adminCoreDom.epochInput.value, 10);
     if (!Number.isInteger(inputEpoch) || inputEpoch < 1) return;
     adminCoreState.displayEpochByMatch[match.id] = inputEpoch;
