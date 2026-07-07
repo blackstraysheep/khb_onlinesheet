@@ -21,6 +21,26 @@ function buildRestUrl(path, params) {
 }
 
 async function fetchJson(path, params) {
+  const adminSec = adminApiDom.adminSecretInput ? adminApiDom.adminSecretInput.value.trim() : '';
+  if (adminSec && adminApiConstants.ADMIN_SELECT_URL) {
+    const res = await fetch(adminApiConstants.ADMIN_SELECT_URL, {
+      method: 'POST',
+      headers: adminApiConstants.adminHeaders,
+      body: JSON.stringify({
+        admin_secret: adminSec,
+        table: path,
+        params: Object.fromEntries(
+          Object.entries(params || {}).map(([key, value]) => [key, String(value)])
+        ),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || res.statusText || `GET ${path} failed`);
+    }
+    return data.data || [];
+  }
+
   const url = buildRestUrl(path, params);
   const res = await fetch(url, { headers: adminApiConstants.adminHeaders });
   if (!res.ok) {

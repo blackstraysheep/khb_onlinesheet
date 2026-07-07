@@ -33,6 +33,7 @@ const CONTROL_ADVANCE_URL    = SUPABASE_URL + '/functions/v1/control_advance_wit
 const CONTROL_SET_MATCH_URL  = SUPABASE_URL + '/functions/v1/control_set_current_match_with_secret';
 const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
 const ADMIN_PATCH_STATE_URL      = SUPABASE_URL + '/functions/v1/admin-patch-state';
+const ADMIN_SELECT_URL           = SUPABASE_URL + '/functions/v1/admin-select';
 
 const adminHeaders = {
   'apikey': SUPABASE_ANON_KEY,
@@ -51,6 +52,7 @@ Object.assign(KHBAdmin.constants, {
   CONTROL_SET_MATCH_URL,
   ADMIN_SET_MATCH_JUDGES_URL,
   ADMIN_PATCH_STATE_URL,
+  ADMIN_SELECT_URL,
   adminHeaders,
   ADMIN_AUTO_REFRESH_MS,
   AUDIO_NUMERIC_CLIP_MAX,

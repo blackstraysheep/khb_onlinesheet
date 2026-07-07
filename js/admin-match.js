@@ -5,6 +5,7 @@
   const TOKEN_PREFIX = CONFIG.TOKEN_PREFIX || 'khb-';
   const TOKEN_LENGTH = Number.isInteger(CONFIG.TOKEN_LENGTH) ? CONFIG.TOKEN_LENGTH : 32;
   const ADMIN_SETUP_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-setup-match';
+  const ADMIN_LIST_MATCHES_URL = SUPABASE_URL + '/functions/v1/admin-list-matches';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -72,20 +73,31 @@
 
   async function refreshMatches() {
     try {
-      const matches = await fetchJson('matches', {
-        select: 'id,code,name,timeline,num_bouts,red_team_name,white_team_name,venue_id',
-        order: 'timeline.asc,code.asc',
-      });
+      const secret = $('#adminSecret').value.trim();
+      if (!secret) {
+        showMsg('#saveMsg', '管理用シークレットを入力すると一覧を表示できます。', true);
+        return;
+      }
 
-      const states = await fetchJson('state', {
-        select: 'current_match_id,venue_id,epoch,accepting',
+      const res = await fetch(ADMIN_LIST_MATCHES_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ admin_secret: secret }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || res.statusText || 'failed to fetch matches');
+      }
+
+      const matches = data.matches ?? [];
+      const states = data.states ?? [];
+      const venues = data.venues ?? [];
+      const snapshots = data.snapshots ?? [];
       const stateByMatch = new Map();
       for (const s of states) {
         if (s.current_match_id) stateByMatch.set(s.current_match_id, s);
       }
 
-      const venues = await fetchJson('venues', { select: 'id,code' });
       allVenues = venues;
       const venueCodeById = new Map(venues.map(v => [v.id, v.code]));
 
@@ -115,13 +127,14 @@
         tbody.appendChild(tr);
       }
 
-      refreshAccepting(states, matches, venueCodeById);
+      refreshAccepting(states, matches, venueCodeById, snapshots);
     } catch (e) {
       console.error('refreshMatches error', e);
+      showMsg('#saveMsg', '一覧取得に失敗しました: ' + e.message, true);
     }
   }
 
-  function refreshAccepting(states, matches, venueCodeById) {
+  function refreshAccepting(states, matches, venueCodeById, snapshots = []) {
     const matchById = new Map(matches.map(m => [m.id, m]));
     const tbody = $('#acceptingListBody');
     tbody.innerHTML = '';
@@ -131,52 +144,29 @@
       return;
     }
 
-    const acceptingMatchIds = accepting.map(s => s.current_match_id).filter(Boolean);
-    fetchJson('match_snapshots', {
-      select: 'match_id,epoch',
-      match_id: 'in.(' + acceptingMatchIds.join(',') + ')',
-    }).then(snaps => {
-      const confirmedMax = new Map();
-      for (const snap of (snaps || [])) {
-        const cur = confirmedMax.get(snap.match_id) ?? 0;
-        if (snap.epoch > cur) confirmedMax.set(snap.match_id, snap.epoch);
-      }
-      for (const s of accepting) {
-        const m = matchById.get(s.current_match_id);
-        const numBouts = m?.num_bouts ?? 5;
-        const maxEp = confirmedMax.get(s.current_match_id) ?? 0;
-        const e5Done = maxEp >= numBouts;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
-          <td>${m?.timeline ?? '-'}</td>
-          <td>${esc(m?.code || '-')}</td>
-          <td>${esc(m?.name || '-')}</td>
-          <td>${esc(m?.red_team_name || '-')}</td>
-          <td>${esc(m?.white_team_name || '-')}</td>
-          <td>${s.epoch}</td>
-          <td>${e5Done ? '<span class="tag tag-green">完了</span>' : '<span class="tag tag-grey">' + maxEp + '/' + numBouts + '</span>'}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    }).catch(err => {
-      console.error('match_snapshots fetch error', err);
-      for (const s of accepting) {
-        const m = matchById.get(s.current_match_id);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
-          <td>${m?.timeline ?? '-'}</td>
-          <td>${esc(m?.code || '-')}</td>
-          <td>${esc(m?.name || '-')}</td>
-          <td>${esc(m?.red_team_name || '-')}</td>
-          <td>${esc(m?.white_team_name || '-')}</td>
-          <td>${s.epoch}</td>
-          <td>-</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    });
+    const confirmedMax = new Map();
+    for (const snap of snapshots) {
+      const cur = confirmedMax.get(snap.match_id) ?? 0;
+      if (snap.epoch > cur) confirmedMax.set(snap.match_id, snap.epoch);
+    }
+    for (const s of accepting) {
+      const m = matchById.get(s.current_match_id);
+      const numBouts = m?.num_bouts ?? 5;
+      const maxEp = confirmedMax.get(s.current_match_id) ?? 0;
+      const e5Done = maxEp >= numBouts;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
+        <td>${m?.timeline ?? '-'}</td>
+        <td>${esc(m?.code || '-')}</td>
+        <td>${esc(m?.name || '-')}</td>
+        <td>${esc(m?.red_team_name || '-')}</td>
+        <td>${esc(m?.white_team_name || '-')}</td>
+        <td>${s.epoch}</td>
+        <td>${e5Done ? '<span class="tag tag-green">完了</span>' : '<span class="tag tag-grey">' + maxEp + '/' + numBouts + '</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    }
   }
 
   function loadMatchForEdit(m) {

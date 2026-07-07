@@ -429,6 +429,18 @@ async function loadData(isAuto = false) {
 if (adminCoreDom.venueSelect) {
   adminCoreDom.venueSelect.addEventListener('change', adminCoreUi.onVenueChange);
 }
+if (adminCoreDom.adminSecretInput) {
+  let adminSecretReloadTimer = null;
+  const reloadAdminLists = () => {
+    clearTimeout(adminSecretReloadTimer);
+    adminSecretReloadTimer = setTimeout(() => adminCoreUi.populateVenues(), 250);
+  };
+  adminCoreDom.adminSecretInput.addEventListener('change', reloadAdminLists);
+  adminCoreDom.adminSecretInput.addEventListener('blur', reloadAdminLists);
+  adminCoreDom.adminSecretInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') reloadAdminLists();
+  });
+}
 if (adminCoreDom.matchSelect) {
   adminCoreDom.matchSelect.addEventListener('change', adminCoreUi.onMatchChange);
 }

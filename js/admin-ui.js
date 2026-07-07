@@ -11,8 +11,22 @@ const adminUiConstants = window.KHBAdmin?.constants || {};
 const adminUiState = window.KHBAdmin?.state || {};
 const adminUiCore = adminUiNamespace.core;
 
+function hasAdminSecret() {
+  return !!(adminUiDom.adminSecretInput && adminUiDom.adminSecretInput.value.trim());
+}
+
 async function populateVenues() {
   try {
+    if (!hasAdminSecret()) {
+      if (adminUiDom.venueSelect) {
+        adminUiDom.venueSelect.innerHTML = '<option value="">-- 管理用シークレットを入力 --</option>';
+      }
+      if (adminUiDom.matchSelect) {
+        adminUiDom.matchSelect.innerHTML = '<option value="">-- 管理用シークレットを入力 --</option>';
+      }
+      return;
+    }
+
     const venues = await adminUiApi.fetchJson('venues', { select: 'id,code,name', order: 'code.asc' });
     if (!adminUiDom.venueSelect) return;
     adminUiDom.venueSelect.innerHTML = '';
@@ -55,6 +69,10 @@ async function onVenueChange() {
 
 async function populateMatches() {
   if (!adminUiDom.matchSelect) return;
+  if (!hasAdminSecret()) {
+    adminUiDom.matchSelect.innerHTML = '<option value="">-- 管理用シークレットを入力 --</option>';
+    return;
+  }
   if (!adminUiState.currentVenueId) {
     adminUiDom.matchSelect.innerHTML = '<option value="">-- 会場を選択 --</option>';
     return;
