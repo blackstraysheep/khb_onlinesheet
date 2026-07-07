@@ -1,9 +1,13 @@
 services:
   khb_onlinesheet:
-    image: nginx:1.27-alpine
+    build: .
     container_name: khb_onlinesheet
     ports:
       - "8080:80"
-    volumes:
-      - ./:/usr/share/nginx/html:ro
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:-http://127.0.0.1:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      AUDIO_BASE_URL: ${AUDIO_BASE_URL:-../audio_zundamon/}
+      TOKEN_PREFIX: ${TOKEN_PREFIX:-khb-}
+      TOKEN_LENGTH: ${TOKEN_LENGTH:-32}
     restart: unless-stopped

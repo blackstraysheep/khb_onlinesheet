@@ -1,5 +1,10 @@
 .idea/
 
 # Local secrets
+.env
 supabase/.env.local
 supabase/functions/.env
+
+# Local backups and archives
+backups/
+*.dump

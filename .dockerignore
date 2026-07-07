@@ -1,0 +1,10 @@
+.git
+.idea
+.env
+backups
+old
+docs
+supabase
+*.dump
+*.sql
+node_modules
