@@ -14,12 +14,25 @@
   };
 
   let currentVenueId = null;
+  let currentMatchId = null;
+  let realtimeClient = null;
+  let stateChannel = null;
+  let matchChannel = null;
+  let realtimeStarted = false;
+  let realtimeAvailable = false;
+  let updateTimer = null;
+  let lastFallbackPollAt = 0;
   const mainCard = document.getElementById('mainCard');
   const scoreboardContainer = document.getElementById('scoreboardContainer');
   const statusBar = document.getElementById('statusBar');
 
   function setStatus(msg) {
     if (statusBar) statusBar.textContent = msg;
+  }
+
+  function scheduleUpdate(delayMs = 120) {
+    window.clearTimeout(updateTimer);
+    updateTimer = window.setTimeout(updateScoreboard, delayMs);
   }
 
   function buildRestUrl(path, params) {
@@ -39,6 +52,85 @@
     return res.json();
   }
 
+  function createRealtimeClient() {
+    const supabaseFactory = window.supabase && window.supabase.createClient;
+    if (!supabaseFactory) return null;
+    return supabaseFactory(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+
+  function handleRealtimeStatus(name, status, err) {
+    if (status === 'SUBSCRIBED') {
+      realtimeAvailable = true;
+      return;
+    }
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      console.warn(`Realtime ${name} status:`, status, err || '');
+      realtimeAvailable = false;
+    }
+  }
+
+  function startStateRealtime() {
+    if (realtimeStarted || !currentVenueId) return;
+    realtimeStarted = true;
+    realtimeClient = createRealtimeClient();
+    if (!realtimeClient) {
+      setStatus('Realtime unavailable; polling fallback active.');
+      return;
+    }
+
+    stateChannel = realtimeClient
+      .channel(`obs-state-${currentVenueId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'state',
+        filter: `venue_id=eq.${currentVenueId}`,
+      }, () => scheduleUpdate())
+      .subscribe((status, err) => handleRealtimeStatus('state', status, err));
+  }
+
+  function refreshMatchRealtime(matchId) {
+    if (!realtimeClient || !matchId || currentMatchId === matchId) return;
+    currentMatchId = matchId;
+
+    if (matchChannel) {
+      realtimeClient.removeChannel(matchChannel);
+      matchChannel = null;
+    }
+
+    matchChannel = realtimeClient
+      .channel(`obs-match-${matchId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'submissions',
+        filter: `match_id=eq.${matchId}`,
+      }, () => scheduleUpdate())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'expected_judges',
+        filter: `match_id=eq.${matchId}`,
+      }, () => scheduleUpdate())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'matches',
+        filter: `id=eq.${matchId}`,
+      }, () => scheduleUpdate())
+      .subscribe((status, err) => handleRealtimeStatus('match', status, err));
+  }
+
+  function clearMatchRealtime() {
+    currentMatchId = null;
+    if (realtimeClient && matchChannel) {
+      realtimeClient.removeChannel(matchChannel);
+      matchChannel = null;
+    }
+  }
+
   async function updateScoreboard() {
     try {
       const venueCode = new URLSearchParams(window.location.search).get('venue') || 'default';
@@ -49,6 +141,7 @@
           setStatus(`venue not found: ${venueCode}`);
           return;
         }
+        startStateRealtime();
       }
 
       const stateRows = await fetchJson('state', {
@@ -59,11 +152,13 @@
       if (!st || !st.current_match_id) {
         setStatus('No active match set in state.');
         if (mainCard) mainCard.style.opacity = '0';
+        clearMatchRealtime();
         return;
       }
 
       if (mainCard) mainCard.style.opacity = st.scoreboard_visible ? '1' : '0';
       setStatus(`Active: match=${st.current_match_id}, epoch=${st.epoch}`);
+      refreshMatchRealtime(st.current_match_id);
 
       const [matches, expected, subs] = await Promise.all([
         fetchJson('matches', {
@@ -115,8 +210,18 @@
 
   window.addEventListener('beforeunload', () => {
     if (mainCard) mainCard.style.opacity = '0';
+    if (realtimeClient) {
+      if (stateChannel) realtimeClient.removeChannel(stateChannel);
+      if (matchChannel) realtimeClient.removeChannel(matchChannel);
+    }
   });
 
   updateScoreboard();
-  setInterval(updateScoreboard, 1000);
+  setInterval(() => {
+    const now = Date.now();
+    const intervalMs = realtimeAvailable ? 15000 : 1000;
+    if (now - lastFallbackPollAt < intervalMs) return;
+    lastFallbackPollAt = now;
+    updateScoreboard();
+  }, 1000);
 })();

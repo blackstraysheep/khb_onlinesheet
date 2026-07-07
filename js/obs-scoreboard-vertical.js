@@ -14,6 +14,14 @@
   };
 
   let currentVenueId = null;
+  let currentMatchId = null;
+  let realtimeClient = null;
+  let stateChannel = null;
+  let matchChannel = null;
+  let realtimeStarted = false;
+  let realtimeAvailable = false;
+  let updateTimer = null;
+  let lastFallbackPollAt = 0;
   const mainCard = document.getElementById('mainCard');
   const scoreboardContainer = document.getElementById('scoreboardContainer');
   const statusBar = document.getElementById('statusBar');
@@ -22,24 +30,104 @@
     if (statusBar) statusBar.textContent = msg;
   }
 
-  async function fetchJson(tableName, params) {
-    let url = `${SUPABASE_URL}/rest/v1/${tableName}`;
-    const queryParams = [];
-    if (params) {
-      for (const key in params) {
-        if (Object.prototype.hasOwnProperty.call(params, key)) {
-          queryParams.push(`${key}=${params[key]}`);
-        }
-      }
-    }
-    if (queryParams.length > 0) url += `?${queryParams.join('&')}`;
+  function scheduleUpdate(delayMs = 120) {
+    window.clearTimeout(updateTimer);
+    updateTimer = window.setTimeout(updateScoreboard, delayMs);
+  }
 
-    const res = await fetch(url, { headers });
+  async function fetchJson(tableName, params) {
+    const url = new URL(`${SUPABASE_URL}/rest/v1/${tableName}`);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) url.searchParams.set(key, value);
+      });
+    }
+
+    const res = await fetch(url.toString(), { headers });
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch ${tableName}: ${res.status} ${res.statusText} - ${errorText}`);
     }
     return res.json();
+  }
+
+  function createRealtimeClient() {
+    const supabaseFactory = window.supabase && window.supabase.createClient;
+    if (!supabaseFactory) return null;
+    return supabaseFactory(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+
+  function handleRealtimeStatus(name, status, err) {
+    if (status === 'SUBSCRIBED') {
+      realtimeAvailable = true;
+      return;
+    }
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      console.warn(`Realtime ${name} status:`, status, err || '');
+      realtimeAvailable = false;
+    }
+  }
+
+  function startStateRealtime() {
+    if (realtimeStarted || !currentVenueId) return;
+    realtimeStarted = true;
+    realtimeClient = createRealtimeClient();
+    if (!realtimeClient) {
+      setStatus('Realtime unavailable; polling fallback active.');
+      return;
+    }
+
+    stateChannel = realtimeClient
+      .channel(`obs-vertical-state-${currentVenueId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'state',
+        filter: `venue_id=eq.${currentVenueId}`,
+      }, () => scheduleUpdate())
+      .subscribe((status, err) => handleRealtimeStatus('state', status, err));
+  }
+
+  function refreshMatchRealtime(matchId) {
+    if (!realtimeClient || !matchId || currentMatchId === matchId) return;
+    currentMatchId = matchId;
+
+    if (matchChannel) {
+      realtimeClient.removeChannel(matchChannel);
+      matchChannel = null;
+    }
+
+    matchChannel = realtimeClient
+      .channel(`obs-vertical-match-${matchId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'submissions',
+        filter: `match_id=eq.${matchId}`,
+      }, () => scheduleUpdate())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'expected_judges',
+        filter: `match_id=eq.${matchId}`,
+      }, () => scheduleUpdate())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'matches',
+        filter: `id=eq.${matchId}`,
+      }, () => scheduleUpdate())
+      .subscribe((status, err) => handleRealtimeStatus('match', status, err));
+  }
+
+  function clearMatchRealtime() {
+    currentMatchId = null;
+    if (realtimeClient && matchChannel) {
+      realtimeClient.removeChannel(matchChannel);
+      matchChannel = null;
+    }
   }
 
   async function updateScoreboard() {
@@ -52,6 +140,7 @@
           setStatus(`venue not found: ${venueCode}`);
           return;
         }
+        startStateRealtime();
       }
 
       const stateRows = await fetchJson('state', {
@@ -61,11 +150,14 @@
       const st = stateRows[0];
       if (!st || !st.current_match_id) {
         setStatus('No active match set in state.');
+        if (mainCard) mainCard.style.opacity = '0';
+        clearMatchRealtime();
         return;
       }
 
       if (mainCard) mainCard.style.opacity = st.scoreboard_visible ? '1' : '0';
       setStatus(`Active: match=${st.current_match_id}, epoch=${st.epoch}`);
+      refreshMatchRealtime(st.current_match_id);
 
       const [matches, expected, subs] = await Promise.all([
         fetchJson('matches', {
@@ -119,8 +211,18 @@
 
   window.addEventListener('beforeunload', () => {
     if (mainCard) mainCard.style.opacity = '0';
+    if (realtimeClient) {
+      if (stateChannel) realtimeClient.removeChannel(stateChannel);
+      if (matchChannel) realtimeClient.removeChannel(matchChannel);
+    }
   });
 
   updateScoreboard();
-  setInterval(updateScoreboard, 1000);
+  setInterval(() => {
+    const now = Date.now();
+    const intervalMs = realtimeAvailable ? 15000 : 1000;
+    if (now - lastFallbackPollAt < intervalMs) return;
+    lastFallbackPollAt = now;
+    updateScoreboard();
+  }, 1000);
 })();
