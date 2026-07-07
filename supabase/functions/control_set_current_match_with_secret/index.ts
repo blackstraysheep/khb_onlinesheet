@@ -259,9 +259,11 @@ serve(async (req) => {
     }
 
     // 2. state を更新（current_match_id, epoch, accepting, e3_reached）
+    // fresh local DB では state 行がない場合があるため upsert で作成も行う。
     const { error: updErr } = await supabase
       .from("state")
-      .update({
+      .upsert({
+        venue_id: venueId,
         current_match_id: match_id,
         epoch,
         accepting: true,
@@ -273,8 +275,7 @@ serve(async (req) => {
         wins_updated_at: nowIso,
         
         updated_at: nowIso,
-      })
-      .eq("venue_id", venueId);
+      }, { onConflict: "venue_id" });
 
     if (updErr) {
       console.error("state update error on SET_MATCH", updErr);
