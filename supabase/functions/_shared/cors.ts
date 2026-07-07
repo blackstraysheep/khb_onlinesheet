@@ -6,6 +6,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "https://blackstraysheep.github.io",
 ];
 
+function allowsNoOriginRequests(): boolean {
+  return (Deno.env.get("ALLOW_NO_ORIGIN_REQUESTS") ?? "").trim() === "1";
+}
+
 function getAllowedOrigins(): Set<string> {
   const extraOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
     .split(",")
@@ -16,7 +20,7 @@ function getAllowedOrigins(): Set<string> {
 
 export function isAllowedOrigin(req: Request): boolean {
   const origin = req.headers.get("Origin");
-  if (!origin) return true;
+  if (!origin) return allowsNoOriginRequests();
   return getAllowedOrigins().has(origin);
 }
 

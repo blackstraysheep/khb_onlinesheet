@@ -52,7 +52,7 @@
     if (!res.ok) {
       throw new Error(data.error || res.statusText || 'failed to fetch judge tokens');
     }
-    tokenStatus = { text: `TOKENを表示中 (${(data.tokens || []).length}件)`, type: 'ok' };
+    tokenStatus = { text: `TOKEN状態を表示中 (${(data.tokens || []).length}件)`, type: 'ok' };
     return data.tokens ?? [];
   }
 
@@ -101,7 +101,10 @@
         return;
       }
       const modeLabel = judgeId ? '更新' : '作成';
-      showMsg('#addMsg', `${modeLabel}完了: ${data.judge_name} (TOKEN: ${data.token})`, 'ok');
+      const tokenText = data.token
+        ? `TOKEN: ${data.token}`
+        : 'TOKEN: 発行済み（再表示不可）';
+      showMsg('#addMsg', `${modeLabel}完了: ${data.judge_name} (${tokenText})`, 'ok');
       resetJudgeForm();
       await refreshAll();
     } catch (e) {

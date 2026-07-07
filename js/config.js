@@ -4,7 +4,7 @@
   //const AUDIO_BASE_URL = 'https://blackstraysheep.github.io/khb_onlinesheet/audio/';
   const AUDIO_BASE_URL = '../audio_zundamon/';
   const TOKEN_PREFIX = 'khb-';
-  const TOKEN_LENGTH = 8;
+  const TOKEN_LENGTH = 32;
 
   global.KHB_APP_CONFIG = Object.freeze({
     SUPABASE_URL,

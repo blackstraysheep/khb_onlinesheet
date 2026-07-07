@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
+import { sha256Hex, tokenLast4 } from "../_shared/token.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -127,10 +128,10 @@ serve(async (req) => {
       savedJudgeId = String(inserted.id);
     }
 
-    let token: string;
+    let token: string | null;
     const { data: existingToken, error: tokenSelectError } = await supabase
       .from("access_tokens")
-      .select("token")
+      .select("id, token, token_hash, token_last4")
       .eq("judge_id", savedJudgeId)
       .eq("role", "judge")
       .limit(1)
@@ -142,12 +143,35 @@ serve(async (req) => {
     }
 
     if (existingToken?.token) {
-      token = existingToken.token;
+      const legacyToken = existingToken.token as string;
+      const tokenHash = existingToken.token_hash ?? await sha256Hex(legacyToken);
+      const { error: tokenUpdateError } = await supabase
+        .from("access_tokens")
+        .update({
+          token: null,
+          token_hash: tokenHash,
+          token_last4: existingToken.token_last4 ?? tokenLast4(legacyToken),
+        })
+        .eq("id", existingToken.id);
+      if (tokenUpdateError) {
+        console.error("access_tokens legacy migration error", tokenUpdateError);
+        return json({ error: "failed to migrate legacy access token" }, corsHeaders, 500);
+      }
+      token = null;
+    } else if (existingToken?.token_hash) {
+      token = null;
     } else {
       token = generateToken(tokenPrefix, tokenLength);
+      const tokenHash = await sha256Hex(token);
       const { error: tokenInsertError } = await supabase
         .from("access_tokens")
-        .insert({ token, judge_id: savedJudgeId, role: "judge" });
+        .insert({
+          token: null,
+          token_hash: tokenHash,
+          token_last4: tokenLast4(token),
+          judge_id: savedJudgeId,
+          role: "judge",
+        });
 
       if (tokenInsertError) {
         console.error("access_tokens insert error", tokenInsertError);
@@ -161,6 +185,7 @@ serve(async (req) => {
       judge_name: name,
       voice_key: voiceKey,
       token,
+      token_visible_once: token !== null,
     }, corsHeaders);
   } catch (e) {
     console.error(e);

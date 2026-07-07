@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
+import { sha256Hex, tokenLast4 } from "../_shared/token.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -172,7 +173,8 @@ serve(async (req) => {
     const judgeResults: {
       judge_id: string;
       judge_name: string;
-      token: string;
+      token: string | null;
+      token_visible_once: boolean;
       role: "judge";
     }[] = [];
 
@@ -253,24 +255,43 @@ serve(async (req) => {
 
       // 4-3. access_tokens を発行（1審査員1トークン: venue_id なし）
       // 既存トークンがあればそれを使い回す
-      let token: string;
+      let token: string | null;
       {
         const { data: existingToken } = await supabase
           .from("access_tokens")
-          .select("token")
+          .select("id, token, token_hash, token_last4")
           .eq("judge_id", judge_id)
           .eq("role", "judge")
           .limit(1)
           .maybeSingle();
 
-        if (existingToken) {
-          token = existingToken.token as string;
+        if (existingToken?.token) {
+          const legacyToken = existingToken.token as string;
+          const tokenHash = existingToken.token_hash ?? await sha256Hex(legacyToken);
+          const { error: tokenUpdateError } = await supabase
+            .from("access_tokens")
+            .update({
+              token: null,
+              token_hash: tokenHash,
+              token_last4: existingToken.token_last4 ?? tokenLast4(legacyToken),
+            })
+            .eq("id", existingToken.id);
+          if (tokenUpdateError) {
+            console.error("access_tokens legacy migration error", tokenUpdateError);
+            return json({ error: `failed to migrate legacy access_token for judge: ${name}` }, 500);
+          }
+          token = null;
+        } else if (existingToken?.token_hash) {
+          token = null;
         } else {
           token = generateToken(token_prefix, tokenLength);
+          const tokenHash = await sha256Hex(token);
           const { error: insErr } = await supabase
             .from("access_tokens")
             .insert({
-              token,
+              token: null,
+              token_hash: tokenHash,
+              token_last4: tokenLast4(token),
               judge_id,
               role: "judge",
             });
@@ -289,6 +310,7 @@ serve(async (req) => {
         judge_id,
         judge_name: name,
         token,
+        token_visible_once: token !== null,
         role: "judge",
       });
       processedJudgeIds.push(judge_id);

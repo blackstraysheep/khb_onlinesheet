@@ -53,7 +53,7 @@ serve(async (req) => {
     // 2. access_tokens を取得（judge ロールのみ）
     const { data, error } = await supabase
       .from("access_tokens")
-      .select("judge_id, token")
+      .select("judge_id, token_hash, token_last4, expires_at, revoked_at")
       .eq("role", "judge");
 
     if (error) {
@@ -61,7 +61,17 @@ serve(async (req) => {
       return json({ error: "failed to fetch tokens" }, corsHeaders, 500);
     }
 
-    return json({ ok: true, tokens: data ?? [] }, corsHeaders);
+    const tokens = (data ?? []).map((row) => ({
+      judge_id: row.judge_id,
+      token: row.token_hash
+        ? (row.token_last4 ? `発行済み (...${row.token_last4})` : "発行済み")
+        : "未発行",
+      token_visible_once: false,
+      expires_at: row.expires_at ?? null,
+      revoked_at: row.revoked_at ?? null,
+    }));
+
+    return json({ ok: true, tokens }, corsHeaders);
   } catch (e) {
     console.error(e);
     return json({ error: "internal error" }, corsHeaders, 500);

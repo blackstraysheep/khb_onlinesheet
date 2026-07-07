@@ -3,9 +3,13 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getBoutLabel } from "../_shared/bout.ts";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
+import { sha256Hex, tokenLast4 } from "../_shared/token.ts";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 60;
 
 type MatchRow = {
   id: string;
@@ -32,6 +36,55 @@ type SubmissionInfo = {
   };
   revision: any;
 } | null;
+
+function getRateLimitBucket(req: Request): string {
+  const forwardedFor = req.headers.get("x-forwarded-for")
+    ?.split(",")[0]
+    ?.trim();
+  const ip = forwardedFor || req.headers.get("cf-connecting-ip") || "unknown";
+  return `judge-submit:${ip}`;
+}
+
+async function isWithinRateLimit(bucket: string): Promise<boolean> {
+  const now = new Date();
+  const { data, error } = await supabase
+    .from("token_rate_limits")
+    .select("window_start, request_count")
+    .eq("bucket", bucket)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("rate limit lookup failed", error);
+    return true;
+  }
+
+  if (!data) {
+    await supabase.from("token_rate_limits").insert({
+      bucket,
+      window_start: now.toISOString(),
+      request_count: 1,
+      updated_at: now.toISOString(),
+    });
+    return true;
+  }
+
+  const windowStartMs = new Date(data.window_start).getTime();
+  const expiredWindow = !Number.isFinite(windowStartMs) ||
+    now.getTime() - windowStartMs > RATE_LIMIT_WINDOW_MS;
+  const nextCount = expiredWindow ? 1 : Number(data.request_count ?? 0) + 1;
+
+  await supabase
+    .from("token_rate_limits")
+    .update({
+      window_start: expiredWindow ? now.toISOString() : data.window_start,
+      request_count: nextCount,
+      updated_at: now.toISOString(),
+    })
+    .eq("bucket", bucket);
+
+  return nextCount <= RATE_LIMIT_MAX_REQUESTS;
+}
+
 serve(async (req)=>{
   const corsHeaders = buildCorsHeaders(req);
   const json = (body, status = 200)=>new Response(JSON.stringify(body), {
@@ -57,9 +110,14 @@ serve(async (req)=>{
       error: "Method not allowed"
     }, 405);
   }
+  if (!await isWithinRateLimit(getRateLimitBucket(req))) {
+    return json({
+      error: "rate limit exceeded"
+    }, 429);
+  }
   try {
     const body = await req.json().catch(()=>null);
-    const token = body?.token;
+    const token = typeof body?.token === "string" ? body.token.trim() : "";
     const payload = body?.payload;
     const mode = body?.mode;
     const infoMode = mode === "info";
@@ -70,16 +128,52 @@ serve(async (req)=>{
       }, 400);
     }
     // 1. トークン検証（judge_id だけ使う）
-    const { data: tokenRow, error: tokenErr } = await supabase.from("access_tokens").select("*").eq("token", token).single();
+    const tokenHash = await sha256Hex(token);
+    let { data: tokenRow, error: tokenErr } = await supabase
+      .from("access_tokens")
+      .select("*")
+      .eq("token_hash", tokenHash)
+      .maybeSingle();
+    if (!tokenRow) {
+      const legacyResult = await supabase
+        .from("access_tokens")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
+      tokenRow = legacyResult.data;
+      tokenErr = legacyResult.error;
+    }
     if (tokenErr || !tokenRow) {
       return json({
         error: "invalid token"
+      }, 401);
+    }
+    if (tokenRow.revoked_at) {
+      return json({
+        error: "invalid token"
+      }, 401);
+    }
+    if (tokenRow.expires_at && new Date(tokenRow.expires_at).getTime() <= Date.now()) {
+      return json({
+        error: "token expired"
       }, 401);
     }
     if (tokenRow.role !== "judge") {
       return json({
         error: "invalid role"
       }, 403);
+    }
+    const tokenUpdate = {
+      token: null,
+      token_hash: tokenRow.token_hash ?? tokenHash,
+      token_last4: tokenRow.token_last4 ?? tokenLast4(token),
+      last_used_at: new Date().toISOString()
+    };
+    const tokenUpdateQuery = supabase.from("access_tokens").update(tokenUpdate);
+    if (tokenRow.id) {
+      await tokenUpdateQuery.eq("id", tokenRow.id);
+    } else {
+      await tokenUpdateQuery.eq("token", token);
     }
     const judge_id = String(tokenRow.judge_id);
 
@@ -278,7 +372,7 @@ serve(async (req)=>{
         "total"
       ]){
         const v = side[key];
-        if (!Number.isFinite(v) || v < 0 || v > 100) {
+        if (!Number.isInteger(v) || v < 0 || v > 100) {
           throw new Error(`invalid ${sideName}.${key}`);
         }
       }
