@@ -52,6 +52,7 @@ tr:hover td { background: #1a2744; }
 .checkbox-grid label:hover { background: #1a2744; }
 .text-muted { color: #888; }
 .link { color: #3a86ff; cursor: pointer; text-decoration: underline; }
+.action-links { display: flex; flex-wrap: wrap; gap: 8px; }
 
 @media (max-width: 900px) {
   .judges-layout-grid { grid-template-columns: 1fr; }

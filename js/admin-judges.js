@@ -6,7 +6,9 @@
   const TOKEN_LENGTH = Number.isInteger(CONFIG.TOKEN_LENGTH) ? CONFIG.TOKEN_LENGTH : 32;
   const ADMIN_UPSERT_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-upsert-judge';
   const ADMIN_LIST_JUDGE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-judge-tokens';
+  const ADMIN_REGENERATE_JUDGE_TOKEN_URL = SUPABASE_URL + '/functions/v1/admin-regenerate-judge-token';
   const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
+  const ADMIN_SELECT_URL = SUPABASE_URL + '/functions/v1/admin-select';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -27,6 +29,26 @@
   let tokenStatus = { text: '管理用シークレットを入力するとTOKENを表示できます。', type: 'warn' };
 
   async function fetchJson(table, params = {}) {
+    const secret = $('#adminSecret')?.value?.trim() || '';
+    if (secret) {
+      const res = await fetch(ADMIN_SELECT_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          admin_secret: secret,
+          table,
+          params: Object.fromEntries(
+            Object.entries(params).map(([key, value]) => [key, String(value)])
+          ),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || res.statusText || `GET ${table} failed`);
+      }
+      return data.data || [];
+    }
+
     const url = new URL(SUPABASE_URL + '/rest/v1/' + table);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
     const res = await fetch(url, { headers });
@@ -112,6 +134,43 @@
     }
   }
 
+  async function regenerateJudgeToken(judge) {
+    const secret = $('#adminSecret').value.trim();
+    if (!secret) return showMsg('#judgeListMsg', '管理用シークレットを入力', 'err');
+
+    const ok = window.confirm(`${judge.name} のTOKENを再発行します。古いTOKENは使えなくなります。`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch(ADMIN_REGENERATE_JUDGE_TOKEN_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          admin_secret: secret,
+          judge_id: judge.id,
+          token_prefix: TOKEN_PREFIX,
+          token_length: TOKEN_LENGTH,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showMsg('#judgeListMsg', data.error || res.statusText, 'err');
+        return;
+      }
+
+      const judgeUrl = new URL('judge.html', window.location.href);
+      judgeUrl.searchParams.set('token', data.token);
+      await refreshAll();
+      showMsg(
+        '#judgeListMsg',
+        `TOKEN再発行完了: ${data.judge_name} / TOKEN: ${data.token} / URL: ${judgeUrl.toString()}`,
+        'ok'
+      );
+    } catch (e) {
+      showMsg('#judgeListMsg', e.message, 'err');
+    }
+  }
+
   async function refreshAll() {
     try {
       const secret = $('#adminSecret').value.trim();
@@ -186,9 +245,15 @@
         <td>${esc(j.voice_key || '')}</td>
         <td><span class="token-text">${esc(token)}</span></td>
         <td>${assignedStr}${conflictHtml}</td>
-        <td><span class="link" data-judge-id="${esc(j.id)}">編集</span></td>
+        <td>
+          <span class="action-links">
+            <span class="link" data-action="edit" data-judge-id="${esc(j.id)}">編集</span>
+            <span class="link" data-action="regenerate-token" data-judge-id="${esc(j.id)}">TOKEN再発行</span>
+          </span>
+        </td>
       `;
-      tr.querySelector('.link').addEventListener('click', () => loadJudgeForEdit(j));
+      tr.querySelector('[data-action="edit"]').addEventListener('click', () => loadJudgeForEdit(j));
+      tr.querySelector('[data-action="regenerate-token"]').addEventListener('click', () => regenerateJudgeToken(j));
       tbody.appendChild(tr);
     }
   }
