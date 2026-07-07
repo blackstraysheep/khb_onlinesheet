@@ -67,7 +67,7 @@
 
 ```javascript
 const SUPABASE_URL = 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+const SUPABASE_ANON_KEY = '<redacted>';
 ```
 
 **問題点:**
@@ -199,7 +199,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 ```env
 VITE_SUPABASE_URL=http://127.0.0.1:54321
-VITE_SUPABASE_ANON_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
+VITE_SUPABASE_ANON_KEY=<redacted>
 ```
 
 **.env.production:**

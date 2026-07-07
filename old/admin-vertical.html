@@ -157,13 +157,13 @@
   <script src="scoreboard.js"></script>
   <script>
     (function () {
-      const SUPABASE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co'; // プロジェクトURL
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHdrZHB1cndhbWlsenpzcmZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjAwMTcsImV4cCI6MjA3NzkzNjAxN30.YvZgEi4x0YPuxYswMQjDQdBMVOPY6wkCVfY2hJ0_dL8';
+      const SUPABASE_URL = 'https://example.supabase.co'; // archived placeholder
+      const SUPABASE_ANON_KEY = '';
 
       // E5/E6/SET_MATCH Edge Functions の URL
-      const CONTROL_CONFIRM_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_confirm_with_secret';
-      const CONTROL_ADVANCE_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_advance_with_secret';
-      const CONTROL_SET_MATCH_URL = 'https://ktxwkdpurwamilzzsrfq.supabase.co/functions/v1/control_set_current_match_with_secret';
+      const CONTROL_CONFIRM_URL = SUPABASE_URL + '/functions/v1/control_confirm_with_secret';
+      const CONTROL_ADVANCE_URL = SUPABASE_URL + '/functions/v1/control_advance_with_secret';
+      const CONTROL_SET_MATCH_URL = SUPABASE_URL + '/functions/v1/control_set_current_match_with_secret';
 
       const headers = {
         'apikey': SUPABASE_ANON_KEY,

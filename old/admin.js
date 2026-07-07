@@ -3,7 +3,7 @@
   // 設定（URLとキー）
   // ============================
   const SUPABASE_URL = 'http://127.0.0.1:54321'; // ローカルテスト用
-  const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+  const SUPABASE_ANON_KEY = '';
 
   const CONTROL_CONFIRM_URL    = 'http://127.0.0.1:54321/functions/v1/control_confirm_with_secret';
   const CONTROL_ADVANCE_URL    = 'http://127.0.0.1:54321/functions/v1/control_advance_with_secret';
