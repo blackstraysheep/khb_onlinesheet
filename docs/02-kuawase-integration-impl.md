@@ -304,12 +304,12 @@ oes-open-admin        shell.openExternal(OES URL allowlist 検証は main 側)
 
 ### Phase 2: 当日フロー(読込+報告)
 
-- [ ] kk: 統合モード UI(試合指定パネル差し替え、プリセット読込、状態バー)
-- [ ] kk: `oes-load-preset` → `SET_MATCH`
-- [ ] OES: `kuawase-sync-control`(SET_MATCH)+`kuawase-sync-report`
-- [ ] kk: 遷移・披講の report 送信(core の `onIframeSrcChanged` hook 追加)
-- [ ] 両側: excel_hash 照合+セルキー↔表示名検証の警告
-- [ ] OES: admin.html 連携パネル+警告表示
+- [x] kk: 統合モード UI(試合指定パネル差し替え、プリセット読込、状態バー)
+- [x] kk: `oes-load-preset` → `SET_MATCH`(読込前セルキー検証、オフライン時はローカル反映+dirty)
+- [x] OES: `kuawase-sync-control`(SET_MATCH、厳格 event_id 冪等、現在試合の再読込は no-op)+`kuawase-sync-report`(state 不変、報告は enabled を書き換えない)
+- [x] kk: 遷移・披講の report 送信(実装は core hook ではなく iframe load 監視。ボタン・reload・復元の全遷移を捕捉でき core 変更ゼロ)
+- [x] 両側: excel_hash 照合+セルキー↔表示名検証の警告
+- [x] OES: admin.html 連携パネル+警告表示(admin-kuawase.js、解除は admin-toggle-kuawase-sync)
 
 ### Phase 3: 進行統合(E5+E6)
 
