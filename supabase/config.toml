@@ -376,6 +376,12 @@ verify_jwt = false
 [functions.kuawase-sync-connect]
 verify_jwt = false
 
+[functions.kuawase-sync-report]
+verify_jwt = false
+
+[functions.kuawase-sync-control]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
