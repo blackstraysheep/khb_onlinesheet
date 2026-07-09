@@ -147,7 +147,7 @@ serve(async (req) => {
     // view で対戦(slot / match)が変わったら reveal をリセットする。
     const { data: statusRow } = await supabase
       .from("kuawase_sync_status")
-      .select("last_view")
+      .select("last_view, enabled")
       .eq("venue_id", venueId)
       .maybeSingle();
     // deno-lint-ignore no-explicit-any
@@ -180,11 +180,14 @@ serve(async (req) => {
       };
     }
 
+    // report は受動的な報告なので enabled を書き換えない。
+    // 管理者が連携解除(enabled=false)した状態を kk の報告が勝手に戻さないため。
+    // 再有効化は明示操作(kuawase-sync-connect / kuawase-sync-control)のみが行う。
     const { error: statusError } = await supabase
       .from("kuawase_sync_status")
       .upsert({
         venue_id: venueId,
-        enabled: true,
+        enabled: statusRow ? statusRow.enabled : true,
         source_device_id: tokenRow.device_id,
         last_view: nextView,
         last_synced_at: nowIso,

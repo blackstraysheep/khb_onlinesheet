@@ -80,6 +80,20 @@
         <div class="msg" id="e5e6Status"></div>
       </section>
 
+      <!-- KHB-Kuawase 連携状態 -->
+      <details class="card collapsible-card" id="kuawasePanel">
+        <summary class="card-header small collapsible-summary" id="kuawaseSummary">KHB-Kuawase 連携: 未確認</summary>
+        <div class="collapsible-body">
+          <div id="kuawaseBody">
+            <div class="small placeholder-muted">(会場を選択してください)</div>
+          </div>
+          <div class="control-group mb-8">
+            <button id="btnKuawaseDisable" class="small-btn btn-red" style="display:none">連携を解除</button>
+          </div>
+          <div class="msg" id="kuawaseStatusMsg"></div>
+        </div>
+      </details>
+
       <!-- 得点読み上げパネル -->
       <section class="card">
         <h2 class="card-header">得点読み上げパネル</h2>
@@ -122,6 +136,7 @@
   <script src="../js/admin-audio.js"></script>
   <script src="../js/admin-scoreboard.js"></script>
   <script src="../js/admin-ui.js"></script>
+  <script src="../js/admin-kuawase.js"></script>
   <script src="../js/admin-core.js"></script>
 
 </body>

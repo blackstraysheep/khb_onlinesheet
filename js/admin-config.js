@@ -34,6 +34,7 @@ const CONTROL_SET_MATCH_URL  = SUPABASE_URL + '/functions/v1/control_set_current
 const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
 const ADMIN_PATCH_STATE_URL      = SUPABASE_URL + '/functions/v1/admin-patch-state';
 const ADMIN_SELECT_URL           = SUPABASE_URL + '/functions/v1/admin-select';
+const ADMIN_TOGGLE_KUAWASE_SYNC_URL = SUPABASE_URL + '/functions/v1/admin-toggle-kuawase-sync';
 
 const adminHeaders = {
   'apikey': SUPABASE_ANON_KEY,
@@ -53,6 +54,7 @@ Object.assign(KHBAdmin.constants, {
   ADMIN_SET_MATCH_JUDGES_URL,
   ADMIN_PATCH_STATE_URL,
   ADMIN_SELECT_URL,
+  ADMIN_TOGGLE_KUAWASE_SYNC_URL,
   adminHeaders,
   ADMIN_AUTO_REFRESH_MS,
   AUDIO_NUMERIC_CLIP_MAX,
@@ -96,6 +98,12 @@ const e5e6StatusEl        = query('#e5e6Status');
 const epochInput          = query('#epochInput');
 const btnSetEpoch         = query('#btnSetEpoch');
 
+const kuawasePanel        = query('#kuawasePanel');
+const kuawaseSummary      = query('#kuawaseSummary');
+const kuawaseBody         = query('#kuawaseBody');
+const btnKuawaseDisable   = query('#btnKuawaseDisable');
+const kuawaseStatusMsg    = query('#kuawaseStatusMsg');
+
 Object.assign(KHBAdmin.dom, {
   venueSelect,
   matchSelect,
@@ -118,6 +126,11 @@ Object.assign(KHBAdmin.dom, {
   e5e6StatusEl,
   epochInput,
   btnSetEpoch,
+  kuawasePanel,
+  kuawaseSummary,
+  kuawaseBody,
+  btnKuawaseDisable,
+  kuawaseStatusMsg,
 });
 
 Object.assign(KHBAdmin.state, {
