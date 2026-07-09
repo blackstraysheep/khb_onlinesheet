@@ -292,11 +292,11 @@ oes-open-admin        shell.openExternal(OES URL allowlist 検証は main 側)
 
 ### Phase 1: 接続基盤+事前設定(大会前フローの成立)
 
-- [ ] OES: `kuawase_sync_tokens` / `kuawase_candidates` / matches 拡張の migration
-- [ ] OES: token 発行・revoke UI
-- [ ] OES: `kuawase-import-candidates` / `kuawase-sync-connect`
-- [ ] OES: admin-match.html の候補選択式試合設定
-- [ ] OES: `_shared/cors.ts` に `x-kuawase-sync-token`
+- [x] OES: `kuawase_sync_tokens` / `kuawase_candidates` / matches 拡張の migration(20260710000001)
+- [x] OES: token 発行・revoke UI(admin-judges + admin-issue/list/revoke-kuawase-token)
+- [x] OES: `kuawase-import-candidates` / `kuawase-sync-connect`(+ `_shared/kuawase-auth.ts`, `_shared/sanitize.ts`)
+- [x] OES: admin-match.html の候補選択式試合設定(手入力フォールバック付き)
+- [x] OES: `_shared/cors.ts` に `x-kuawase-sync-token`
 - [ ] kk: `oes-sync-ipc.js`(接続設定・保存・fetch 基盤)+接続設定 UI
 - [ ] kk: 候補データ送信(excel_hash 計算含む)
 
