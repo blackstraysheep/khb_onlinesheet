@@ -6,6 +6,7 @@
   const TOKEN_LENGTH = Number.isInteger(CONFIG.TOKEN_LENGTH) ? CONFIG.TOKEN_LENGTH : 32;
   const ADMIN_SETUP_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-setup-match';
   const ADMIN_LIST_MATCHES_URL = SUPABASE_URL + '/functions/v1/admin-list-matches';
+  const ADMIN_SELECT_URL = SUPABASE_URL + '/functions/v1/admin-select';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -19,16 +20,121 @@
 
   const $ = (s) => document.querySelector(s);
   let allVenues = [];
+  // venue_id(string) -> kuawase_candidates row（候補データが無い venue はキーが存在しない）
+  let candidatesByVenueId = new Map();
 
-  async function fetchJson(table, params = {}) {
-    const url = new URL(SUPABASE_URL + '/rest/v1/' + table);
-    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
-    const res = await fetch(url, { headers });
+  // admin-select 経由でテーブルを読む（admin_secret 保護下・kuawase_candidates は allowlist 済み）
+  async function fetchViaAdminSelect(table, params = {}) {
+    const secret = $('#adminSecret').value.trim();
+    if (!secret) throw new Error('管理用シークレットを入力してください');
+    const res = await fetch(ADMIN_SELECT_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ admin_secret: secret, table, params }),
+    });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`GET ${table} failed: ${res.status} ${txt}`);
+      throw new Error(data.error || res.statusText || `GET ${table} failed`);
     }
-    return res.json();
+    return data.data || [];
+  }
+
+  // 候補データ（kuawase_candidates）を venue 単位で読み込む。
+  // 候補データが存在しない/シークレット未入力の場合は空 map のまま（=常に手入力にフォールバック）。
+  async function refreshCandidates() {
+    try {
+      const secret = $('#adminSecret').value.trim();
+      if (!secret) {
+        candidatesByVenueId = new Map();
+        return;
+      }
+      const rows = await fetchViaAdminSelect('kuawase_candidates', { select: '*' });
+      candidatesByVenueId = new Map(rows.map((r) => [String(r.venue_id), r]));
+    } catch (e) {
+      console.error('refreshCandidates error', e);
+      candidatesByVenueId = new Map();
+    }
+  }
+
+  function getVenueIdByCode(code) {
+    const v = allVenues.find((v) => v.code === code);
+    return v ? v.id : null;
+  }
+
+  function currentCandidate() {
+    const code = $('#venueCode').value.trim() || 'default';
+    const venueId = getVenueIdByCode(code);
+    if (!venueId) return null;
+    return candidatesByVenueId.get(String(venueId)) || null;
+  }
+
+  function populateSelect(selectEl, items) {
+    const previousValue = selectEl.value;
+    selectEl.innerHTML = '<option value="">-- 選択 --</option>';
+    for (const item of items || []) {
+      const opt = document.createElement('option');
+      opt.value = item.cell;
+      opt.dataset.name = item.name;
+      opt.textContent = item.name;
+      selectEl.appendChild(opt);
+    }
+    if (previousValue && Array.from(selectEl.options).some((o) => o.value === previousValue)) {
+      selectEl.value = previousValue;
+    }
+  }
+
+  function toggleWrap(selectWrapSel, inputWrapSel, useSelect) {
+    $(selectWrapSel).classList.toggle('hidden', !useSelect);
+    $(inputWrapSel).classList.toggle('hidden', useSelect);
+  }
+
+  // 選択中 venue の候補データの有無に応じて、紅白チーム・兼題の入力欄を
+  // プルダウン(候補選択式)/テキスト入力(手入力)のどちらにするか切り替える。
+  // 候補データが無い venue では常にテキスト入力（OES 単独使用と完全互換）。
+  function updateCandidatePanel() {
+    const cand = currentCandidate();
+    const manual = $('#manualEntryToggle').checked;
+    const infoRow = $('#candidateInfoRow');
+    const useSelect = !!cand && !manual;
+
+    if (cand) {
+      infoRow.style.display = '';
+      $('#candidateInfoMsg').textContent =
+        `候補データ: ${cand.compe_name || '(大会名未設定)'} / インポート: ${fmtDateTime(cand.imported_at)}`;
+      populateSelect($('#redTeamSelect'), cand.teams);
+      populateSelect($('#whiteTeamSelect'), cand.teams);
+      populateSelect($('#kendaiSelect'), cand.kendai);
+    } else {
+      infoRow.style.display = 'none';
+      $('#manualEntryToggle').checked = false;
+    }
+
+    toggleWrap('#redTeamSelectWrap', '#redTeamInputWrap', useSelect);
+    toggleWrap('#whiteTeamSelectWrap', '#whiteTeamInputWrap', useSelect);
+    toggleWrap('#kendaiSelectWrap', '#kendaiInputWrap', useSelect);
+  }
+
+  function selectOptionByCellOrName(selectEl, cell, name) {
+    if (cell) {
+      const opt = Array.from(selectEl.options).find((o) => o.value === cell);
+      if (opt) {
+        selectEl.value = cell;
+        return;
+      }
+    }
+    if (name) {
+      const opt = Array.from(selectEl.options).find((o) => o.dataset.name === name);
+      if (opt) selectEl.value = opt.value;
+    }
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return '-';
+    try {
+      return new Date(iso).toLocaleString('ja-JP');
+    } catch (_e) {
+      return iso;
+    }
   }
 
   $('#btnSaveMatch').addEventListener('click', async () => {
@@ -37,13 +143,46 @@
     const matchName = $('#matchName').value.trim();
     const timeline = parseFloat($('#timeline').value);
     const numBouts = parseInt($('#numBouts').value) || 5;
-    const redTeam = $('#redTeam').value.trim();
-    const whiteTeam = $('#whiteTeam').value.trim();
 
     if (!secret) return showMsg('#saveMsg', '管理用シークレットを入力', true);
     if (!matchCode) return showMsg('#saveMsg', '試合コードを入力', true);
     if (!matchName) return showMsg('#saveMsg', '試合名を入力', true);
     if (!Number.isFinite(timeline)) return showMsg('#saveMsg', 'タイムラインを入力（数値）', true);
+
+    // 候補データがあり、かつ手入力に切り替えていない場合はプルダウン選択値を使う。
+    const cand = currentCandidate();
+    const manual = $('#manualEntryToggle').checked;
+    const useCandidates = !!cand && !manual;
+
+    let redTeam;
+    let whiteTeam;
+    let kendaiName;
+    let kuawaseRef;
+
+    if (useCandidates) {
+      const redOpt = $('#redTeamSelect').selectedOptions[0];
+      const whiteOpt = $('#whiteTeamSelect').selectedOptions[0];
+      const kendaiOpt = $('#kendaiSelect').selectedOptions[0];
+      if (!redOpt || !redOpt.value) return showMsg('#saveMsg', '紅チーム（候補）を選択してください', true);
+      if (!whiteOpt || !whiteOpt.value) return showMsg('#saveMsg', '白チーム（候補）を選択してください', true);
+
+      redTeam = redOpt.dataset.name || '';
+      whiteTeam = whiteOpt.dataset.name || '';
+      kendaiName = (kendaiOpt && kendaiOpt.value) ? (kendaiOpt.dataset.name || '') : '';
+
+      kuawaseRef = {
+        red_cell: redOpt.value,
+        white_cell: whiteOpt.value,
+        excel_hash: cand.excel_hash,
+      };
+      if (kendaiOpt && kendaiOpt.value) kuawaseRef.kendai_cell = kendaiOpt.value;
+    } else {
+      redTeam = $('#redTeam').value.trim();
+      whiteTeam = $('#whiteTeam').value.trim();
+      kendaiName = $('#kendaiName').value.trim();
+      // 手入力（または候補データなし）の場合は候補参照を明示的にクリアする。
+      kuawaseRef = null;
+    }
 
     try {
       const res = await fetch(ADMIN_SETUP_MATCH_URL, {
@@ -58,6 +197,8 @@
           num_bouts: numBouts,
           red_team_name: redTeam || undefined,
           white_team_name: whiteTeam || undefined,
+          kendai_name: kendaiName || undefined,
+          kuawase_ref: kuawaseRef,
           token_prefix: TOKEN_PREFIX,
           token_length: TOKEN_LENGTH,
         }),
@@ -99,6 +240,8 @@
       }
 
       allVenues = venues;
+      await refreshCandidates();
+      updateCandidatePanel();
       const venueCodeById = new Map(venues.map(v => [v.id, v.code]));
 
       const tbody = $('#matchListBody');
@@ -178,6 +321,23 @@
     $('#numBouts').value = m.num_bouts ?? 5;
     $('#redTeam').value = m.red_team_name || '';
     $('#whiteTeam').value = m.white_team_name || '';
+    $('#kendaiName').value = m.kendai_name || '';
+
+    // 候補データがある venue でも、この試合が手入力で設定済み（kuawase_ref なし）なら
+    // 編集時は手入力モードのまま開く。候補から設定済みなら選択式で開く。
+    const cand = candidatesByVenueId.get(String(m.venue_id));
+    const hasRef = !!m.kuawase_ref;
+    $('#manualEntryToggle').checked = !!cand && !hasRef;
+    updateCandidatePanel();
+
+    if (cand && hasRef) {
+      selectOptionByCellOrName($('#redTeamSelect'), m.kuawase_ref.red_cell, m.red_team_name);
+      selectOptionByCellOrName($('#whiteTeamSelect'), m.kuawase_ref.white_cell, m.white_team_name);
+      if (m.kuawase_ref.kendai_cell) {
+        selectOptionByCellOrName($('#kendaiSelect'), m.kuawase_ref.kendai_cell, m.kendai_name);
+      }
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -194,5 +354,7 @@
   }
 
   $('#btnRefreshMatches').addEventListener('click', refreshMatches);
+  $('#venueCode').addEventListener('input', updateCandidatePanel);
+  $('#manualEntryToggle').addEventListener('change', updateCandidatePanel);
   refreshMatches();
 })();

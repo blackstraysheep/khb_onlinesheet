@@ -19,6 +19,7 @@ const ALLOWED_TABLES = new Set([
   "judges",
   "submissions",
   "match_snapshots",
+  "kuawase_candidates",
 ]);
 
 type RequestBody = {

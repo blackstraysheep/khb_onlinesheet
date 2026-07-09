@@ -59,9 +59,33 @@
           <div><label for="timeline">タイムライン</label><input id="timeline" type="number" step="0.1" placeholder="例: 1" class="input-sm" /></div>
           <div><label for="numBouts">対戦数</label><input id="numBouts" type="number" value="5" min="1" max="9" class="input-sm" /></div>
         </div>
+        <div class="row mb-8" id="candidateInfoRow" style="display:none;">
+          <div class="msg ok" id="candidateInfoMsg" style="margin-top:0;"></div>
+          <div>
+            <label>&nbsp;</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;color:#ccc;font-weight:normal;">
+              <input type="checkbox" id="manualEntryToggle" style="width:auto;" /> 手入力に切り替え
+            </label>
+          </div>
+        </div>
         <div class="row mb-8">
-          <div><label for="redTeam">紅チーム</label><input id="redTeam" placeholder="紅チーム名" class="input-md" /></div>
-          <div><label for="whiteTeam">白チーム</label><input id="whiteTeam" placeholder="白チーム名" class="input-md" /></div>
+          <div id="redTeamSelectWrap" class="hidden">
+            <label for="redTeamSelect">紅チーム（候補）</label>
+            <select id="redTeamSelect" class="input-md"></select>
+          </div>
+          <div id="redTeamInputWrap"><label for="redTeam">紅チーム</label><input id="redTeam" placeholder="紅チーム名" class="input-md" /></div>
+          <div id="whiteTeamSelectWrap" class="hidden">
+            <label for="whiteTeamSelect">白チーム（候補）</label>
+            <select id="whiteTeamSelect" class="input-md"></select>
+          </div>
+          <div id="whiteTeamInputWrap"><label for="whiteTeam">白チーム</label><input id="whiteTeam" placeholder="白チーム名" class="input-md" /></div>
+        </div>
+        <div class="row mb-8">
+          <div id="kendaiSelectWrap" class="hidden">
+            <label for="kendaiSelect">兼題（候補）</label>
+            <select id="kendaiSelect" class="input-md"></select>
+          </div>
+          <div id="kendaiInputWrap"><label for="kendaiName">兼題</label><input id="kendaiName" placeholder="兼題名" class="input-md" /></div>
         </div>
         <div class="row">
           <button id="btnSaveMatch" class="btn-green">試合を保存</button>

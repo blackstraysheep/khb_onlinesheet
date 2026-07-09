@@ -15,6 +15,15 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 type JudgeInput = { name: string };
 
+// kuawase_ref: kuawase_candidates 由来のセルキー参照。
+// 参照: docs/02-kuawase-integration-impl.md 「matches への追加カラム」
+type KuawaseRefInput = {
+  red_cell?: string;
+  white_cell?: string;
+  kendai_cell?: string;
+  excel_hash?: string;
+} | null;
+
 type RequestBody = {
   admin_secret?: string;
   venue_code?: string;
@@ -24,10 +33,50 @@ type RequestBody = {
   num_bouts?: number;
   red_team_name?: string;
   white_team_name?: string;
+  kendai_name?: string;
+  kuawase_ref?: KuawaseRefInput;
   judges?: JudgeInput[];
   token_prefix?: string;
   token_length?: number;
 };
+
+const KUAWASE_CELL_RE = /^[A-Z]{1,3}[0-9]{1,4}$/;
+
+// kuawase_ref を検証・正規化する。
+// - undefined: リクエストに含まれない → 既存値を変更しない（呼び出し側で判定）
+// - null: 明示的なクリア（手入力への切り替え時）
+// - object: セル形式を検証し、想定外のキーは結果に含めない（捨てる）
+function normalizeKuawaseRef(value: unknown): Record<string, string> | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("kuawase_ref must be an object or null");
+  }
+
+  const src = value as Record<string, unknown>;
+  const result: Record<string, string> = {};
+
+  for (const key of ["red_cell", "white_cell", "kendai_cell"] as const) {
+    const raw = src[key];
+    if (raw === undefined || raw === null || raw === "") continue;
+    if (typeof raw !== "string") {
+      throw new Error(`kuawase_ref.${key} must be a string`);
+    }
+    const cell = raw.trim().toUpperCase();
+    if (!KUAWASE_CELL_RE.test(cell)) {
+      throw new Error(`kuawase_ref.${key} is invalid: ${raw}`);
+    }
+    result[key] = cell;
+  }
+
+  const excelHash = src.excel_hash;
+  if (typeof excelHash === "string" && excelHash.trim()) {
+    result.excel_hash = excelHash.trim();
+  }
+
+  // それ以外のキーは result に写さないため、自動的に捨てられる。
+  return result;
+}
 
 function normalizeTokenLength(value: unknown, fallback = 32): number {
   if (typeof value !== "number" || !Number.isInteger(value)) return fallback;
@@ -76,6 +125,8 @@ serve(async (req) => {
       num_bouts,
       red_team_name,
       white_team_name,
+      kendai_name,
+      kuawase_ref,
       judges,
       token_prefix = "khb-",
       token_length,
@@ -96,6 +147,13 @@ serve(async (req) => {
 
     if (!timingSafeEqual(clientSecret, adminSecret)) {
       return json({ error: "unauthorized" }, 401);
+    }
+
+    let kuawaseRef: Record<string, string> | null | undefined;
+    try {
+      kuawaseRef = normalizeKuawaseRef(kuawase_ref);
+    } catch (e) {
+      return json({ error: e instanceof Error ? e.message : String(e) }, 400);
     }
 
     // 2. 入力チェック
@@ -143,6 +201,8 @@ serve(async (req) => {
       };
       if (red_team_name !== undefined) matchPayload.red_team_name = red_team_name;
       if (white_team_name !== undefined) matchPayload.white_team_name = white_team_name;
+      if (kendai_name !== undefined) matchPayload.kendai_name = kendai_name;
+      if (kuawaseRef !== undefined) matchPayload.kuawase_ref = kuawaseRef;
 
       if (existing) {
         match_id = existing.id as string;

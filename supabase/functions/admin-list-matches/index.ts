@@ -48,7 +48,7 @@ serve(async (req) => {
     const [matchesResult, statesResult, venuesResult] = await Promise.all([
       supabase
         .from("matches")
-        .select("id,code,name,timeline,num_bouts,red_team_name,white_team_name,venue_id,created_at")
+        .select("id,code,name,timeline,num_bouts,red_team_name,white_team_name,kendai_name,kuawase_ref,venue_id,created_at")
         .order("timeline", { ascending: true, nullsFirst: false })
         .order("code", { ascending: true }),
       supabase
