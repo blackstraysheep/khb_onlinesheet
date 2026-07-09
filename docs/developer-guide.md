@@ -648,6 +648,19 @@ function getSlot(epoch: number, numBouts: number): number {
 | `winnum_obs_overlay.html` | OBS 勝数オーバーレイ |
 | `snapshot_viewer.html` | 保存済み `match_snapshots.snapshot` JSON を縦型表示で確認するツール |
 
+### 8.1.1 OBS スコアボードの Realtime 更新
+
+`obs-scoreboard.html` と `obs-scoreboard-vertical.html` は Supabase Realtime クライアントを読み込み、以下の変更を購読する。
+
+| テーブル | フィルタ | 用途 |
+|----------|----------|------|
+| `state` | `venue_id=eq.<currentVenueId>` | current match、epoch、表示/非表示の即時反映 |
+| `submissions` | `match_id=eq.<currentMatchId>` | 審査員提出・修正の即時反映 |
+| `expected_judges` | `match_id=eq.<currentMatchId>` | 審査員割り当て変更の即時反映 |
+| `matches` | `id=eq.<currentMatchId>` | 試合名・チーム名変更の即時反映 |
+
+Realtime が使えない場合も既存の REST 再取得で動作する。購読成立後はフォールバックポーリングを低頻度化し、切断・エラー時は通常ポーリングに戻る。
+
 ### 8.2 config.js
 
 ```javascript
@@ -821,6 +834,7 @@ function updateFlagsAuto() {
 | `20260306000002_drop_accepting_since.sql` | `state.accepting_since` カラム削除 |
 | `20260306000003_matches_venue_id.sql` | `matches.venue_id` 追加（NOT NULL, FK） |
 | `20260306000004_access_tokens_select_policy.sql` | `access_tokens` の anon SELECT ポリシー追加 |
+| `20260708000002_enable_obs_realtime.sql` | OBS用に `state` / `submissions` / `matches` / `expected_judges` を Realtime 対象化 |
 
 ---
 
