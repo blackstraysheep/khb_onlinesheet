@@ -368,6 +368,14 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# KHB-Kuawase 連携 API は Electron main プロセスから呼ばれるため、
+# Supabase の JWT (anon key) を要求しない。認可は x-kuawase-sync-token が担う。
+[functions.kuawase-import-candidates]
+verify_jwt = false
+
+[functions.kuawase-sync-connect]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

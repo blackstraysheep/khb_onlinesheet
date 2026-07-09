@@ -61,6 +61,7 @@ v1 の未決事項および kk 側回答(`oes-integration-khb-review.md` §4)へ
 | 11 | 別窓 | `shell.openExternal` で OS ブラウザ。URL は main 側で OES ベース URL 由来のみ allowlist |
 | 12 | sanitize | Excel 由来テキスト・matchTitle は HTML を含みうる前提で、OES 側は全入力をプレーンテキスト化して保存・表示 |
 | 13 | CORS | `_shared/cors.ts` の allow-headers に `x-kuawase-sync-token` を追加 |
+| 14 | JWT | kuawase-sync 系関数は `config.toml` で `verify_jwt = false`(認可は sync token が担う)。kk の接続設定は「OES API URL + token」の 2 項目で完結し、anon key を持たせない |
 
 kk 側レビューとの主な差分: 1-2(紐付け方式)は全面差し替え、2-1 の試合指定 dirty 検知は不要化(試合切替はプリセット読込という明示操作になるため)、2-5 の「epoch は警告のみ」は「明示ボタンによる control API」に置き換え(暗黙同期で epoch を動かさない点は維持)。
 
@@ -297,8 +298,9 @@ oes-open-admin        shell.openExternal(OES URL allowlist 検証は main 側)
 - [x] OES: `kuawase-import-candidates` / `kuawase-sync-connect`(+ `_shared/kuawase-auth.ts`, `_shared/sanitize.ts`)
 - [x] OES: admin-match.html の候補選択式試合設定(手入力フォールバック付き)
 - [x] OES: `_shared/cors.ts` に `x-kuawase-sync-token`
-- [ ] kk: `oes-sync-ipc.js`(接続設定・保存・fetch 基盤)+接続設定 UI
-- [ ] kk: 候補データ送信(excel_hash 計算含む)
+- [x] kk: `oes-sync-ipc.js`(接続設定・保存・fetch 基盤)+接続設定 UI(home.html「OES連携」パネル)
+- [x] kk: 候補データ送信(excel_hash 計算含む)
+- [x] OES: sync 系関数の `verify_jwt = false`(config.toml)
 
 ### Phase 2: 当日フロー(読込+報告)
 
