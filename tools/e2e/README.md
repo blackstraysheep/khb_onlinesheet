@@ -20,6 +20,7 @@
 node tools/e2e/e2e-oes.js            # OES API 全 19 ステップ(試合 E2E-1 を作成)
 node tools/e2e/e2e-disable-check.js  # 連携解除が受動 report で戻らないことの DB 検証
 node tools/e2e/e2e-kk.js             # kk main プロセス実装の実接続検証(E2E-1 を使用)
+node tools/e2e/e2e-phase3.js         # CONFIRM_AND_ADVANCE(E5+E6)・DISCONNECT(自己完結、P3-1 を作成)
 ```
 
 - ローカル edge runtime のホットリロードによる一過性 502 は自動リトライする。

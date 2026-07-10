@@ -11,6 +11,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { authorizeKuawaseSync, isAllowedKuawaseOrigin } from "../_shared/kuawase-auth.ts";
 import { setCurrentMatch } from "../_shared/set-match.ts";
+import { advanceBout, confirmBout } from "../_shared/confirm-bout.ts";
+import { slotToEpoch } from "../_shared/bout.ts";
+import { sanitizeText } from "../_shared/sanitize.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -24,6 +27,7 @@ type ControlBody = {
   action?: unknown;
   match_code?: unknown;
   slot?: unknown;
+  haiku?: { red?: unknown; white?: unknown } | null;
 };
 
 function json(body: unknown, corsHeaders: HeadersInit, status = 200) {
@@ -40,6 +44,15 @@ async function loadState(venueId: string) {
     .eq("venue_id", venueId)
     .maybeSingle();
   return data ?? null;
+}
+
+async function getVenueCode(venueId: string): Promise<string> {
+  const { data } = await supabase
+    .from("venues")
+    .select("code")
+    .eq("id", venueId)
+    .maybeSingle();
+  return data?.code ?? "default";
 }
 
 serve(async (req) => {
@@ -164,6 +177,176 @@ serve(async (req) => {
         state,
         warnings,
       }, corsHeaders);
+    }
+
+    if (action === "CONFIRM_AND_ADVANCE") {
+      if (!matchCode) {
+        return json({ ok: false, error: "match_code is required" }, corsHeaders, 400);
+      }
+
+      // 対象試合と state の整合を検証
+      const { data: matchRow } = await supabase
+        .from("matches")
+        .select("id, code, num_bouts, venue_id")
+        .eq("code", matchCode)
+        .eq("venue_id", venueId)
+        .maybeSingle();
+      if (!matchRow) {
+        return json({ ok: false, error: "match not found" }, corsHeaders, 404);
+      }
+      const numBouts = typeof matchRow.num_bouts === "number" ? matchRow.num_bouts : 5;
+
+      const stateBefore = await loadState(venueId);
+      if (!stateBefore || String(stateBefore.current_match_id) !== String(matchRow.id)) {
+        return json({
+          ok: false,
+          error: "not_current_match",
+          state: stateBefore,
+        }, corsHeaders, 409);
+      }
+
+      // slot ガード: kk が表示している対戦(slot)と OES の受付対戦(epoch)が
+      // 一致しているときだけ確定を許す。ズレたままの誤確定を防ぐ。
+      const slot = typeof body?.slot === "number" && Number.isInteger(body.slot)
+        ? body.slot
+        : null;
+      if (slot !== null) {
+        const reportedEpoch = slotToEpoch(slot, numBouts);
+        if (reportedEpoch === null || reportedEpoch !== stateBefore.epoch) {
+          return json({
+            ok: false,
+            error: "slot_epoch_mismatch",
+            detail: {
+              slot,
+              reported_epoch: reportedEpoch,
+              state_epoch: stateBefore.epoch,
+            },
+            state: stateBefore,
+          }, corsHeaders, 409);
+        }
+      }
+
+      // 句: payload 優先、無ければ披講報告済みの句(同一対戦のもの)で補完
+      let haikuRed = sanitizeText(body?.haiku?.red) || null;
+      let haikuWhite = sanitizeText(body?.haiku?.white) || null;
+      if (!haikuRed || !haikuWhite) {
+        const { data: statusRow } = await supabase
+          .from("kuawase_sync_status")
+          .select("last_view")
+          .eq("venue_id", venueId)
+          .maybeSingle();
+        // deno-lint-ignore no-explicit-any
+        const lastView = (statusRow?.last_view ?? {}) as Record<string, any>;
+        if (lastView.match_code === matchCode && lastView.slot === slot && lastView.reveal) {
+          haikuRed = haikuRed ?? (lastView.reveal.red || null);
+          haikuWhite = haikuWhite ?? (lastView.reveal.white || null);
+        }
+      }
+
+      // E5: 確定+snapshot(句込み)
+      const confirm = await confirmBout({
+        supabase,
+        venueId,
+        venueCode: await getVenueCode(venueId),
+        matchCode,
+        haiku: { red: haikuRed, white: haikuWhite },
+      });
+
+      if (!confirm.ok) {
+        return json({
+          ok: false,
+          error: confirm.error,
+          ...(confirm.detail ? { detail: confirm.detail } : {}),
+          state: stateBefore,
+        }, corsHeaders, confirm.status);
+      }
+
+      // E6: 最終対戦でなければ次対戦へ(最終対戦は accepting=false のまま試合終了)
+      const isFinal = confirm.epoch >= numBouts;
+      let advancedTo: number | null = null;
+      if (!isFinal) {
+        const adv = await advanceBout({
+          supabase,
+          venueId,
+          logDetail: { source: "kuawase", device_id: tokenRow.device_id, event_id: eventId },
+        });
+        if (!adv.ok) {
+          // E5 は成立済み。E6 だけ失敗した場合は復旧経路(OES管理画面)を案内する
+          return json({
+            ok: false,
+            error: "confirmed_but_advance_failed",
+            detail: { confirmed_epoch: confirm.epoch },
+            state: await loadState(venueId),
+          }, corsHeaders, 500);
+        }
+        advancedTo = adv.to_epoch;
+      }
+
+      const nowIso = new Date().toISOString();
+      await supabase
+        .from("kuawase_sync_status")
+        .upsert({
+          venue_id: venueId,
+          enabled: true,
+          source_device_id: tokenRow.device_id,
+          last_synced_at: nowIso,
+          updated_at: nowIso,
+        }, { onConflict: "venue_id" });
+
+      await supabase
+        .from("kuawase_sync_tokens")
+        .update({ last_event_id: eventId })
+        .eq("token_hash", tokenRow.token_hash);
+
+      const state = await loadState(venueId);
+      return json({
+        ok: true,
+        applied: {
+          action: "CONFIRM_AND_ADVANCE",
+          match_code: matchCode,
+          confirmed_epoch: confirm.epoch,
+          confirmed_slot: confirm.slot,
+          winner: confirm.winner,
+          red_wins: confirm.red_wins,
+          white_wins: confirm.white_wins,
+          advanced_to: advancedTo,
+        },
+        match_finished: isFinal,
+        state,
+        warnings,
+      }, corsHeaders);
+    }
+
+    if (action === "DISCONNECT") {
+      const nowIso = new Date().toISOString();
+      const { error: statusError } = await supabase
+        .from("kuawase_sync_status")
+        .upsert({
+          venue_id: venueId,
+          enabled: false,
+          source_device_id: tokenRow.device_id,
+          last_synced_at: nowIso,
+          updated_at: nowIso,
+        }, { onConflict: "venue_id" });
+      if (statusError) {
+        console.error("kuawase_sync_status upsert error (disconnect)", statusError);
+        return json({ ok: false, error: "failed to disconnect" }, corsHeaders, 500);
+      }
+
+      await supabase.from("event_log").insert({
+        event_type: "KUAWASE_DISCONNECT",
+        match_id: null,
+        judge_id: null,
+        epoch: null,
+        detail: { venue_id: venueId, device_id: tokenRow.device_id, event_id: eventId },
+      });
+
+      await supabase
+        .from("kuawase_sync_tokens")
+        .update({ last_event_id: eventId })
+        .eq("token_hash", tokenRow.token_hash);
+
+      return json({ ok: true, applied: { action: "DISCONNECT" }, warnings }, corsHeaders);
     }
 
     return json({ ok: false, error: `unsupported action: ${action}` }, corsHeaders, 400);

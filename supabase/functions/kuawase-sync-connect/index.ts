@@ -21,6 +21,7 @@ type ConnectBody = {
 
 type MatchPresetRow = {
   code: string;
+  name: string | null;
   red_team_name: string | null;
   white_team_name: string | null;
   kendai_name: string | null;
@@ -124,7 +125,7 @@ serve(async (req) => {
     // 5. プリセット一覧（kuawase_ref が設定済みの matches を timeline 順に整形）
     const { data: matchRows, error: matchesError } = await supabase
       .from("matches")
-      .select("code, red_team_name, white_team_name, kendai_name, num_bouts, timeline, kuawase_ref")
+      .select("code, name, red_team_name, white_team_name, kendai_name, num_bouts, timeline, kuawase_ref")
       .eq("venue_id", venueId)
       .not("kuawase_ref", "is", null)
       .order("timeline", { ascending: true });
@@ -137,6 +138,7 @@ serve(async (req) => {
       const ref = m.kuawase_ref ?? {};
       return {
         code: m.code,
+        name: m.name ?? null,
         red: { cell: ref.red_cell ?? null, name: m.red_team_name ?? null },
         white: { cell: ref.white_cell ?? null, name: m.white_team_name ?? null },
         kendai: { cell: ref.kendai_cell ?? null, name: m.kendai_name ?? null },
