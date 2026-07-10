@@ -313,15 +313,19 @@ oes-open-admin        shell.openExternal(OES URL allowlist 検証は main 側)
 
 ### Phase 3: 進行統合(E5+E6)
 
-- [ ] OES: `CONFIRM_AND_ADVANCE`(既存 control ロジックの token 認可版、最終対戦の終了処理含む)
-- [ ] kk: 遷移ボタンの「確定して次へ」化+E3 確認ダイアログ+slot 無効化
-- [ ] kk: 句のその場送信(披講 reveal+確定時同梱)
-- [ ] OES: snapshot への句保存、句のアクセス制御
-- [ ] 両側: オフライン時のローカル遷移+dirty+復旧警告
+- [x] OES: `CONFIRM_AND_ADVANCE`(`_shared/confirm-bout.ts` に E5/E6 本体を共通化。slot ガード・厳格冪等・最終対戦は前進せず終了)
+- [x] kk: 遷移ボタンの「確定して次へ」化(capture 横取り。次対戦=確定ダイアログ→E5+E6→遷移、現在対戦=再表示、巻き戻し/飛ばし=表示のみ+確認)+E3 確認ダイアログ+3番勝負の slot 無効化
+- [x] kk: 句のその場送信(披講 reveal+確定時同梱。snapshot.haiku に保存)
+- [x] OES: snapshot への句保存(sanitize 済み)
+- [x] 両側: オフライン時のローカル遷移+dirty+復旧警告
+- [x] 追加: OES 側 E6 への kk 追従(5秒ポーリング。前進方向のみ、TOP 表示中は追従しない)
+- [x] 追加: kk の接続クリア時に `DISCONNECT` を OES へ通知(admin パネルが即時「未連携」になる)
+- [x] 追加: プリセットに OES の試合名を含め、kk の `matchTitle` に反映
+- [ ] OES: 審査員画面に披講済みの句を表示(`judge-get-revealed-haiku`。披講済み=last_view.reveal のみが情報源で、披講前の句は構造的に出ない)
 
 ### Phase 4: 運用強化
 
-- [ ] takeover フロー(kk 側 UI+OES 側記録)
+- [x] takeover フロー(kk 側チェックボックス+OES 側記録)
 - [ ] `shell.openExternal` での OES 管理画面・審査員管理導線
 - [ ] 現場フィードバックによる調整(受付開始/停止の kk 側ボタン化の要否など)
 
