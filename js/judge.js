@@ -4,9 +4,11 @@
 
   const CONFIG = window.KHB_APP_CONFIG || {};
   const FUNCTION_URL = CONFIG.JUDGE_FUNCTION_URL;
+  const HAIKU_FUNCTION_URL = CONFIG.JUDGE_REVEALED_HAIKU_FUNCTION_URL;
   const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
   const CONFIG_ERROR = '設定ファイル(config.js)の読み込みに失敗しました。';
   const FLAG_SYMBOL = '◆';
+  const HAIKU_WAITING_TEXT = '披講待ち';
 
   function parseOrZero(s) {
     if (!s) return 0;
@@ -112,6 +114,9 @@
 
   const submitBtn = $('#submitBtn');
   const result = $('#result');
+  const haikuArea = $('#haiku-area');
+  const haikuRedText = $('#haiku-red-text');
+  const haikuWhiteText = $('#haiku-white-text');
   let initialSent = false;
   let inEdit = true;
   let editCount = 0;
@@ -208,6 +213,60 @@
     return params.get('token') || '';
   }
 
+  // 「披講済みの句」表示。未連携・未披講時は控えめな表示（連携なしの大会ではエリア自体を隠す）。
+  function hideHaikuArea() {
+    if (haikuArea) haikuArea.hidden = true;
+  }
+
+  function applyRevealedHaiku(reveal) {
+    if (!haikuArea) return;
+    if (!reveal) {
+      // enabled=false（連携なし）または対象試合の披講情報なし → 表示を邪魔しないよう隠す
+      hideHaikuArea();
+      return;
+    }
+    haikuArea.hidden = false;
+    if (haikuRedText) haikuRedText.textContent = (typeof reveal.red === 'string' && reveal.red) ? reveal.red : HAIKU_WAITING_TEXT;
+    if (haikuWhiteText) haikuWhiteText.textContent = (typeof reveal.white === 'string' && reveal.white) ? reveal.white : HAIKU_WAITING_TEXT;
+  }
+
+  async function fetchRevealedHaiku(matchCode) {
+    if (!HAIKU_FUNCTION_URL || !SUPABASE_ANON_KEY || !matchCode) {
+      hideHaikuArea();
+      return;
+    }
+    const token = getToken();
+    if (!token) {
+      hideHaikuArea();
+      return;
+    }
+
+    try {
+      const res = await fetch(HAIKU_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ token, match_code: matchCode }),
+      });
+
+      const text = await res.text();
+      let data = {};
+      try { data = JSON.parse(text); } catch (_) {}
+
+      if (!res.ok || !data.ok) {
+        // 取得失敗時は直前の表示状態を維持する（頻繁なポーリングのため通信エラーで一喜一憂させない）
+        return;
+      }
+
+      applyRevealedHaiku(data.reveal || null);
+    } catch (err) {
+      console.error('fetchRevealedHaiku error', err);
+    }
+  }
+
   async function loadMatchInfo() {
     const token = getToken();
     const labelEl = document.getElementById('match-label');
@@ -221,12 +280,14 @@
     if (!FUNCTION_URL || !SUPABASE_ANON_KEY) {
       labelEl.textContent = CONFIG_ERROR;
       labelEl.classList.add('text-error');
+      hideHaikuArea();
       return;
     }
 
     if (!token) {
       labelEl.textContent = 'URL に token パラメータがありません。';
       labelEl.classList.add('text-error');
+      hideHaikuArea();
       return;
     }
 
@@ -249,6 +310,7 @@
         const msg = data.error || data.message || res.status;
         labelEl.textContent = '対戦情報取得失敗: ' + msg;
         labelEl.classList.add('text-error');
+        hideHaikuArea();
         return;
       }
 
@@ -262,6 +324,12 @@
       const venue = data.venue || null;
       const multipleVenues = data.multiple_venues || false;
       const newMatchId = match.id || null;
+
+      if (match.code) {
+        fetchRevealedHaiku(match.code);
+      } else {
+        hideHaikuArea();
+      }
 
       if (newMatchId && currentMatchId !== null && currentMatchId !== newMatchId) {
         currentMatchId = newMatchId;

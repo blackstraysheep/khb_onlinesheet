@@ -9,6 +9,7 @@
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     JUDGE_FUNCTION_URL: SUPABASE_URL + '/functions/v1/judge-submit-with-token',
+    JUDGE_REVEALED_HAIKU_FUNCTION_URL: SUPABASE_URL + '/functions/v1/judge-get-revealed-haiku',
     AUDIO_BASE_URL,
     TOKEN_PREFIX,
     TOKEN_LENGTH,
