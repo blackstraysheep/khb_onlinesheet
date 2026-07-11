@@ -19,10 +19,13 @@
     'Content-Type': 'application/json',
   };
 
+  const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
+
   const $ = (s) => document.querySelector(s);
   let allVenues = [];
   // venue_id(string) -> kuawase_candidates row（候補データが無い venue はキーが存在しない）
   let candidatesByVenueId = new Map();
+  let allJudges = [];
 
   // admin-select 経由でテーブルを読む（admin_secret 保護下・kuawase_candidates は allowlist 済み）
   async function fetchViaAdminSelect(table, params = {}) {
@@ -54,6 +57,48 @@
     } catch (e) {
       console.error('refreshCandidates error', e);
       candidatesByVenueId = new Map();
+    }
+  }
+
+  // 審査員チェックリスト（試合の担当指定）。1人も選択しなければ保存時に担当は変更しない。
+  function getCheckedJudgeIds() {
+    return Array.from(document.querySelectorAll('#judgesChecklist input[type=checkbox]:checked'))
+      .map((cb) => cb.value);
+  }
+
+  function renderJudgesChecklist(checkedIds = new Set()) {
+    const wrap = $('#judgesChecklist');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (!allJudges.length) {
+      const span = document.createElement('span');
+      span.className = 'small';
+      span.textContent = '審査員が未登録です（審査員設定ページで作成してください）';
+      wrap.appendChild(span);
+      return;
+    }
+    for (const j of allJudges) {
+      const label = document.createElement('label');
+      label.className = 'judge-check';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = String(j.id);
+      cb.checked = checkedIds.has(String(j.id));
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(j.name || String(j.id)));
+      wrap.appendChild(label);
+    }
+  }
+
+  async function refreshJudges() {
+    try {
+      const secret = $('#adminSecret').value.trim();
+      if (!secret) return;
+      const keep = new Set(getCheckedJudgeIds());
+      allJudges = await fetchViaAdminSelect('judges', { select: 'id,name', order: 'name.asc' });
+      renderJudgesChecklist(keep);
+    } catch (e) {
+      console.error('refreshJudges error', e);
     }
   }
 
@@ -143,12 +188,17 @@
     const matchCode = $('#matchCode').value.trim();
     const matchName = $('#matchName').value.trim();
     const timeline = parseFloat($('#timeline').value);
-    const numBouts = parseInt($('#numBouts').value) || 5;
+    // 対戦数は既定値を置かず、正の整数のみ受け付ける（入力し忘れの5番勝負化を防ぐ）
+    const numBoutsRaw = $('#numBouts').value.trim();
+    const numBouts = Number(numBoutsRaw);
 
     if (!secret) return showMsg('#saveMsg', '管理用シークレットを入力', true);
     if (!matchCode) return showMsg('#saveMsg', '試合コードを入力', true);
     if (!matchName) return showMsg('#saveMsg', '試合名を入力', true);
     if (!Number.isFinite(timeline)) return showMsg('#saveMsg', 'タイムラインを入力（数値）', true);
+    if (!numBoutsRaw || !Number.isInteger(numBouts) || numBouts < 1) {
+      return showMsg('#saveMsg', '対戦数を入力（1以上の整数。例: 3 または 5）', true);
+    }
 
     // 候補データがあり、かつ手入力に切り替えていない場合はプルダウン選択値を使う。
     const cand = currentCandidate();
@@ -206,7 +256,31 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || res.statusText);
-      showMsg('#saveMsg', `保存完了: ${data.match?.code}`, false);
+
+      // 審査員が選択されていれば担当を更新する（未選択なら変更しない）
+      const judgeIds = getCheckedJudgeIds();
+      let judgesNote = '';
+      if (judgeIds.length > 0) {
+        const jr = await fetch(ADMIN_SET_MATCH_JUDGES_URL, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            admin_secret: secret,
+            venue_code: $('#venueCode').value.trim() || 'default',
+            match_code: matchCode,
+            judge_ids: judgeIds,
+          }),
+        });
+        const jdata = await jr.json().catch(() => ({}));
+        if (!jr.ok) {
+          showMsg('#saveMsg', `試合は保存しましたが審査員の割当に失敗: ${jdata.error || jr.statusText}`, true);
+          refreshMatches();
+          return;
+        }
+        judgesNote = `（審査員 ${judgeIds.length} 名を割当）`;
+      }
+
+      showMsg('#saveMsg', `保存完了: ${data.match?.code}${judgesNote}`, false);
       refreshMatches();
     } catch (e) {
       showMsg('#saveMsg', e.message, true);
@@ -242,6 +316,7 @@
 
       allVenues = venues;
       await refreshCandidates();
+      await refreshJudges();
       updateCandidatePanel();
       const venueCodeById = new Map(venues.map(v => [v.id, v.code]));
 
@@ -353,7 +428,7 @@
     $('#matchCode').value = m.code || '';
     $('#matchName').value = m.name || '';
     $('#timeline').value = m.timeline ?? '';
-    $('#numBouts').value = m.num_bouts ?? 5;
+    $('#numBouts').value = m.num_bouts ?? '';
     $('#redTeam').value = m.red_team_name || '';
     $('#whiteTeam').value = m.white_team_name || '';
     $('#kendaiName').value = m.kendai_name || '';
@@ -372,6 +447,17 @@
         selectOptionByCellOrName($('#kendaiSelect'), m.kuawase_ref.kendai_cell, m.kendai_name);
       }
     }
+
+    // 現在の担当審査員をチェック状態に反映する
+    fetchViaAdminSelect('expected_judges', {
+      select: 'judge_id,sort_order',
+      match_id: 'eq.' + m.id,
+      order: 'sort_order.asc',
+    }).then((rows) => {
+      renderJudgesChecklist(new Set(rows.map((r) => String(r.judge_id))));
+    }).catch((e) => {
+      console.error('load expected_judges error', e);
+    });
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

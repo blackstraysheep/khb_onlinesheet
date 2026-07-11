@@ -272,44 +272,21 @@ select.ipt:disabled {
 
 
 
-.haiku-area {
-    margin-top: 14px;
-    display: flex;
-    gap: 10px;
-}
-
-.haiku-area[hidden] {
+/* 俳句行（連携中の大会のみ表示。.cell は display:flex のため hidden を明示的に効かせる） */
+.score-grid .cell[hidden] {
     display: none;
 }
 
-.haiku-col {
-    flex: 1;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 8px 10px;
+.score-grid .cell.haiku-cell {
     background: #fafafa;
-}
-
-.haiku-label {
-    font-size: .78rem;
-    font-weight: 600;
-    color: var(--muted);
-    margin-bottom: 4px;
-}
-
-.haiku-red .haiku-label {
-    color: var(--accent-red);
-}
-
-.haiku-white .haiku-label {
-    color: var(--accent-white);
 }
 
 .haiku-text {
     font-size: .95rem;
     font-weight: 600;
-    line-height: 1.4;
+    line-height: 1.5;
     word-break: break-word;
+    text-align: center;
 }
 
 .submit-area {

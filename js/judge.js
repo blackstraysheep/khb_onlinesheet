@@ -118,7 +118,7 @@
 
   const submitBtn = $('#submitBtn');
   const result = $('#result');
-  const haikuArea = $('#haiku-area');
+  const haikuCells = $$('.haiku-cell');
   const haikuRedText = $('#haiku-red-text');
   const haikuWhiteText = $('#haiku-white-text');
   let initialSent = false;
@@ -217,21 +217,21 @@
     return params.get('token') || '';
   }
 
-  // 「披講済みの句」表示。未連携・未披講時は控えめな表示（連携なしの大会ではエリア自体を隠す）。
+  // 「披講済みの句」表示(採点表内のチーム名直下の行)。連携なしの大会では行ごと隠す。
   function hideHaikuArea() {
-    if (haikuArea) haikuArea.hidden = true;
+    haikuCells.forEach(cell => { cell.hidden = true; });
   }
 
   function applyRevealedHaiku(data) {
-    if (!haikuArea) return;
+    if (!haikuCells.length) return;
     if (!data || data.integrated !== true) {
       // 非連携の大会 → 表示を邪魔しないよう隠す
       hideHaikuArea();
       return;
     }
-    // 連携中の大会では常にエリアを出す(未披講は「披講待ち」)
+    // 連携中の大会では常に行を出す(未披講は「披講待ち」)
     const reveal = (data.reveal && typeof data.reveal === 'object') ? data.reveal : {};
-    haikuArea.hidden = false;
+    haikuCells.forEach(cell => { cell.hidden = false; });
     if (haikuRedText) haikuRedText.textContent = (typeof reveal.red === 'string' && reveal.red) ? stripBr(reveal.red) : HAIKU_WAITING_TEXT;
     if (haikuWhiteText) haikuWhiteText.textContent = (typeof reveal.white === 'string' && reveal.white) ? stripBr(reveal.white) : HAIKU_WAITING_TEXT;
   }

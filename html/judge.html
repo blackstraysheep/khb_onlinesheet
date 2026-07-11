@@ -35,6 +35,15 @@
           <div class="name" id="team-white-name">白チーム</div>
         </div>
 
+        <!-- 俳句行（KHB-Kuawase 連携中の大会のみ表示。披講済みの句だけが届く） -->
+        <div class="cell team-field haiku-cell" hidden>
+          <div class="haiku-text" id="haiku-red-text">披講待ち</div>
+        </div>
+        <div class="cell mid label haiku-cell" hidden>俳句</div>
+        <div class="cell team-field haiku-cell" hidden>
+          <div class="haiku-text" id="haiku-white-text">披講待ち</div>
+        </div>
+
         <!-- 3行目：作品点 -->
         <div class="cell team-field">
           <select aria-label="紅 作品点" class="ipt works" data-side="red">
@@ -107,17 +116,6 @@
       </div>
 
 
-
-      <div class="haiku-area" id="haiku-area" hidden>
-        <div class="haiku-col haiku-red">
-          <div class="haiku-label">紅の句</div>
-          <div class="haiku-text" id="haiku-red-text">披講待ち</div>
-        </div>
-        <div class="haiku-col haiku-white">
-          <div class="haiku-label">白の句</div>
-          <div class="haiku-text" id="haiku-white-text">披講待ち</div>
-        </div>
-      </div>
 
       <div class="submit-area">
         <button class="primary" id="submitBtn">送信</button>

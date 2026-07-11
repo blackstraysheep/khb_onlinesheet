@@ -45,6 +45,10 @@ tr:hover td { background: #1a2744; }
 .tag-blue { background: #3a86ff33; color: #3a86ff; }
 .link { color: #3a86ff; cursor: pointer; text-decoration: underline; }
 .link-delete { color: #e63946; }
+.judges-checklist { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 10px; border: 1px solid #444; border-radius: 6px; }
+.judges-checklist .judge-check { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; cursor: pointer; }
+.judges-checklist .judge-check input { width: auto; }
+.judges-note { color: #999; margin-top: 4px; }
 .hidden { display: none !important; }
 .back-link { display: inline-block; margin-bottom: 10px; color: #3a86ff; text-decoration: none; font-size: 0.85rem; }
 .back-link:hover { text-decoration: underline; }
