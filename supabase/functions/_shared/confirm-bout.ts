@@ -326,6 +326,9 @@ export async function confirmBout({
 }
 
 // E6(次対戦へ)。state を epoch+1・受付開始に更新し、event_log に記録する。
+// 現在試合が設定されている場合、num_bouts を超える前進は拒否する
+// (3番勝負で大将戦の後に epoch=4 へ進めてしまう事故の防止)。
+// 意図的に超えたい場合は管理画面の Epoch 手動設定を使う。
 export async function advanceBout({
   supabase,
   venueId,
@@ -336,7 +339,7 @@ export async function advanceBout({
   logDetail?: Record<string, unknown>;
 }): Promise<
   | { ok: true; from_epoch: number; to_epoch: number }
-  | { ok: false; status: number; error: string }
+  | { ok: false; status: number; error: string; detail?: Record<string, unknown> }
 > {
   const { data: stateRow, error: stateErr } = await supabase
     .from("state")
@@ -349,6 +352,23 @@ export async function advanceBout({
   }
 
   const currentEpoch: number = stateRow.epoch;
+
+  if (stateRow.current_match_id) {
+    const { data: matchRow } = await supabase
+      .from("matches")
+      .select("num_bouts")
+      .eq("id", stateRow.current_match_id)
+      .maybeSingle();
+    const numBouts = typeof matchRow?.num_bouts === "number" ? matchRow.num_bouts : 5;
+    if (Number.isInteger(currentEpoch) && currentEpoch >= numBouts) {
+      return {
+        ok: false,
+        status: 409,
+        error: "final_bout_reached",
+        detail: { epoch: currentEpoch, num_bouts: numBouts },
+      };
+    }
+  }
   const nextEpoch = (Number.isInteger(currentEpoch) && currentEpoch >= 1)
     ? currentEpoch + 1
     : 1;

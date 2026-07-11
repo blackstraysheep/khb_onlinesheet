@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
 import { sha256Hex, tokenLast4 } from "../_shared/token.ts";
+import { sanitizeText } from "../_shared/sanitize.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -193,15 +194,18 @@ serve(async (req) => {
         return json({ error: "failed to select match" }, 500);
       }
 
+      // 名前系フィールドはサニタイズして保存する(タグは <br> のみ許可)。
+      // <br> は KHB-Kuawase 投影での改行指定。OES 側の各表示は表示時に
+      // 全角スペースへ置換する。
       const matchPayload: Record<string, unknown> = {
-        name: match_name,
+        name: sanitizeText(match_name),
         timeline,
         num_bouts: numBouts,
         venue_id: venueId,
       };
-      if (red_team_name !== undefined) matchPayload.red_team_name = red_team_name;
-      if (white_team_name !== undefined) matchPayload.white_team_name = white_team_name;
-      if (kendai_name !== undefined) matchPayload.kendai_name = kendai_name;
+      if (red_team_name !== undefined) matchPayload.red_team_name = sanitizeText(red_team_name);
+      if (white_team_name !== undefined) matchPayload.white_team_name = sanitizeText(white_team_name);
+      if (kendai_name !== undefined) matchPayload.kendai_name = sanitizeText(kendai_name);
       if (kuawaseRef !== undefined) matchPayload.kuawase_ref = kuawaseRef;
 
       if (existing) {

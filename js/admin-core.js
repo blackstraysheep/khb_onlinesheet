@@ -219,6 +219,14 @@ async function runLoadData(isAuto = false) {
     const match   = matches[0];
     const matchId = match.id;
 
+    // 表示用正規化: 試合名・チーム名の <br>(改行指定)は全角スペースへ。
+    // スコアボードの matchLabel は全角スペースを改行に変換するため、
+    // <br> はそこでは実質改行として効く。
+    const stripBr = (v) => String(v ?? '').replace(/<br\s*\/?\s*>/gi, '　');
+    match.name = match.name ? stripBr(match.name) : match.name;
+    match.red_team_name = match.red_team_name ? stripBr(match.red_team_name) : match.red_team_name;
+    match.white_team_name = match.white_team_name ? stripBr(match.white_team_name) : match.white_team_name;
+
     // 2. state（会場別）
     const stateRows = adminCoreState.currentVenueId
       ? await adminCoreApi.fetchJson('state', { select: 'epoch,accepting,e3_reached,updated_at,current_match_id', venue_id: 'eq.' + adminCoreState.currentVenueId })
@@ -228,16 +236,21 @@ async function runLoadData(isAuto = false) {
 
     const isCurrentMatch = !!(st && st.current_match_id && st.current_match_id === matchId);
 
-    // 表示epochはUI入力を優先（current_matchでも表示切替のみ）
+    // state.epoch が動いたら(E5→E6 や Epoch設定、kk からの操作を含む)
+    // 手動の表示epochオーバーライドを解除して現在対戦に追従する。
+    // ※ epochInput の残り値を表示epochとして拾うと、E6 後も表示が
+    //    前の対戦に固定される(入力欄が古い値のまま自己強化する)ため、
+    //    オーバーライドは epochInput の change 経由(displayEpochByMatch)のみ。
+    if (st && adminCoreState.lastSeenStateEpoch !== st.epoch) {
+      adminCoreState.lastSeenStateEpoch = st.epoch;
+      if (adminCoreState.displayEpochByMatch) {
+        delete adminCoreState.displayEpochByMatch[matchId];
+      }
+    }
     let displayEpoch = st ? st.epoch : 1;
     const storedEpoch = adminCoreState.displayEpochByMatch?.[matchId];
     if (Number.isInteger(storedEpoch) && storedEpoch > 0) {
       displayEpoch = storedEpoch;
-    } else {
-      const inputEpoch = adminCoreDom.epochInput ? parseInt(adminCoreDom.epochInput.value, 10) : NaN;
-      if (Number.isInteger(inputEpoch) && inputEpoch > 0) {
-        displayEpoch = inputEpoch;
-      }
     }
 
     // epoch は表示用に切り替え
@@ -590,6 +603,14 @@ async function onClickE6() {
     await loadData();
   } catch (err) {
     console.error(err);
+    if (err.responseData?.error === 'final_bout_reached') {
+      const d = err.responseData.detail || {};
+      setE5E6Status(
+        `E6 不可: この試合は最終対戦（第${d.epoch ?? '?'}対戦 / 全${d.num_bouts ?? '?'}対戦）まで進んでいます。次の試合を開始するか、意図的に進める場合は Epoch 手動設定を使ってください。`,
+        'warn'
+      );
+      return;
+    }
     setE5E6Status('E6 失敗: ' + (err.message || String(err)), 'err');
   }
 }

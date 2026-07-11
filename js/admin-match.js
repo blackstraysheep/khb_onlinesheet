@@ -7,6 +7,7 @@
   const ADMIN_SETUP_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-setup-match';
   const ADMIN_LIST_MATCHES_URL = SUPABASE_URL + '/functions/v1/admin-list-matches';
   const ADMIN_SELECT_URL = SUPABASE_URL + '/functions/v1/admin-select';
+  const ADMIN_DELETE_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-delete-match';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -75,7 +76,7 @@
       const opt = document.createElement('option');
       opt.value = item.cell;
       opt.dataset.name = item.name;
-      opt.textContent = item.name;
+      opt.textContent = stripBr(item.name);
       selectEl.appendChild(opt);
     }
     if (previousValue && Array.from(selectEl.options).some((o) => o.value === previousValue)) {
@@ -259,14 +260,15 @@
           <td>${esc(venueCodeById.get(m.venue_id) || '-')}</td>
           <td>${m.timeline ?? '-'}</td>
           <td>${esc(m.code)}</td>
-          <td>${esc(m.name)}</td>
-          <td>${esc(m.red_team_name || '')}</td>
-          <td>${esc(m.white_team_name || '')}</td>
+          <td>${esc(stripBr(m.name))}</td>
+          <td>${esc(stripBr(m.red_team_name || ''))}</td>
+          <td>${esc(stripBr(m.white_team_name || ''))}</td>
           <td>${m.num_bouts ?? '-'}</td>
           <td>${stateTag}</td>
-          <td><span class="link" data-code="${esc(m.code)}">編集</span></td>
+          <td><span class="link" data-code="${esc(m.code)}">編集</span>　<span class="link link-delete">削除</span></td>
         `;
         tr.querySelector('.link').addEventListener('click', () => loadMatchForEdit(m));
+        tr.querySelector('.link-delete').addEventListener('click', () => deleteMatch(m));
         tbody.appendChild(tr);
       }
 
@@ -302,13 +304,46 @@
         <td>${esc(venueCodeById.get(s.venue_id) || s.venue_id)}</td>
         <td>${m?.timeline ?? '-'}</td>
         <td>${esc(m?.code || '-')}</td>
-        <td>${esc(m?.name || '-')}</td>
-        <td>${esc(m?.red_team_name || '-')}</td>
-        <td>${esc(m?.white_team_name || '-')}</td>
+        <td>${esc(stripBr(m?.name || '-'))}</td>
+        <td>${esc(stripBr(m?.red_team_name || '-'))}</td>
+        <td>${esc(stripBr(m?.white_team_name || '-'))}</td>
         <td>${s.epoch}</td>
         <td>${e5Done ? '<span class="tag tag-green">完了</span>' : '<span class="tag tag-grey">' + maxEp + '/' + numBouts + '</span>'}</td>
       `;
       tbody.appendChild(tr);
+    }
+  }
+
+  // 試合の削除(進行中=current_match の試合はサーバ側で拒否される)
+  async function deleteMatch(m) {
+    const secret = $('#adminSecret').value.trim();
+    if (!secret) {
+      showMsg('#saveMsg', '管理用シークレットを入力してください', true);
+      return;
+    }
+    const label = `${m.code}（${stripBr(m.name || '')}）`;
+    if (!confirm(`試合 ${label} を削除します。\n提出・スナップショット・関連ログもすべて削除されます。よろしいですか？`)) {
+      return;
+    }
+    try {
+      const res = await fetch(ADMIN_DELETE_MATCH_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ admin_secret: secret, match_code: m.code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        const msg = data.error === 'match_in_progress'
+          ? (data.detail || '進行中(current_match)の試合は削除できません。別の試合を開始してから削除してください。')
+          : (data.error || res.statusText);
+        showMsg('#saveMsg', '削除失敗: ' + msg, true);
+        return;
+      }
+      showMsg('#saveMsg', `試合 ${m.code} を削除しました`, false);
+      await refreshMatches();
+    } catch (e) {
+      console.error('deleteMatch error', e);
+      showMsg('#saveMsg', '削除に失敗しました: ' + e.message, true);
     }
   }
 
@@ -345,6 +380,11 @@
     const el = $(sel);
     el.textContent = text;
     el.className = 'msg ' + (isErr ? 'err' : 'ok');
+  }
+
+  // 表示用: 許可タグ <br>(改行指定)は表形式では全角スペースにする
+  function stripBr(s) {
+    return String(s ?? '').replace(/<br\s*\/?\s*>/gi, '　');
   }
 
   function esc(s) {

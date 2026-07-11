@@ -205,6 +205,9 @@ serve(async (req) => {
 
     return json({
       ok: true,
+      // OES 管理画面から連携解除された場合、kk はこの enabled=false を見て
+      // 統合 UI を落とす(report は enabled を書き換えないが、返しはする)。
+      enabled: statusRow ? statusRow.enabled === true : true,
       state: stateRow ?? null,
       warnings,
     }, corsHeaders);

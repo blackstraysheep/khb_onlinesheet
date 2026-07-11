@@ -145,6 +145,7 @@ Object.assign(KHBAdmin.state, {
   currentLoadPromise: null,
   lastRenderedLoadSignature: null,
   displayEpochByMatch: {},
+  lastSeenStateEpoch: null,
 });
 
 Object.assign(KHBAdmin.audioState, {

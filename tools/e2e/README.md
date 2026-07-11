@@ -22,6 +22,8 @@ node tools/e2e/e2e-disable-check.js  # 連携解除が受動 report で戻らな
 node tools/e2e/e2e-kk.js             # kk main プロセス実装の実接続検証(E2E-1 を使用)
 node tools/e2e/e2e-phase3.js         # CONFIRM_AND_ADVANCE(E5+E6)・DISCONNECT(自己完結、P3-1 を作成)
 node tools/e2e/e2e-judge-haiku.js    # 審査員向け披講済み句 API(自己完結)
+node tools/e2e/e2e-round2.js         # CONFIRM/ADVANCE 個別・final_bout ガード・get-scores・
+                                     # report の enabled・delete-match・<br> sanitize(自己完結、R2-1 を作成)
 ```
 
 - ローカル edge runtime のホットリロードによる一過性 502 は自動リトライする。

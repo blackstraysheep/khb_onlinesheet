@@ -323,6 +323,27 @@ oes-open-admin        shell.openExternal(OES URL allowlist 検証は main 側)
 - [x] 追加: プリセットに OES の試合名を含め、kk の `matchTitle` に反映
 - [x] OES: 審査員画面に披講済みの句を表示(`judge-get-revealed-haiku`。披講済み=last_view.reveal のみが情報源で、披講前の句は構造的に出ない)
 
+### Phase 3.5: GUI テストフィードバック対応(2026-07-12)
+
+進行 UI を「次対戦ボタン=E5+E6」から OES 管理画面と同じ **E5 → 読み上げ → E6** の
+個別ボタン方式へ変更した(kk の遷移ボタンは接続時デフォルト非表示・手動トグルで復帰)。
+
+- [x] OES: `kuawase-sync-control` に `CONFIRM`(E5のみ・句込み・slotガード)と `ADVANCE`(E6のみ)を追加。`CONFIRM_AND_ADVANCE` は互換維持(手動表示時の遷移ボタン横取りが使う)
+- [x] OES: `advanceBout` に num_bouts 超過ガード(`final_bout_reached` 409)。`control_advance_with_secret` も共通化して同ガードが効く(3番勝負で epoch=4 に進めない)
+- [x] OES: `kuawase-get-scores` 新設(sync token 認証・読み取り専用)。現在対戦の審査員(voice_key)+提出得点を返す=kk 側読み上げのデータ源。句は返さない
+- [x] OES: `kuawase-sync-report` レスポンスに `enabled` を追加(管理画面からの連携解除を kk が 5 秒以内に検出し統合 UI を解除)
+- [x] OES: admin パネルの表示 epoch が E6 後に前進しない問題を修正(epochInput の残存値優先をやめ、state.epoch 変化で手動オーバーライドを解除)
+- [x] OES: 管理シークレットを sessionStorage 保持(`js/admin-secret-store.js`、Ctrl+R 再入力不要。タブを閉じると消える)
+- [x] OES: `admin-delete-match` 新設+試合管理ページに削除リンク(current_match 中は 409、子テーブルごと削除、ADMIN_DELETE_MATCH 監査ログ)
+- [x] OES: `sanitizeText` が `<br>` を allowlist として保持(正規形 `<br>`、他タグは除去)。`admin-setup-match` の名前系フィールドをサーバ側サニタイズ。OES の表形式表示(judge/admin 各所)は表示時に `<br>`→全角スペース置換(スコアボードは全角スペース=改行なので実質改行)
+- [x] OES: `judge-get-revealed-haiku` に `integrated` フラグ。連携有効な会場では kk の表示状態に関わらず句エリアを表示(披講待ち)。他試合の句は返さない
+- [x] kk: 接続+試合読込中は遷移ボタン(先鋒〜大将)を非表示、`#oes-progress-controls`(E5 確定/E6 次の対戦へ/得点読み上げ/停止)を表示。手動トグルで試合指定+遷移ボタンを復帰
+- [x] kk: E6 成功時は新 epoch のページへ自動遷移(bypassClick)。E5 未確定(受付中)のままの E6 は確認ダイアログ
+- [x] kk: 得点読み上げ(OES admin-audio のキュー組み立てを移植、音声ベース URL は設定可能・既定 GitHub Pages)。スコアボード表示切替(scoreboard_visible)は kk からは行わない(OES 管理画面のみ)
+- [x] kk: report の `enabled:false` で統合解除+トースト(oes-sync.json の enabled も落とす)
+- [x] kk: プリセット名照合を OES サニタイズと同一正規化で実施(`<br>` 入りチーム名で誤 mismatch しない)
+- [x] E2E: `tools/e2e/e2e-round2.js`(12 ステップ)追加、judge-haiku E2E を integrated 対応に更新。全スイート通過(2026-07-12)
+
 ### Phase 4: 運用強化
 
 - [x] takeover フロー(kk 側チェックボックス+OES 側記録)

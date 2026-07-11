@@ -10,6 +10,10 @@
   const FLAG_SYMBOL = '◆';
   const HAIKU_WAITING_TEXT = '披講待ち';
 
+  // 試合名等は <br>(改行指定)だけ許可される。KHB-Kuawase の投影では改行として
+  // 効くが、この画面(表形式)では全角スペースに置換して1行で表示する。
+  const stripBr = (value) => String(value ?? '').replace(/<br\s*\/?\s*>/gi, '　');
+
   function parseOrZero(s) {
     if (!s) return 0;
     const n = Number(s);
@@ -218,16 +222,18 @@
     if (haikuArea) haikuArea.hidden = true;
   }
 
-  function applyRevealedHaiku(reveal) {
+  function applyRevealedHaiku(data) {
     if (!haikuArea) return;
-    if (!reveal) {
-      // enabled=false（連携なし）または対象試合の披講情報なし → 表示を邪魔しないよう隠す
+    if (!data || data.integrated !== true) {
+      // 非連携の大会 → 表示を邪魔しないよう隠す
       hideHaikuArea();
       return;
     }
+    // 連携中の大会では常にエリアを出す(未披講は「披講待ち」)
+    const reveal = (data.reveal && typeof data.reveal === 'object') ? data.reveal : {};
     haikuArea.hidden = false;
-    if (haikuRedText) haikuRedText.textContent = (typeof reveal.red === 'string' && reveal.red) ? reveal.red : HAIKU_WAITING_TEXT;
-    if (haikuWhiteText) haikuWhiteText.textContent = (typeof reveal.white === 'string' && reveal.white) ? reveal.white : HAIKU_WAITING_TEXT;
+    if (haikuRedText) haikuRedText.textContent = (typeof reveal.red === 'string' && reveal.red) ? stripBr(reveal.red) : HAIKU_WAITING_TEXT;
+    if (haikuWhiteText) haikuWhiteText.textContent = (typeof reveal.white === 'string' && reveal.white) ? stripBr(reveal.white) : HAIKU_WAITING_TEXT;
   }
 
   async function fetchRevealedHaiku(matchCode) {
@@ -261,7 +267,7 @@
         return;
       }
 
-      applyRevealedHaiku(data.reveal || null);
+      applyRevealedHaiku(data);
     } catch (err) {
       console.error('fetchRevealedHaiku error', err);
     }
@@ -350,8 +356,8 @@
       }
 
       const parts = [];
-      if (multipleVenues && venue && venue.name) parts.push(venue.name);
-      if (match.name) parts.push(match.name);
+      if (multipleVenues && venue && venue.name) parts.push(stripBr(venue.name));
+      if (match.name) parts.push(stripBr(match.name));
       if (bout && bout.label) {
         parts.push(bout.label);
       } else if (typeof epoch === 'number') {
@@ -375,7 +381,7 @@
       currentMatchComplete = matchComplete;
       labelEl.textContent = parts.join(' ／ ');
 
-      const matchTitle = (match.name && match.name.trim() !== '') ? match.name : (match.code || '試合');
+      const matchTitle = (match.name && match.name.trim() !== '') ? stripBr(match.name) : (match.code || '試合');
       if (midLabelEl) midLabelEl.textContent = matchTitle;
 
       const boutTitleCell = document.querySelector('#teams .cell.mid.label');
@@ -393,17 +399,17 @@
       const redTeamEl = document.getElementById('team-red-name');
       const whiteTeamEl = document.getElementById('team-white-name');
       if (redTeamEl) {
-        redTeamEl.textContent = (match.red_team_name && match.red_team_name.trim() !== '') ? match.red_team_name : '紅チーム';
+        redTeamEl.textContent = (match.red_team_name && match.red_team_name.trim() !== '') ? stripBr(match.red_team_name) : '紅チーム';
       }
       if (whiteTeamEl) {
-        whiteTeamEl.textContent = (match.white_team_name && match.white_team_name.trim() !== '') ? match.white_team_name : '白チーム';
+        whiteTeamEl.textContent = (match.white_team_name && match.white_team_name.trim() !== '') ? stripBr(match.white_team_name) : '白チーム';
       }
 
       if (boutLabelEl) {
         const segs = [];
         if (multipleVenues && venue) segs.push(`会場: ${venue.name || ''} (venue_code=${venue.code || ''})`);
         if (match.code || match.name) {
-          const matchDisp = match.name || match.code;
+          const matchDisp = stripBr(match.name) || match.code;
           segs.push(`試合: ${matchDisp} (match_code=${match.code || ''})`);
         }
         if (typeof epoch === 'number') {

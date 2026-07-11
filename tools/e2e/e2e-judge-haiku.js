@@ -49,31 +49,45 @@ async function main() {
 
   const venueId = psql("SELECT venue_id FROM public.matches WHERE code='JH-1';");
 
-  // 1. 未連携 → reveal null
+  // 1. 未連携 → integrated=false, reveal null(エリア非表示)
   r = await post("judge-get-revealed-haiku", judgeHeaders, { token: JTOKEN, match_code: "JH-1" });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.notStrictEqual(r.data.integrated, true);
   assert.strictEqual(r.data.reveal, null);
-  console.log("[jh-1] no sync row -> reveal null");
+  console.log("[jh-1] no sync row -> integrated=false, reveal null");
 
-  // 2. 連携+紅のみ披講 → red だけ返る
+  // 2. 連携+紅のみ披講 → integrated=true, red だけ返る
   psql(`INSERT INTO public.kuawase_sync_status (venue_id, enabled, last_view) VALUES ('${venueId}', true, json_build_object('match_code','JH-1','slot',1,'reveal',json_build_object('red','披講済みの紅句')));`);
   r = await post("judge-get-revealed-haiku", judgeHeaders, { token: JTOKEN, match_code: "JH-1" });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(r.data.integrated, true);
   assert.strictEqual(r.data.reveal.red, "披講済みの紅句");
   assert.strictEqual(r.data.reveal.white, null);
   assert.strictEqual(r.data.slot, 1);
-  console.log("[jh-2] revealed red only -> red returned, white null");
+  console.log("[jh-2] revealed red only -> integrated=true, red returned, white null");
 
-  // 3. 別試合の match_code → null(他会場・他試合の句が漏れない)
+  // 2b. 連携中だが kk が別対戦を表示中 → エリアは出す(披講待ち)が句は返さない
+  psql(`UPDATE public.kuawase_sync_status SET last_view=json_build_object('match_code','OTHER','slot',3,'reveal',json_build_object('red','他試合の句'));`);
+  r = await post("judge-get-revealed-haiku", judgeHeaders, { token: JTOKEN, match_code: "JH-1" });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(r.data.integrated, true);
+  assert.strictEqual(r.data.reveal.red, null, "other match's haiku must not leak");
+  assert.strictEqual(r.data.reveal.white, null);
+  console.log("[jh-2b] other match in last_view -> integrated=true but reveal nulls (no leak)");
+  psql(`UPDATE public.kuawase_sync_status SET last_view=json_build_object('match_code','JH-1','slot',1,'reveal',json_build_object('red','披講済みの紅句'));`);
+
+  // 3. 未登録の match_code → integrated=false(存在有無も句も漏れない)
   r = await post("judge-get-revealed-haiku", judgeHeaders, { token: JTOKEN, match_code: "NOPE" });
+  assert.notStrictEqual(r.data.integrated, true);
   assert.strictEqual(r.data.reveal ?? null, null);
-  console.log("[jh-3] other match_code -> null");
+  console.log("[jh-3] unknown match_code -> integrated=false, null");
 
-  // 4. 連携解除(enabled=false)→ null
+  // 4. 連携解除(enabled=false)→ integrated=false, null
   psql("UPDATE public.kuawase_sync_status SET enabled=false;");
   r = await post("judge-get-revealed-haiku", judgeHeaders, { token: JTOKEN, match_code: "JH-1" });
+  assert.notStrictEqual(r.data.integrated, true);
   assert.strictEqual(r.data.reveal, null);
-  console.log("[jh-4] disabled -> null");
+  console.log("[jh-4] disabled -> integrated=false, null");
 
   // 5. 不正 token → 401
   r = await post("judge-get-revealed-haiku", judgeHeaders, { token: "khb-bogus", match_code: "JH-1" });

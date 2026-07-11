@@ -104,7 +104,7 @@ async function populateMatches() {
       opt.value = m.code;
       opt.dataset.matchId = m.id;
       const isCurrent = st && st.current_match_id === m.id;
-      opt.textContent = (m.name || m.code) + (isCurrent ? ' ★' : '');
+      opt.textContent = (String(m.name || m.code).replace(/<br\s*\/?\s*>/gi, '　')) + (isCurrent ? ' ★' : '');
       if (isCurrent) currentMatchCode = m.code;
       adminUiDom.matchSelect.appendChild(opt);
     });

@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/secret.ts";
+import { advanceBout } from "../_shared/confirm-bout.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -63,59 +64,26 @@ serve(async (req) => {
     }
     const venueId = venueRow.id as string;
 
-    // 1. 現在の state を取得
-    const { data: stateRow, error: stateErr } = await supabase
-      .from("state")
-      .select("*")
-      .eq("venue_id", venueId)
-      .maybeSingle();
-
-    if (stateErr || !stateRow) {
-      return json({ error: "state not found" }, corsHeaders, 500);
-    }
-
-    const currentEpoch: number = stateRow.epoch;
-    const nextEpoch = (Number.isInteger(currentEpoch) &&
-      currentEpoch >= 1)
-      ? currentEpoch + 1
-      : 1;
-
-    const nowIso = new Date().toISOString();
-
-    // 2. state を次対戦用に更新
-    const { error: updErr } = await supabase
-      .from("state")
-      .update({
-        epoch: nextEpoch,
-        accepting: true,
-        e3_reached: false,
-        updated_at: nowIso,
-      })
-      .eq("venue_id", venueId);
-
-    if (updErr) {
-      console.error("state update error on E6", updErr);
-      return json({ error: "failed to advance state" }, corsHeaders, 500);
-    }
-
-    // 3. event_log に E6 を記録
-    await supabase.from("event_log").insert({
-      event_type: "E6",
-      match_id: stateRow.current_match_id ?? null,
-      judge_id: null,
-      epoch: nextEpoch,
-      detail: {
-        from_epoch: currentEpoch,
-        to_epoch: nextEpoch,
-      },
+    // E6 本体は共有モジュールへ委譲(num_bouts 超過ガード込み)
+    const result = await advanceBout({
+      supabase,
+      venueId,
+      logDetail: { source: "admin_secret" },
     });
+
+    if (!result.ok) {
+      return json({
+        error: result.error,
+        ...(result.detail ? { detail: result.detail } : {}),
+      }, corsHeaders, result.status);
+    }
 
     return json({
       ok: true,
       event_type: "E6",
       venue_code: venueCode,
-      from_epoch: currentEpoch,
-      to_epoch: nextEpoch,
+      from_epoch: result.from_epoch,
+      to_epoch: result.to_epoch,
     }, corsHeaders);
   } catch (e) {
     console.error(e);

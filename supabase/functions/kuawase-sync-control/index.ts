@@ -179,12 +179,14 @@ serve(async (req) => {
       }, corsHeaders);
     }
 
-    if (action === "CONFIRM_AND_ADVANCE") {
+    // CONFIRM / CONFIRM_AND_ADVANCE / ADVANCE 共通: 対象試合と state の整合検証。
+    // 成功時は { matchRow, numBouts, stateBefore, slot } を返し、
+    // 失敗時は Response を返す(呼び出し側でそのまま return する)。
+    // deno-lint-ignore no-explicit-any
+    async function validateCurrentMatch(requireSlotGuard: boolean): Promise<any> {
       if (!matchCode) {
-        return json({ ok: false, error: "match_code is required" }, corsHeaders, 400);
+        return { response: json({ ok: false, error: "match_code is required" }, corsHeaders, 400) };
       }
-
-      // 対象試合と state の整合を検証
       const { data: matchRow } = await supabase
         .from("matches")
         .select("id, code, num_bouts, venue_id")
@@ -192,17 +194,19 @@ serve(async (req) => {
         .eq("venue_id", venueId)
         .maybeSingle();
       if (!matchRow) {
-        return json({ ok: false, error: "match not found" }, corsHeaders, 404);
+        return { response: json({ ok: false, error: "match not found" }, corsHeaders, 404) };
       }
       const numBouts = typeof matchRow.num_bouts === "number" ? matchRow.num_bouts : 5;
 
       const stateBefore = await loadState(venueId);
       if (!stateBefore || String(stateBefore.current_match_id) !== String(matchRow.id)) {
-        return json({
-          ok: false,
-          error: "not_current_match",
-          state: stateBefore,
-        }, corsHeaders, 409);
+        return {
+          response: json({
+            ok: false,
+            error: "not_current_match",
+            state: stateBefore,
+          }, corsHeaders, 409),
+        };
       }
 
       // slot ガード: kk が表示している対戦(slot)と OES の受付対戦(epoch)が
@@ -210,22 +214,29 @@ serve(async (req) => {
       const slot = typeof body?.slot === "number" && Number.isInteger(body.slot)
         ? body.slot
         : null;
-      if (slot !== null) {
+      if (requireSlotGuard && slot !== null) {
         const reportedEpoch = slotToEpoch(slot, numBouts);
         if (reportedEpoch === null || reportedEpoch !== stateBefore.epoch) {
-          return json({
-            ok: false,
-            error: "slot_epoch_mismatch",
-            detail: {
-              slot,
-              reported_epoch: reportedEpoch,
-              state_epoch: stateBefore.epoch,
-            },
-            state: stateBefore,
-          }, corsHeaders, 409);
+          return {
+            response: json({
+              ok: false,
+              error: "slot_epoch_mismatch",
+              detail: {
+                slot,
+                reported_epoch: reportedEpoch,
+                state_epoch: stateBefore.epoch,
+              },
+              state: stateBefore,
+            }, corsHeaders, 409),
+          };
         }
       }
 
+      return { matchRow, numBouts, stateBefore, slot };
+    }
+
+    // E5 本体(句の補完込み)。CONFIRM と CONFIRM_AND_ADVANCE の共通部。
+    async function runConfirm(slot: number | null) {
       // 句: payload 優先、無ければ披講報告済みの句(同一対戦のもの)で補完
       let haikuRed = sanitizeText(body?.haiku?.red) || null;
       let haikuWhite = sanitizeText(body?.haiku?.white) || null;
@@ -243,14 +254,104 @@ serve(async (req) => {
         }
       }
 
-      // E5: 確定+snapshot(句込み)
-      const confirm = await confirmBout({
+      return await confirmBout({
         supabase,
         venueId,
         venueCode: await getVenueCode(venueId),
         matchCode,
         haiku: { red: haikuRed, white: haikuWhite },
       });
+    }
+
+    // 同期状態の鮮度更新と event_id の確定(操作系アクション成功時の共通処理)
+    async function touchSyncStatus() {
+      const nowIso = new Date().toISOString();
+      await supabase
+        .from("kuawase_sync_status")
+        .upsert({
+          venue_id: venueId,
+          enabled: true,
+          source_device_id: tokenRow.device_id,
+          last_synced_at: nowIso,
+          updated_at: nowIso,
+        }, { onConflict: "venue_id" });
+      await supabase
+        .from("kuawase_sync_tokens")
+        .update({ last_event_id: eventId })
+        .eq("token_hash", tokenRow.token_hash);
+    }
+
+    // E5 のみ(kk の「確定」ボタン)。得点読み上げ→E6 を挟む運用のために分離。
+    if (action === "CONFIRM") {
+      const v = await validateCurrentMatch(true);
+      if (v.response) return v.response;
+      const { numBouts, slot } = v;
+
+      const confirm = await runConfirm(slot);
+      if (!confirm.ok) {
+        return json({
+          ok: false,
+          error: confirm.error,
+          ...(confirm.detail ? { detail: confirm.detail } : {}),
+          state: v.stateBefore,
+        }, corsHeaders, confirm.status);
+      }
+
+      await touchSyncStatus();
+      const state = await loadState(venueId);
+      return json({
+        ok: true,
+        applied: {
+          action: "CONFIRM",
+          match_code: matchCode,
+          confirmed_epoch: confirm.epoch,
+          confirmed_slot: confirm.slot,
+          winner: confirm.winner,
+          red_wins: confirm.red_wins,
+          white_wins: confirm.white_wins,
+        },
+        is_final: confirm.epoch >= numBouts,
+        state,
+        warnings,
+      }, corsHeaders);
+    }
+
+    // E6 のみ(kk の「次の対戦へ」ボタン)。num_bouts 超過は advanceBout が拒否する。
+    if (action === "ADVANCE") {
+      const v = await validateCurrentMatch(false);
+      if (v.response) return v.response;
+
+      const adv = await advanceBout({
+        supabase,
+        venueId,
+        logDetail: { source: "kuawase", device_id: tokenRow.device_id, event_id: eventId },
+      });
+      if (!adv.ok) {
+        return json({
+          ok: false,
+          error: adv.error,
+          ...(adv.detail ? { detail: adv.detail } : {}),
+          state: v.stateBefore,
+        }, corsHeaders, adv.status);
+      }
+
+      await touchSyncStatus();
+      const state = await loadState(venueId);
+      return json({
+        ok: true,
+        applied: { action: "ADVANCE", from_epoch: adv.from_epoch, to_epoch: adv.to_epoch },
+        state,
+        warnings,
+      }, corsHeaders);
+    }
+
+    if (action === "CONFIRM_AND_ADVANCE") {
+      const v = await validateCurrentMatch(true);
+      if (v.response) return v.response;
+      const { numBouts, stateBefore, slot } = v;
+
+      // E5: 確定+snapshot(句込み)
+      const confirm = await runConfirm(slot);
 
       if (!confirm.ok) {
         return json({
@@ -282,21 +383,7 @@ serve(async (req) => {
         advancedTo = adv.to_epoch;
       }
 
-      const nowIso = new Date().toISOString();
-      await supabase
-        .from("kuawase_sync_status")
-        .upsert({
-          venue_id: venueId,
-          enabled: true,
-          source_device_id: tokenRow.device_id,
-          last_synced_at: nowIso,
-          updated_at: nowIso,
-        }, { onConflict: "venue_id" });
-
-      await supabase
-        .from("kuawase_sync_tokens")
-        .update({ last_event_id: eventId })
-        .eq("token_hash", tokenRow.token_hash);
+      await touchSyncStatus();
 
       const state = await loadState(venueId);
       return json({

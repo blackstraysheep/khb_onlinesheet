@@ -151,8 +151,8 @@ serve(async (req) => {
       return json({ error: "failed to load match" }, 500);
     }
     if (!matchRow || !matchRow.venue_id) {
-      // 未登録の match_code。存在有無を詳しく伝えず「披講なし」と同じ扱いにする。
-      return json({ ok: true, reveal: null });
+      // 未登録の match_code。存在有無を詳しく伝えず「非連携」と同じ扱いにする。
+      return json({ ok: true, integrated: false, reveal: null });
     }
 
     // 3. venue の kuawase_sync_status を読む（唯一の審査員向け読取口）。
@@ -166,13 +166,21 @@ serve(async (req) => {
       return json({ error: "failed to load sync status" }, 500);
     }
     if (!statusRow || !statusRow.enabled) {
-      return json({ ok: true, reveal: null });
+      // 非連携の会場: 審査員画面は句エリア自体を出さない
+      return json({ ok: true, integrated: false, reveal: null });
     }
 
+    // 連携中の会場: kk がこの試合を表示していなくてもエリアは出す(披講待ち)。
+    // 他試合の披講句は返さない(reveal は両側 null)。
     // deno-lint-ignore no-explicit-any
     const lastView = (statusRow.last_view ?? {}) as Record<string, any>;
     if (!lastView || lastView.match_code !== matchCode) {
-      return json({ ok: true, reveal: null });
+      return json({
+        ok: true,
+        integrated: true,
+        slot: null,
+        reveal: { red: null, white: null },
+      });
     }
 
     const slot = typeof lastView.slot === "number" ? lastView.slot : null;
@@ -183,7 +191,7 @@ serve(async (req) => {
       }
       : { red: null, white: null };
 
-    return json({ ok: true, slot, reveal });
+    return json({ ok: true, integrated: true, slot, reveal });
   } catch (e) {
     console.error(e);
     return json({ error: "internal error" }, 500);

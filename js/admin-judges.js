@@ -496,7 +496,7 @@
     for (const m of allMatches) {
       const opt = document.createElement('option');
       opt.value = m.id;
-      opt.textContent = `[TL${m.timeline}] ${m.code} - ${m.name}`;
+      opt.textContent = `[TL${m.timeline}] ${m.code} - ${String(m.name ?? '').replace(/<br\s*\/?\s*>/gi, '　')}`;
       assignMatchSelect.appendChild(opt);
     }
     if (previousValue && allMatches.some(m => String(m.id) === String(previousValue))) {

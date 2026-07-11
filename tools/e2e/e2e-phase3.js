@@ -11,8 +11,10 @@ const ADMIN_SECRET = fs
   .match(/ADMIN_SETUP_SECRET=(.+)/)[1].trim();
 
 function psql(sql) {
+  // Windows の cmd 経由では改行入り SQL が確実に通らないため単一行化する
+  const oneLine = sql.replace(/\s*\r?\n\s*/g, " ");
   return execSync(
-    `docker exec supabase_db_khb_onlinesheet psql -U postgres -d postgres -t -A -c "${sql.replace(/"/g, '\\"')}"`
+    `docker exec supabase_db_khb_onlinesheet psql -U postgres -d postgres -t -A -c "${oneLine.replace(/"/g, '\\"')}"`
   ).toString().trim();
 }
 
