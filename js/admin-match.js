@@ -8,7 +8,6 @@
   const ADMIN_LIST_MATCHES_URL = SUPABASE_URL + '/functions/v1/admin-list-matches';
   const ADMIN_SELECT_URL = SUPABASE_URL + '/functions/v1/admin-select';
   const ADMIN_DELETE_MATCH_URL = SUPABASE_URL + '/functions/v1/admin-delete-match';
-  const ADMIN_UPSERT_VENUE_URL = SUPABASE_URL + '/functions/v1/admin-upsert-venue';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -183,31 +182,6 @@
       return iso;
     }
   }
-
-  // 会場の作成・名称変更(state 行もサーバ側で自動作成される)
-  $('#btnSaveVenue')?.addEventListener('click', async () => {
-    const secret = $('#adminSecret').value.trim();
-    const code = $('#newVenueCode').value.trim();
-    const name = $('#newVenueName').value.trim();
-    if (!secret) return showMsg('#venueMsg', '管理用シークレットを入力', true);
-    if (!code) return showMsg('#venueMsg', '会場コードを入力（半角英数字・ハイフン・アンダースコア）', true);
-    if (!name) return showMsg('#venueMsg', '会場名を入力', true);
-
-    try {
-      const res = await fetch(ADMIN_UPSERT_VENUE_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ admin_secret: secret, venue_code: code, venue_name: name }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error) throw new Error(data.error || res.statusText);
-      showMsg('#venueMsg', `${data.created ? '会場を作成しました' : '会場名を更新しました'}: ${data.venue.code}（${data.venue.name}）`, false);
-      $('#venueCode').value = data.venue.code;
-      await refreshMatches();
-    } catch (e) {
-      showMsg('#venueMsg', '会場の保存に失敗しました: ' + e.message, true);
-    }
-  });
 
   $('#btnSaveMatch').addEventListener('click', async () => {
     const secret = $('#adminSecret').value.trim();

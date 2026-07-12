@@ -10,7 +10,7 @@
   const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
   const ADMIN_SELECT_URL = SUPABASE_URL + '/functions/v1/admin-select';
   const ADMIN_DELETE_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-delete-judge';
-  // 連携トークン管理は試合管理ページ(admin-match.html + admin-kuawase-tokens.js)へ移設した
+  // 連携トークン管理は会場・連携設定ページ(admin-venues.html + admin-kuawase-tokens.js)へ移設した
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');

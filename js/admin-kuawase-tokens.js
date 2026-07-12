@@ -2,7 +2,7 @@
 // admin-kuawase-tokens.js — KHB-Kuawase 連携トークン管理（発行・一覧・失効）
 // ============================
 // 自己完結モジュール。以下の DOM がある管理ページに読み込むと動く
-// （現在は試合管理ページ admin-match.html）:
+// （現在は会場・連携設定ページ admin-venues.html）:
 //   #adminSecret #kuawaseVenueSelect #kuawaseTokenLabel #kuawaseExpiresHours
 //   #btnIssueKuawaseToken #btnRefreshKuawaseTokens
 //   #kuawaseIssueMsg #kuawaseIssuedTokenBox #kuawaseTokenListMsg #kuawaseTokenListBody
@@ -263,6 +263,9 @@
 
   $('#btnIssueKuawaseToken')?.addEventListener('click', issueToken);
   $('#btnRefreshKuawaseTokens')?.addEventListener('click', refreshAll);
+
+  // 会場カード(admin-venues.js)で会場を保存したら、会場プルダウンにも反映する
+  document.addEventListener('khb:venues-updated', refreshVenues);
 
   // シークレット入力(復元含む)後に一覧を読めるよう、変更時にも更新する
   let reloadTimer = null;

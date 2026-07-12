@@ -641,6 +641,7 @@ function getSlot(epoch: number, numBouts: number): number {
 | `admin.html` + `admin.css` | 管理パネル（試合進行・スコアボード・音声読み上げ） |
 | `admin-match.html` | 試合管理（CRUD） |
 | `admin-judges.html` | 審査員管理（CRUD＋トークン発行） |
+| `admin-venues.html` | 会場・連携設定（会場の作成・名称変更＋KHB-Kuawase 連携トークン管理） |
 | `judge.html` + `judge.css` | 審査員入力画面 |
 | `scoreboard.js` | OBS 用スコアボード共通ロジック（`reorderIdsForScoreboard`・`getBoutLabel`） |
 | `obs-scoreboard.html` | OBS スコアボード（横型） |

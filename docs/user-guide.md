@@ -12,6 +12,7 @@
 | 管理パネル | 管理者 | `admin.html` |
 | 試合管理 | 管理者 | `admin-match.html` |
 | 審査員管理 | 管理者 | `admin-judges.html` |
+| 会場・連携設定 | 管理者 | `admin-venues.html` |
 | 審査員入力画面 | 審査員 | `judge.html?token=<トークン>` |
 | スコアボード（横型） | OBS 配信 | `obs-scoreboard.html?venue=<会場コード>` |
 | スコアボード（縦型） | OBS 配信 | `obs-scoreboard-vertical.html?venue=<会場コード>` |
@@ -26,8 +27,9 @@
 
 ### 2.1 会場の作成
 
-複数会場で同時開催する場合、会場（venue）を事前に作成します。  
-デフォルトでは `default` 会場が用意されています。
+複数会場で同時開催する場合、**会場・連携設定画面（`admin-venues.html`）** で会場（venue）を事前に作成します。  
+デフォルトでは `default` 会場が用意されています。  
+KHB-Kuawase 連携用の接続トークンの発行・失効も同じ画面で行います。
 
 ### 2.2 審査員の登録
 
