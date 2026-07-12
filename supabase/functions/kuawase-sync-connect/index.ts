@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { authorizeKuawaseSync, isAllowedKuawaseOrigin } from "../_shared/kuawase-auth.ts";
+import { sanitizeText } from "../_shared/sanitize.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -100,10 +101,10 @@ serve(async (req) => {
       return json({ ok: false, error: "failed to load state" }, corsHeaders, 500);
     }
 
-    // 4. 候補データ（excel_hash / compe_name）
+    // 4. 候補データ（excel_hash / compe_name / 名前解決用の teams・kendai）
     const { data: candidatesRow, error: candidatesError } = await supabase
       .from("kuawase_candidates")
-      .select("excel_hash, compe_name")
+      .select("excel_hash, compe_name, teams, kendai")
       .eq("venue_id", venueId)
       .maybeSingle();
     if (candidatesError) {
@@ -122,30 +123,70 @@ serve(async (req) => {
       });
     }
 
-    // 5. プリセット一覧（kuawase_ref が設定済みの matches を timeline 順に整形）
+    // 5. プリセット一覧（timeline 順）。
+    //    kuawase_ref が設定済みの試合に加え、OES 側で手入力された試合も
+    //    チーム名・兼題名が候補データから一意に解決できる場合は読込可能として返す
+    //    （同名候補が複数ある場合は誤読込を避けるため解決しない）。
     const { data: matchRows, error: matchesError } = await supabase
       .from("matches")
       .select("code, name, red_team_name, white_team_name, kendai_name, num_bouts, timeline, kuawase_ref")
       .eq("venue_id", venueId)
-      .not("kuawase_ref", "is", null)
       .order("timeline", { ascending: true });
     if (matchesError) {
       console.error("matches select error (presets)", matchesError);
       return json({ ok: false, error: "failed to load presets" }, corsHeaders, 500);
     }
 
-    const presets = ((matchRows ?? []) as MatchPresetRow[]).map((m) => {
-      const ref = m.kuawase_ref ?? {};
-      return {
+    // 名前 → セルの索引（重複名は null = 解決不能）
+    // deno-lint-ignore no-explicit-any
+    function buildNameIndex(items: any): Map<string, string | null> {
+      const map = new Map<string, string | null>();
+      for (const it of Array.isArray(items) ? items : []) {
+        const name = sanitizeText(it?.name);
+        const cell = typeof it?.cell === "string" ? it.cell : null;
+        if (!name || !cell) continue;
+        map.set(name, map.has(name) ? null : cell);
+      }
+      return map;
+    }
+    const teamIndex = buildNameIndex(candidatesRow?.teams);
+    const kendaiIndex = buildNameIndex(candidatesRow?.kendai);
+
+    const presets: Array<Record<string, unknown>> = [];
+    for (const m of (matchRows ?? []) as MatchPresetRow[]) {
+      const ref = m.kuawase_ref ?? null;
+      if (ref && (ref.red_cell || ref.white_cell)) {
+        presets.push({
+          code: m.code,
+          name: m.name ?? null,
+          red: { cell: ref.red_cell ?? null, name: m.red_team_name ?? null },
+          white: { cell: ref.white_cell ?? null, name: m.white_team_name ?? null },
+          kendai: { cell: ref.kendai_cell ?? null, name: m.kendai_name ?? null },
+          num_bouts: m.num_bouts,
+          timeline_order: m.timeline,
+        });
+        continue;
+      }
+
+      // 手入力試合: 名前解決を試みる（紅白とも一意解決できたときのみ）
+      const redCell = teamIndex.get(sanitizeText(m.red_team_name)) ?? null;
+      const whiteCell = teamIndex.get(sanitizeText(m.white_team_name)) ?? null;
+      const kendaiName = sanitizeText(m.kendai_name);
+      const kendaiCell = kendaiName ? (kendaiIndex.get(kendaiName) ?? null) : null;
+      if (!redCell || !whiteCell) continue;
+      if (kendaiName && !kendaiCell) continue;
+
+      presets.push({
         code: m.code,
         name: m.name ?? null,
-        red: { cell: ref.red_cell ?? null, name: m.red_team_name ?? null },
-        white: { cell: ref.white_cell ?? null, name: m.white_team_name ?? null },
-        kendai: { cell: ref.kendai_cell ?? null, name: m.kendai_name ?? null },
+        red: { cell: redCell, name: m.red_team_name ?? null },
+        white: { cell: whiteCell, name: m.white_team_name ?? null },
+        kendai: { cell: kendaiCell, name: m.kendai_name ?? null },
         num_bouts: m.num_bouts,
         timeline_order: m.timeline,
-      };
-    });
+        resolved_by_name: true,
+      });
+    }
 
     // 6. kuawase_sync_status を upsert（連携有効化 + 接続端末を記録）
     const nowIso = new Date().toISOString();

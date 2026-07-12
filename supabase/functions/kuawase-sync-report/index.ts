@@ -33,6 +33,16 @@ type ReportBody = {
   source_page?: unknown;
   reveal?: { side?: unknown; haiku?: unknown } | null;
   changed_at?: unknown;
+  // kk が試合読込時に取り込んだ参照(チーム・兼題)。OES 側でその後
+  // 試合設定が編集された場合の乖離検出(MATCH_CONFIG_CHANGED)に使う。
+  loaded_ref?: {
+    red_cell?: unknown;
+    red_name?: unknown;
+    white_cell?: unknown;
+    white_name?: unknown;
+    kendai_cell?: unknown;
+    kendai_name?: unknown;
+  } | null;
 };
 
 function json(body: unknown, corsHeaders: HeadersInit, status = 200) {
@@ -95,11 +105,12 @@ serve(async (req) => {
       .eq("venue_id", venueId)
       .maybeSingle();
 
-    let reportedMatch: { id: string; code: string; num_bouts: number | null } | null = null;
+    // deno-lint-ignore no-explicit-any
+    let reportedMatch: any = null;
     if (matchCode) {
       const { data: matchRow } = await supabase
         .from("matches")
-        .select("id, code, num_bouts")
+        .select("id, code, num_bouts, red_team_name, white_team_name, kendai_name, kuawase_ref")
         .eq("code", matchCode)
         .eq("venue_id", venueId)
         .maybeSingle();
@@ -138,6 +149,43 @@ serve(async (req) => {
             code: "EPOCH_MISMATCH",
             detail:
               `kk is showing slot ${slot} (epoch ${reportedEpoch}) but OES is at epoch ${stateRow.epoch}`,
+          });
+        }
+      }
+
+      // 試合設定の乖離検出: kk が読込時に取り込んだチーム・兼題と、
+      // OES 側の現在の試合設定が食い違っていたら警告する
+      // (kk 読込後に OES で試合を編集したケース。読込し直しで解消する)。
+      const loadedRef = body?.loaded_ref;
+      if (loadedRef && typeof loadedRef === "object") {
+        const diffs: string[] = [];
+        const cmpName = (label: string, loaded: unknown, current: unknown) => {
+          const a = sanitizeText(loaded);
+          const b = sanitizeText(current);
+          if (a !== b) diffs.push(`${label} name: kk="${a}" oes="${b}"`);
+        };
+        cmpName("red", loadedRef.red_name, reportedMatch.red_team_name);
+        cmpName("white", loadedRef.white_name, reportedMatch.white_team_name);
+        cmpName("kendai", loadedRef.kendai_name, reportedMatch.kendai_name);
+
+        // deno-lint-ignore no-explicit-any
+        const ref = (reportedMatch.kuawase_ref ?? null) as Record<string, any> | null;
+        const cmpCell = (label: string, loaded: unknown, current: unknown) => {
+          if (typeof loaded === "string" && loaded && typeof current === "string" && current &&
+            loaded !== current) {
+            diffs.push(`${label} cell: kk=${loaded} oes=${current}`);
+          }
+        };
+        if (ref) {
+          cmpCell("red", loadedRef.red_cell, ref.red_cell);
+          cmpCell("white", loadedRef.white_cell, ref.white_cell);
+          cmpCell("kendai", loadedRef.kendai_cell, ref.kendai_cell);
+        }
+
+        if (diffs.length > 0) {
+          warnings.push({
+            code: "MATCH_CONFIG_CHANGED",
+            detail: `match '${reportedMatch.code}' was edited on OES after kk loaded it: ${diffs.join("; ")}`,
           });
         }
       }

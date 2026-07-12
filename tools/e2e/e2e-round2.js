@@ -49,8 +49,8 @@ let step = 0;
 const log = (msg, extra = "") => console.log(`[r2-${String(++step).padStart(2, "0")}] ${msg} ${extra}`);
 
 async function main() {
-  // 0. クリーンアップ
-  psql(`DELETE FROM public.kuawase_sync_tokens;
+  // 0. クリーンアップ(token は自分の label のみ消す。手動テスト用 token を巻き込まない)
+  psql(`DELETE FROM public.kuawase_sync_tokens WHERE label='r2';
         DELETE FROM public.kuawase_sync_status;
         DELETE FROM public.kuawase_candidates;
         UPDATE public.state SET current_match_id=NULL WHERE current_match_id IN (SELECT id FROM public.matches WHERE code='R2-1');
@@ -82,21 +82,56 @@ async function main() {
   assert.strictEqual(storedName, "R2決勝<br>第一試合x", `sanitized name: ${storedName}`);
   log("match seeded; name keeps <br>, strips other tags:", storedName);
 
-  // 2. connect + SET_MATCH
+  // 2. 候補インポート → connect。R2-1 は kuawase_ref なし(手入力)だが、
+  //    チーム名が候補から一意に解決できるためプリセットに載る(名前解決)。
+  r = await callK("kuawase-import-candidates", TOKEN, {
+    event_id: "r2-imp", device_id: "devR2",
+    compe_name: "R2大会",
+    teams: [{ cell: "B3", name: "紅組" }, { cell: "B4", name: "白組" }],
+    kendai: [{ cell: "H1", name: "夏の月" }],
+    excel_hash: "sha256:" + "d".repeat(64),
+  });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+
   r = await callK("kuawase-sync-connect", TOKEN, { event_id: "r2-c1", device_id: "devR2" });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  const preset = (r.data.presets || []).find((p) => p.code === "R2-1");
+  assert.ok(preset, "manually-entered match should be resolvable by name: " + JSON.stringify(r.data.presets));
+  assert.strictEqual(preset.red.cell, "B3");
+  assert.strictEqual(preset.white.cell, "B4");
+  assert.strictEqual(preset.resolved_by_name, true);
+  log("connect -> manual match resolved by name (B3/B4)");
+
   r = await callK("kuawase-sync-control", TOKEN, { event_id: "r2-sm", device_id: "devR2", action: "SET_MATCH", match_code: "R2-1" });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
   assert.strictEqual(r.data.state.epoch, 1);
-  log("connected + SET_MATCH epoch=1");
+  log("SET_MATCH epoch=1");
 
-  // 3. report のレスポンスに enabled が含まれる
+  // 3. report のレスポンスに enabled が含まれ、loaded_ref 一致なら警告なし
+  const loadedRef = {
+    red_cell: "B3", red_name: "紅組",
+    white_cell: "B4", white_name: "白組",
+    kendai_cell: null, kendai_name: null,
+  };
   r = await callK("kuawase-sync-report", TOKEN, {
     event_id: "r2-rp1", device_id: "devR2", kind: "view", match_code: "R2-1", slot: 1, source_page: "1.html",
+    loaded_ref: loadedRef,
   });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
   assert.strictEqual(r.data.enabled, true, JSON.stringify(r.data));
-  log("report -> enabled=true in response");
+  assert.ok(!(r.data.warnings || []).some((w) => w.code === "MATCH_CONFIG_CHANGED"), JSON.stringify(r.data.warnings));
+  log("report -> enabled=true, no config-changed warning");
+
+  // 3b. OES 側で試合を編集(チーム名変更)→ MATCH_CONFIG_CHANGED 警告
+  psql(`UPDATE public.matches SET red_team_name='紅組改' WHERE id='${matchId}';`);
+  r = await callK("kuawase-sync-report", TOKEN, {
+    event_id: "r2-rp1b", device_id: "devR2", kind: "view", match_code: "R2-1", slot: 1, source_page: "1.html",
+    loaded_ref: loadedRef,
+  });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.ok((r.data.warnings || []).some((w) => w.code === "MATCH_CONFIG_CHANGED"), JSON.stringify(r.data.warnings));
+  psql(`UPDATE public.matches SET red_team_name='紅組' WHERE id='${matchId}';`);
+  log("edit match on OES -> MATCH_CONFIG_CHANGED warning");
 
   // 4. 未提出のまま CONFIRM → 拒否
   r = await callK("kuawase-sync-control", TOKEN, {
@@ -197,8 +232,8 @@ async function main() {
   assert.strictEqual(delLog, "1");
   log("delete-match: 409 while current, then deleted with children + audit log");
 
-  // 後始末
-  psql("DELETE FROM public.kuawase_sync_tokens; DELETE FROM public.kuawase_sync_status;");
+  // 後始末(自分の token・テスト用候補のみ。実運用側は kk の再接続で自動同期される)
+  psql("DELETE FROM public.kuawase_sync_tokens WHERE label='r2'; DELETE FROM public.kuawase_sync_status; DELETE FROM public.kuawase_candidates;");
   console.log("\nRound2 E2E: all steps passed");
 }
 

@@ -44,8 +44,8 @@ let step = 0;
 const log = (msg, extra = "") => console.log(`[p3-${String(++step).padStart(2, "0")}] ${msg} ${extra}`);
 
 async function main() {
-  // 0. クリーンアップ
-  psql(`DELETE FROM public.kuawase_sync_tokens;
+  // 0. クリーンアップ(token は自分の label のみ消す。手動テスト用 token を巻き込まない)
+  psql(`DELETE FROM public.kuawase_sync_tokens WHERE label='p3';
         DELETE FROM public.kuawase_sync_status;
         DELETE FROM public.kuawase_candidates;
         UPDATE public.state SET current_match_id=NULL WHERE current_match_id IN (SELECT id FROM public.matches WHERE code='P3-1');

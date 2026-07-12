@@ -96,14 +96,16 @@ async function main() {
   assert.ok(r.presetsCount >= 1, JSON.stringify(r));
   log("set-connection + connect", `venue=${r.venue.code} presets=${r.presetsCount}`);
 
-  // 2. 状態: OES 側候補ハッシュ(前テストの値)と kk ローカルの Excel が不一致のはず
+  // 2. 接続時の自動同期: OES 側候補(前テストの値)とローカル Excel の
+  //    ハッシュ不一致を connect が検出し、候補を自動送信して一致に転じているはず
+  assert.strictEqual(r.autoImported, true, JSON.stringify(r));
   let status = await invoke("oes-get-status");
   assert.strictEqual(status.configured, true);
   assert.strictEqual(status.hasToken, true);
-  assert.strictEqual(status.excelHashMatched, false, JSON.stringify(status));
-  log("status: excelHashMatched=false (stale candidates on OES)");
+  assert.strictEqual(status.excelHashMatched, true, JSON.stringify(status));
+  log("connect auto-imported candidates -> hash matched");
 
-  // 3. kk から候補を再送信 → ハッシュ一致に転じる
+  // 3. 手動の再送信も引き続き動く(冪等)
   r = await invoke("oes-import-candidates");
   assert.strictEqual(r.ok, true, JSON.stringify(r));
   assert.deepStrictEqual(r.imported, { teams: 2, kendai: 2 });
@@ -112,7 +114,7 @@ async function main() {
   assert.strictEqual(e2eRefWarnings.length, 0, JSON.stringify(r.warnings));
   status = await invoke("oes-get-status");
   assert.strictEqual(status.excelHashMatched, true);
-  log("import-candidates -> hash matched, no REF_MISMATCH");
+  log("manual import-candidates still works (idempotent)");
 
   // 4. プリセット読込(E2E-1 は既に current → no-op、config へ反映)
   r = await invoke("oes-load-preset", { code: "E2E-1" });
