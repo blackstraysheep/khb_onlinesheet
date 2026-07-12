@@ -51,6 +51,16 @@
       </div>
 
       <div class="card">
+        <h2 class="card-header">会場作成・変更</h2>
+        <div class="row mb-8">
+          <div><label for="newVenueCode">会場コード</label><input id="newVenueCode" placeholder="例: main" class="input-md" /></div>
+          <div><label for="newVenueName">会場名</label><input id="newVenueName" placeholder="例: メイン会場" class="input-md" /></div>
+          <div><label>&nbsp;</label><button id="btnSaveVenue" class="btn-green">会場を保存</button></div>
+        </div>
+        <div class="msg" id="venueMsg"></div>
+      </div>
+
+      <div class="card">
         <h2 class="card-header">試合作成・編集</h2>
         <div class="row mb-8">
           <div><label for="venueCode">会場コード</label><input id="venueCode" value="default" class="input-md" /></div>

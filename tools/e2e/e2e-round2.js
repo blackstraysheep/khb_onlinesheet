@@ -232,6 +232,37 @@ async function main() {
   assert.strictEqual(delLog, "1");
   log("delete-match: 409 while current, then deleted with children + audit log");
 
+  // 12. 会場作成 API: 新規作成で state 行も自動作成、再実行は名称更新
+  psql("DELETE FROM public.state WHERE venue_id IN (SELECT id FROM public.venues WHERE code='r2-venue'); DELETE FROM public.venues WHERE code='r2-venue';");
+  r = await callAdmin("admin-upsert-venue", { venue_code: "r2-venue", venue_name: "R2会場" });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(r.data.created, true);
+  const venueStateCount = psql("SELECT count(*) FROM public.state WHERE venue_id IN (SELECT id FROM public.venues WHERE code='r2-venue');");
+  assert.strictEqual(venueStateCount, "1", "state row must be created with the venue");
+  r = await callAdmin("admin-upsert-venue", { venue_code: "r2-venue", venue_name: "R2会場改" });
+  assert.strictEqual(r.data.created, false);
+  assert.strictEqual(psql("SELECT name FROM public.venues WHERE code='r2-venue';"), "R2会場改");
+  r = await callAdmin("admin-upsert-venue", { venue_code: "bad code!", venue_name: "x" });
+  assert.strictEqual(r.status, 400);
+  psql("DELETE FROM public.state WHERE venue_id IN (SELECT id FROM public.venues WHERE code='r2-venue'); DELETE FROM public.venues WHERE code='r2-venue';");
+  log("upsert-venue: create(+state row), rename, invalid code rejected");
+
+  // 13. 審査員削除 API: 使用中(割当あり)は 409、空なら TOKEN ごと削除
+  const r2JudgeId = judgeId; // R2-1 は削除済み → 割当・提出は消えている
+  const defaultVenueId = psql("SELECT id FROM public.venues WHERE code='default';");
+  psql(`INSERT INTO public.matches (code, name, timeline, num_bouts, venue_id) VALUES ('R2-TMP', 'tmp', 99.9, 3, '${defaultVenueId}');`);
+  const tmpMatchId = psql("SELECT id FROM public.matches WHERE code='R2-TMP';");
+  psql(`INSERT INTO public.expected_judges (match_id, judge_id, sort_order) VALUES ('${tmpMatchId}', '${r2JudgeId}', 0);`);
+  r = await callAdmin("admin-delete-judge", { judge_id: r2JudgeId });
+  assert.strictEqual(r.status, 409, JSON.stringify(r.data));
+  assert.strictEqual(r.data.error, "judge_in_use");
+  psql(`DELETE FROM public.expected_judges WHERE match_id='${tmpMatchId}'; DELETE FROM public.matches WHERE id='${tmpMatchId}';`);
+  r = await callAdmin("admin-delete-judge", { judge_id: r2JudgeId });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(psql(`SELECT count(*) FROM public.judges WHERE id='${r2JudgeId}';`), "0");
+  assert.strictEqual(psql(`SELECT count(*) FROM public.access_tokens WHERE judge_id='${r2JudgeId}';`), "0");
+  log("delete-judge: 409 while assigned, then deleted with tokens");
+
   // 後始末(自分の token・テスト用候補のみ。実運用側は kk の再接続で自動同期される)
   psql("DELETE FROM public.kuawase_sync_tokens WHERE label='r2'; DELETE FROM public.kuawase_sync_status; DELETE FROM public.kuawase_candidates;");
   console.log("\nRound2 E2E: all steps passed");

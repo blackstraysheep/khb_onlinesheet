@@ -12,6 +12,7 @@
   const ADMIN_ISSUE_KUAWASE_TOKEN_URL = SUPABASE_URL + '/functions/v1/admin-issue-kuawase-token';
   const ADMIN_LIST_KUAWASE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-kuawase-tokens';
   const ADMIN_REVOKE_KUAWASE_TOKEN_URL = SUPABASE_URL + '/functions/v1/admin-revoke-kuawase-token';
+  const ADMIN_DELETE_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-delete-judge';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -375,6 +376,41 @@
     }
   }
 
+  // 審査員の削除。試合への割当・送信済み採点がある場合はサーバ側で拒否される。
+  async function deleteJudge(judge) {
+    const secret = $('#adminSecret').value.trim();
+    if (!secret) return showMsg('#judgeListMsg', '管理用シークレットを入力', 'err');
+
+    const ok = window.confirm(`審査員「${judge.name}」を削除します。TOKENも失効します。よろしいですか？`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch(ADMIN_DELETE_JUDGE_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ admin_secret: secret, judge_id: judge.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        if (data.error === 'judge_in_use') {
+          const d = data.detail || {};
+          showMsg(
+            '#judgeListMsg',
+            `削除できません: ${judge.name} は使用中です（割当試合 ${d.assigned_matches ?? '?'} 件 / 送信済み採点 ${d.submissions ?? '?'} 件）。試合の割当を外してから削除してください。`,
+            'err'
+          );
+          return;
+        }
+        showMsg('#judgeListMsg', '削除失敗: ' + (data.error || res.statusText), 'err');
+        return;
+      }
+      await refreshAll();
+      showMsg('#judgeListMsg', `審査員「${data.deleted?.judge_name || judge.name}」を削除しました`, 'ok');
+    } catch (e) {
+      showMsg('#judgeListMsg', '削除に失敗しました: ' + e.message, 'err');
+    }
+  }
+
   async function refreshAll() {
     try {
       const secret = $('#adminSecret').value.trim();
@@ -455,11 +491,13 @@
           <span class="action-links">
             <span class="link" data-action="edit" data-judge-id="${esc(j.id)}">編集</span>
             <span class="link" data-action="regenerate-token" data-judge-id="${esc(j.id)}">TOKEN再発行</span>
+            <span class="link link-delete" data-action="delete" data-judge-id="${esc(j.id)}">削除</span>
           </span>
         </td>
       `;
       tr.querySelector('[data-action="edit"]').addEventListener('click', () => loadJudgeForEdit(j));
       tr.querySelector('[data-action="regenerate-token"]').addEventListener('click', () => regenerateJudgeToken(j));
+      tr.querySelector('[data-action="delete"]').addEventListener('click', () => deleteJudge(j));
       tbody.appendChild(tr);
     }
   }
