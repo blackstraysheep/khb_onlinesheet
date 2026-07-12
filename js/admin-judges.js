@@ -9,10 +9,8 @@
   const ADMIN_REGENERATE_JUDGE_TOKEN_URL = SUPABASE_URL + '/functions/v1/admin-regenerate-judge-token';
   const ADMIN_SET_MATCH_JUDGES_URL = SUPABASE_URL + '/functions/v1/admin-set-match-judges';
   const ADMIN_SELECT_URL = SUPABASE_URL + '/functions/v1/admin-select';
-  const ADMIN_ISSUE_KUAWASE_TOKEN_URL = SUPABASE_URL + '/functions/v1/admin-issue-kuawase-token';
-  const ADMIN_LIST_KUAWASE_TOKENS_URL = SUPABASE_URL + '/functions/v1/admin-list-kuawase-tokens';
-  const ADMIN_REVOKE_KUAWASE_TOKEN_URL = SUPABASE_URL + '/functions/v1/admin-revoke-kuawase-token';
   const ADMIN_DELETE_JUDGE_URL = SUPABASE_URL + '/functions/v1/admin-delete-judge';
+  // 連携トークン管理は試合管理ページ(admin-match.html + admin-kuawase-tokens.js)へ移設した
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('設定ファイル(config.js)の読み込みに失敗しました。');
@@ -30,9 +28,7 @@
   let allExpectedJudges = [];
   let allTokens = [];
   let allVenues = [];
-  let allKuawaseTokens = [];
   let tokenStatus = { text: '管理用シークレットを入力するとTOKENを表示できます。', type: 'warn' };
-  let kuawaseTokenStatus = { text: '管理用シークレットを入力すると連携トークンを表示できます。', type: 'warn' };
 
   async function fetchJson(table, params = {}) {
     const secret = $('#adminSecret')?.value?.trim() || '';
@@ -84,204 +80,6 @@
     return data.tokens ?? [];
   }
 
-  async function fetchKuawaseTokens(secret) {
-    if (!secret) {
-      kuawaseTokenStatus = { text: '管理用シークレットを入力すると連携トークンを表示できます。', type: 'warn' };
-      return [];
-    }
-
-    const res = await fetch(ADMIN_LIST_KUAWASE_TOKENS_URL, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ admin_secret: secret }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || res.statusText || 'failed to fetch kuawase tokens');
-    }
-    kuawaseTokenStatus = { text: `連携トークン一覧を表示中 (${(data.tokens || []).length}件)`, type: 'ok' };
-    return data.tokens ?? [];
-  }
-
-  function renderKuawaseVenueSelect() {
-    const select = $('#kuawaseVenueSelect');
-    if (!select) return;
-    const previousValue = select.value;
-    select.innerHTML = '';
-    for (const v of allVenues) {
-      const opt = document.createElement('option');
-      opt.value = v.id;
-      opt.textContent = v.name ? `${v.code} - ${v.name}` : v.code;
-      select.appendChild(opt);
-    }
-    if (previousValue && allVenues.some(v => String(v.id) === String(previousValue))) {
-      select.value = previousValue;
-    }
-  }
-
-  function kuawaseTokenState(t) {
-    if (t.revoked_at) return { label: '失効', cls: 'tag-warn' };
-    if (t.expires_at && new Date(t.expires_at).getTime() <= Date.now()) return { label: '期限切れ', cls: 'tag-warn' };
-    return { label: '有効', cls: '' };
-  }
-
-  function fmtDateTime(iso) {
-    if (!iso) return '-';
-    try {
-      return new Date(iso).toLocaleString('ja-JP');
-    } catch (_e) {
-      return iso;
-    }
-  }
-
-  function renderKuawaseTokenList() {
-    const tbody = $('#kuawaseTokenListBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    for (const t of allKuawaseTokens) {
-      const state = kuawaseTokenState(t);
-      const venueLabel = t.venue_name ? `${t.venue_code || ''} - ${t.venue_name}` : (t.venue_code || '-');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="token-text">...${esc(t.token_last4 || '')}</td>
-        <td>${esc(t.label || '-')}</td>
-        <td>${esc(venueLabel)}</td>
-        <td>${esc(fmtDateTime(t.expires_at))}</td>
-        <td>${esc(fmtDateTime(t.last_seen_at))}</td>
-        <td>${esc(t.device_id || '-')}</td>
-        <td><span class="tag ${state.cls}">${state.label}</span></td>
-        <td>
-          <span class="action-links">
-            <span class="link" data-action="revoke-kuawase-token" data-token-hash="${esc(t.token_hash)}">失効</span>
-          </span>
-        </td>
-      `;
-      const revokeLink = tr.querySelector('[data-action="revoke-kuawase-token"]');
-      if (t.revoked_at) {
-        revokeLink.classList.add('text-muted');
-        revokeLink.style.pointerEvents = 'none';
-        revokeLink.textContent = '失効済み';
-      } else {
-        revokeLink.addEventListener('click', () => revokeKuawaseToken(t));
-      }
-      tbody.appendChild(tr);
-    }
-  }
-
-  async function issueKuawaseToken() {
-    const secret = $('#adminSecret').value.trim();
-    if (!secret) return showMsg('#kuawaseIssueMsg', '管理用シークレットを入力', 'err');
-
-    const venueId = $('#kuawaseVenueSelect')?.value || '';
-    if (!venueId) return showMsg('#kuawaseIssueMsg', '会場を選択してください', 'err');
-
-    const label = $('#kuawaseTokenLabel')?.value.trim() || '';
-    const expiresInHoursRaw = $('#kuawaseExpiresHours')?.value.trim() || '';
-    const expiresInHours = expiresInHoursRaw ? Number(expiresInHoursRaw) : undefined;
-
-    try {
-      const res = await fetch(ADMIN_ISSUE_KUAWASE_TOKEN_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          admin_secret: secret,
-          venue_id: venueId,
-          label: label || undefined,
-          expires_in_hours: expiresInHours,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        showMsg('#kuawaseIssueMsg', data.error || res.statusText, 'err');
-        return;
-      }
-
-      showKuawaseIssuedToken(data);
-      await refreshKuawaseTokens();
-    } catch (e) {
-      showMsg('#kuawaseIssueMsg', e.message, 'err');
-    }
-  }
-
-  function showKuawaseIssuedToken(data) {
-    const box = $('#kuawaseIssuedTokenBox');
-    if (!box) return;
-    box.innerHTML = '';
-
-    const wrap = document.createElement('div');
-    wrap.className = 'msg ok';
-    wrap.textContent = `発行完了: 会場 ${data.venue_code} / 期限 ${fmtDateTime(data.expires_at)}（このトークンは今だけ表示されます。再表示はできません）`;
-
-    const tokenRow = document.createElement('div');
-    tokenRow.className = 'row mb-8';
-    const tokenField = document.createElement('input');
-    tokenField.type = 'text';
-    tokenField.readOnly = true;
-    tokenField.value = data.token;
-    tokenField.className = 'input-lg token-text';
-    tokenField.style.width = '100%';
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'btn-blue';
-    copyBtn.textContent = 'コピー';
-    copyBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(tokenField.value);
-        copyBtn.textContent = 'コピー済み';
-        setTimeout(() => { copyBtn.textContent = 'コピー'; }, 1500);
-      } catch (_e) {
-        tokenField.select();
-      }
-    });
-    tokenRow.appendChild(tokenField);
-    tokenRow.appendChild(copyBtn);
-
-    box.appendChild(wrap);
-    box.appendChild(tokenRow);
-
-    $('#kuawaseTokenLabel').value = '';
-    showMsg('#kuawaseIssueMsg', '', 'ok');
-  }
-
-  async function revokeKuawaseToken(t) {
-    const secret = $('#adminSecret').value.trim();
-    if (!secret) return showMsg('#kuawaseTokenListMsg', '管理用シークレットを入力', 'err');
-
-    const label = t.label ? `「${t.label}」` : '';
-    const ok = window.confirm(`会場 ${t.venue_code || ''} の連携トークン${label}(...${t.token_last4}) を失効します。よろしいですか？`);
-    if (!ok) return;
-
-    try {
-      const res = await fetch(ADMIN_REVOKE_KUAWASE_TOKEN_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          admin_secret: secret,
-          token_hash: t.token_hash,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        showMsg('#kuawaseTokenListMsg', data.error || res.statusText, 'err');
-        return;
-      }
-      showMsg('#kuawaseTokenListMsg', `失効しました (...${t.token_last4})`, 'ok');
-      await refreshKuawaseTokens();
-    } catch (e) {
-      showMsg('#kuawaseTokenListMsg', e.message, 'err');
-    }
-  }
-
-  async function refreshKuawaseTokens() {
-    try {
-      const secret = $('#adminSecret').value.trim();
-      allKuawaseTokens = await fetchKuawaseTokens(secret);
-      renderKuawaseTokenList();
-      showMsg('#kuawaseTokenListMsg', kuawaseTokenStatus.text, kuawaseTokenStatus.type);
-    } catch (e) {
-      kuawaseTokenStatus = { text: `連携トークン取得失敗: ${e.message}`, type: 'err' };
-      showMsg('#kuawaseTokenListMsg', kuawaseTokenStatus.text, 'err');
-    }
-  }
 
   function resetJudgeForm() {
     $('#judgeId').value = '';
@@ -436,9 +234,7 @@
       renderJudgeList();
       renderMatchSelect();
       renderMatchJudgeList();
-      renderKuawaseVenueSelect();
       showMsg('#judgeListMsg', tokenStatus.text, tokenStatus.type);
-      await refreshKuawaseTokens();
     } catch (e) {
       console.error('refreshAll error', e);
       showMsg('#judgeListMsg', '一覧取得に失敗しました: ' + e.message, 'err');
@@ -655,7 +451,5 @@
   $('#btnSaveJudge').addEventListener('click', saveJudge);
   $('#btnResetJudgeForm').addEventListener('click', resetJudgeForm);
   $('#btnRefresh').addEventListener('click', refreshAll);
-  $('#btnIssueKuawaseToken')?.addEventListener('click', issueKuawaseToken);
-  $('#btnRefreshKuawaseTokens')?.addEventListener('click', refreshKuawaseTokens);
   refreshAll();
 })();

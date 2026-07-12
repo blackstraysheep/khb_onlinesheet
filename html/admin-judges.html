@@ -27,38 +27,6 @@
       </div>
 
       <div class="card">
-        <div class="card-header-row">
-          <h2 class="card-header">KHB-Kuawase 連携トークン</h2>
-          <button id="btnRefreshKuawaseTokens" class="btn-blue">一覧を更新</button>
-        </div>
-        <div class="row mb-8">
-          <div>
-            <label for="kuawaseVenueSelect">会場</label>
-            <select id="kuawaseVenueSelect" class="input-md"></select>
-          </div>
-          <div>
-            <label for="kuawaseTokenLabel">ラベル (任意)</label>
-            <input id="kuawaseTokenLabel" placeholder="例: 本部PC" class="input-md" />
-          </div>
-          <div>
-            <label for="kuawaseExpiresHours">有効期限 (時間)</label>
-            <input id="kuawaseExpiresHours" type="number" min="1" max="336" value="48" class="input-md" style="width:100px" />
-          </div>
-          <div><button id="btnIssueKuawaseToken" class="btn-green">発行</button></div>
-        </div>
-        <div class="msg" id="kuawaseIssueMsg"></div>
-        <div id="kuawaseIssuedTokenBox"></div>
-
-        <div class="msg" id="kuawaseTokenListMsg"></div>
-        <table>
-          <thead>
-            <tr><th>末尾4桁</th><th>ラベル</th><th>会場</th><th>期限</th><th>最終接続</th><th>端末</th><th>状態</th><th>操作</th></tr>
-          </thead>
-          <tbody id="kuawaseTokenListBody"></tbody>
-        </table>
-      </div>
-
-      <div class="card">
         <h2 class="card-header">試合ごとの審査員</h2>
         <table>
           <thead>
